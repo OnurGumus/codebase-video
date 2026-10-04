@@ -1,86 +1,163 @@
 # codebase-video
 
-A [Claude Code](https://claude.com/claude-code) plugin that turns a repository into a narrated, animated video that
-teaches it: what the system is, a map of its parts, one or more flows traced end to end with the real code on screen,
-the conventions and traps, and where to start. Chapters and recaps included, and pause-and-think questions in the longer lengths.
+**Turn a code repository into a narrated video that teaches it.**
 
-Point it at your own codebase to onboard a teammate, or at someone else's to learn it.
+codebase-video is a plugin for [Claude Code](https://claude.com/claude-code). You open a repository, ask for a
+video, and get an `.mp4` file: a voice explains how the code works while diagrams and the real source code appear
+on screen, chapter by chapter.
 
-## How it works
+Use it to:
 
-The video is only as good as what it says, so most of the work is checking:
+- **onboard a teammate** to your codebase without booking a week of meetings;
+- **learn someone else's project** faster than by reading it file by file;
+- **explain one part** of a system ("how does a request reach the database?") to people who need only that part.
 
-1. **Explore**: an agent reads the code and writes a teaching document where every claim cites `path:lines` and every
-   code block is copied verbatim.
-2. **Verify**: a fresh agent checks every citation, code block and flow against the code, runs the build or tests
-   where that is cheap and safe, and writes exact corrections.
-3. **Script**: an agent writes the narration from the verified document only; two fresh agents audit it.
-4. **Build**: parallel agents draw the scenes with a small animation kit (code cards with real indentation, module and
-   call diagrams, packets travelling a flow, timelines, tables).
-5. **Audit**: fresh agents check every scene against the document and the voice; a final pass scans the whole video
-   every 0.25 s for text shown too briefly, overlaps, empty stages and blinks.
-6. **Render**: headless Chrome draws every frame, a local text-to-speech voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M),
-   run by [kokoro-js](https://www.npmjs.com/package/kokoro-js)) narrates, ffmpeg encodes. You get `out/<name>.mp4` (plus webm, poster, captions and chapters).
+## Quick start
 
-Nothing is uploaded: the voice, rendering and encoding run on your machine. The code is read by Claude Code's agents,
-exactly as in any Claude Code session on that repository.
+You need [Claude Code](https://claude.com/claude-code), plus three common tools:
 
-## Install
+| Tool | Why | Install on macOS |
+|---|---|---|
+| Node.js 18 or later | runs the plugin's engine | `brew install node` |
+| ffmpeg | makes the video file | `brew install ffmpeg` |
+| Google Chrome or Chromium | draws the frames | you probably have it |
+
+On Linux, ffmpeg must include the `libx264`, `libvpx-vp9` and `libopus` encoders (the usual packages do).
+
+Then, inside Claude Code:
 
 ```
 /plugin marketplace add OnurGumus/codebase-video
 /plugin install codebase-video@codebase-video
 ```
 
-Then, in the repository you want to teach: `/codebase-video` (or just ask for "a video that teaches this codebase").
-The first run installs the voice and a browser driver into the plugin's data folder: about 800 MB in all (the
-Kokoro model, the ONNX runtime, [eSpeak NG](https://github.com/espeak-ng/espeak-ng) for pronunciation, which is
-GPL-3.0 and is downloaded there rather than shipped with this plugin, and puppeteer-core).
+Go to the repository you want a video about and type:
 
-Requirements: Node 18+, ffmpeg with libx264, libvpx-vp9 and libopus, and Google Chrome or Chromium. On macOS:
-`brew install node ffmpeg`. No Python and no .NET: the engine ships compiled.
+```
+/codebase-video
+```
 
-## What it costs
+You can also just ask in your own words: "make a video that teaches this codebase".
 
-Three lengths:
+Claude then asks you three short questions (what to cover, how long, and who will watch), and starts working.
+The first run also downloads the voice and a browser driver, about 800 MB, once.
 
-| | length | agent tasks (roughly) |
-|---|---|---|
-| `short` | 3-5 minutes, an overview or promo | about 10 |
-| `tour` (default) | 6-10 minutes, 2-3 flows | about 12 |
-| `deep` | 20-28 minutes, 4-6 flows | about 30 |
+## What you get
 
-Most of the tasks are audits. That is deliberate: in the videos this pipeline was built on, every single audit pass found
-real errors, and every fix pass introduced a few new ones.
+A folder with the finished video and its extras:
+
+```
+<your repo>/.codebase-video/<video name>/out/
+    <video name>.mp4            the video
+    <video name>.webm           the same video, smaller, for the web
+    <video name>.jpg            a poster image
+    <video name>.vtt            captions
+    <video name>.chapters.vtt   chapter markers
+```
+
+Everything the plugin writes stays inside `.codebase-video/`, which git ignores. Your source files are never
+changed.
+
+A typical video has:
+
+- a short introduction that says what you will be able to do after watching;
+- a few chapters, each following one real path through the code;
+- the actual code on screen, copied exactly, with the line being discussed highlighted;
+- diagrams of the parts and of who calls whom;
+- a recap after each chapter, and in longer videos a few "pause and think" questions.
+
+## How long, and how much work
+
+You choose a length:
+
+| Length | Video | Covers | Work for Claude |
+|---|---|---|---|
+| `short` | 3 to 5 minutes | an overview | about 10 agent tasks |
+| `tour` (the default) | 6 to 10 minutes | 2 or 3 paths through the code | about 12 agent tasks |
+| `deep` | 20 to 28 minutes | 4 to 6 paths | about 30 agent tasks |
+
+An "agent task" is one piece of work that Claude Code hands to a helper agent. More tasks means more time and
+more of your Claude usage. A tour can take an hour or more from start to finish; you do not have to watch it
+work. The final step, drawing and encoding the video, takes roughly one and a half times the video's length and
+keeps your computer busy.
+
+## Why you can trust what the video says
+
+A video that explains code wrongly is worse than no video. So most of the work is checking, and each check is
+done by a fresh agent that has not seen the previous agent's reasoning:
+
+1. **Read the code.** One agent explores the repository and writes a teaching document. Every statement in it
+   points to the file and lines it came from, and every piece of code is copied exactly.
+2. **Check the document against the code.** A second agent opens every one of those references, and runs the
+   build or the tests when that is cheap and safe. It writes corrections.
+3. **Write the script.** A third agent writes what the voice will say, using only the checked document.
+   Another agent then checks the script against the document.
+4. **Draw the scenes.** Several agents build the visuals in parallel.
+5. **Check the scenes.** Fresh agents compare every scene with the script and the code. A final pass looks at
+   the whole video four times per second for text shown too briefly, things overlapping, and empty screens.
+6. **Make the video.** A voice reads the script, Chrome draws every frame, and ffmpeg puts them together.
+
+In the videos this was built on, every checking pass found real mistakes, which is why there are so many.
 
 ## Privacy
 
-The teaching document is told never to copy secrets, tokens, internal hostnames or customer data, and the verifier
-checks for them. The finished video shows your code, so share it the way you would share the code.
+- **The video is made on your computer.** The voice, the drawing and the encoding all run locally. Nothing is
+  uploaded.
+- **Your code is read by Claude Code**, the same way as in any other Claude Code session on that repository.
+- **Secrets are kept out.** The agents are told never to copy passwords, tokens, internal server names or
+  customer data into the video, and the checking agent looks for them.
+- **The video shows your code.** Share it the way you would share the code itself.
 
-## Layout
+The one-time setup does download things: the voice model
+([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)), the software that runs it, a browser driver, and
+[eSpeak NG](https://github.com/espeak-ng/espeak-ng) for pronunciation. eSpeak NG is licensed under GPL-3.0; it
+is downloaded to your machine during setup and is not part of this plugin.
 
-- `skills/codebase-video/SKILL.md`: the orchestration (what each step does, in order).
-- `briefs/`: one template per agent role, filled per video by the engine's `fill` step.
-- `src/`: the engine, in F#. `src/Engine` is the command line (narration, checks, rendering, encoding); `src/Kit` is
-  the in-browser animation kit and video frame.
-- `engine/`: what runs. `cli/` and `web/` are the compiled F# (committed, so users need only Node);
-  `node engine/cli/Cv.js <workspace> narrate|check|sheet|stills|scan|report|video|fill|fix`; `KIT.md` documents the
-  animation kit; `kit/gallery/` shows every component.
+## Questions
 
-## Hacking on the engine
+**Does it work for any programming language?**
+Yes. The agents read whatever is in the repository. Code on screen is coloured for F#, C#, JavaScript and
+TypeScript, Python, SQL, JSON, YAML, Bash, Nix and Dockerfiles; other languages are shown without colours.
 
-The engine is F# compiled to JavaScript with [Fable](https://fable.io). With the .NET SDK (8 or later) installed:
+**Can I change the video afterwards?**
+Yes. Tell Claude what to change ("chapter 2 goes too fast", "add a chapter on error handling"). It edits the
+script or the scenes and makes the video again; unchanged narration is not re-voiced.
+
+**Which voice is it?**
+An English text-to-speech voice from the open Kokoro model, running on your machine. No account or API key is
+needed for it.
+
+**Do I need Python or .NET?**
+No. Only Node.js, ffmpeg and Chrome.
+
+## For contributors
+
+The engine is written in F# and compiled to JavaScript with [Fable](https://fable.io). The compiled files are
+committed, which is why users need only Node.js.
+
+| Folder | What is in it |
+|---|---|
+| `skills/codebase-video/SKILL.md` | the instructions Claude follows: each step, in order |
+| `briefs/` | the instructions for each helper agent (explorer, checker, writer, builder, auditor) |
+| `src/Engine` | the command-line engine in F#: voice, checks, drawing frames, encoding |
+| `src/Kit` | the animation kit in F# that runs in the browser: code cards, diagrams, the chapter frame |
+| `engine/cli`, `engine/web` | the compiled JavaScript of the two folders above |
+| `engine/KIT.md` | how to draw a scene with the kit |
+| `engine/kit/gallery` | a small sample video that uses every kit component |
+
+To rebuild after changing the F# code (needs the .NET SDK, version 10 or later):
 
 ```
 dotnet tool restore
-dotnet fsi build.fsx      # src/Engine -> engine/cli (the command line), src/Kit -> engine/web (the browser kit)
+dotnet fsi build.fsx
 ```
 
-Commit the compiled `engine/cli` and `engine/web` (runtime libraries in `fable_modules` included) along with the
-F# change. Scene modules (one `<key>.js` per part
-of a video, written by the builder agents) stay small JavaScript files calling the kit's API in `KIT.md`.
+Commit the regenerated `engine/cli` and `engine/web` folders together with your F# change.
+
+Every step of the engine is one command, `node engine/cli/Cv.js <workspace> <step>`, where the step is one of
+`narrate`, `check`, `sheet`, `stills`, `scan`, `report`, `video`, `fill` or `fix`. The scenes of each video are
+small JavaScript files that call the kit; `engine/KIT.md` describes that API.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
