@@ -1,6 +1,9 @@
 # codebase-video
 
-**Ask Claude Code for a video about your code. Get a narrated video that explains it.**
+**Turn a codebase into a narrated video you can trust.**
+
+Claude Code reads your code and writes down what it learned. A second Claude checks every statement against the
+code. Only then is the video made, with the real code and diagrams on screen.
 
 https://github.com/user-attachments/assets/0b4e12d4-ce36-48db-9532-be7eb61ad430
 
@@ -59,7 +62,8 @@ You pick the length of the video:
 | tour (the usual choice) | 6 to 10 minutes | an hour or more |
 | deep | 20 to 28 minutes | several hours |
 
-These times are rough. A longer video also uses more of your Claude plan.
+These times are rough, and it is the computer's time, not yours: you can do something else meanwhile. A longer
+video also uses more of your Claude plan.
 
 **Not sure yet?** Ask for a preview first. You get the checked write-up of your code and the narration to listen
 to, without the pictures. It is much quicker, and if you like it, Claude carries on from there to the full video.
@@ -68,9 +72,18 @@ The first time, the plugin downloads a voice (about 800 MB). This happens only o
 
 ## Is what the video says correct?
 
-That is what most of the work goes into. Before anything is drawn, Claude writes down what it learned and notes
+A video that explains code wrongly is worse than no video, so that is what most of the work goes into. Before anything is drawn, Claude writes down what it learned and notes
 the exact file and line behind every statement. Then a second Claude, which has not seen the first one's work,
 checks each statement against your code. The script and the pictures are checked the same way.
+
+Here is what the checks caught while making the five-minute video at the top of this page:
+
+| Check | What it caught |
+|---|---|
+| The write-up, checked against the code | 9 corrections |
+| The script, checked against the write-up | 2 sentences that would mislead a listener, 10 smaller wording fixes |
+| The pictures, checked against the script and the code | 1 misleading label, 3 smaller fixes |
+| The last scan of the whole video | nothing left to fix |
 
 More detail: [how it works](docs/how-it-works.md).
 
