@@ -55,6 +55,7 @@ and number must match it exactly. When in doubt, open the cited file in the repo
   Kinds: idea, tricky, remember (only a callback to an earlier chapter), careful (a trap), mistake / surprise / tip
   (only where the document frames it that way).
 - Where the document looks wrong or contradicts the code, follow the code, and report it.
+- Never narrate the state of the local checkout (versions in flight, local-vs-published mismatches, uncommitted work).
 
 **Process** (from any directory):
 - `{{ENGINE}}/build.sh {{WS}} narrate`

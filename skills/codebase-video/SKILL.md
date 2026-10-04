@@ -22,6 +22,9 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
   `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}" ${CLAUDE_PLUGIN_ROOT}/engine/setup.sh`
   It needs Python 3.10-3.13 (or uv), Node 18+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If
   something is missing it says how to install it: tell the user and stop.
+- Before agreeing the scope, skim the README, docs and top-level source folders and list the codebase's core
+  features (e.g. for an event-sourcing library: aggregates, sagas, projections, hosting). Show the list and ask which
+  belong in the video; never silently leave out a core feature (say plainly which ones a tour will skip).
 - Agree the scope with the user in one short exchange (sensible defaults if they do not care):
   - the repository (default: the current directory) and what to teach: the whole repo as a tour, or one flow ("how a
     request reaches the database");

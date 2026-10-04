@@ -36,6 +36,9 @@ file, not by guessing from names.
 - Describe what the code DOES, not what its names suggest: read the function bodies.
 - If something is ambiguous or looks like a bug, say so plainly in a `> Note:` line; do not paper over it.
 - Plain language: define each term at first use; no marketing; about {{DOC}} in total.
+- Teach the stable design, not the state of this checkout: no unreleased version numbers, no "the samples use the
+  published package but the source is newer", no in-progress branches or uncommitted work, unless the subject asks
+  for them. They go stale and confuse a viewer.
 - No secrets: never copy keys, tokens, passwords, internal hostnames or customer data into the document, even if they
   are in the repo; write `<redacted>` and mention it in your report.
 
