@@ -1,10 +1,14 @@
+
+
+
+
 # codebase-video
 
 **Ask Claude Code for a video about your code. Get a narrated video that explains it.**
 
 Every statement in the video is checked against your code before the video is made.
 
-https://github.com/user-attachments/assets/0b4e12d4-ce36-48db-9532-be7eb61ad430
+https://github.com/user-attachments/assets/7a73076f-512c-4933-a95a-1e6dc175ff20
 
 *This video was made by the plugin, about the plugin.*
 
