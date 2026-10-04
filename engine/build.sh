@@ -10,6 +10,8 @@
 #   ./build.sh <clip-dir> chapters       (re)write out/<name>.chapters.vtt from timing.json, no render
 #   ./build.sh <clip-dir> video          render and encode -> out/<name>.{mp4,webm,jpg,vtt}
 #   ./build.sh <clip-dir> all            narrate, then video
+#   ./build.sh <clip-dir> scan [t0 t1 step]   scan every 0.25 s for the final re-audit -> build/scan.json
+#   ./build.sh <clip-dir> report [mode]  findings from the scan (see scan_report.py: all|short|overlap|empty|...)
 # Output goes to <clip-dir>/out/<name>.{mp4,webm,jpg,vtt} (+ .chapters.vtt for long videos).
 # Needs Node, ffmpeg (libx264, libvpx-vp9, libopus), Google Chrome or Chromium, and the Kokoro voice that setup.sh
 # installs into the tool home (CODEBASE_VIDEO_HOME, default ~/.cache/codebase-video).
@@ -68,5 +70,7 @@ case "$STEP" in
   video) video ;;
   chapters) chapters_for "$CLIP" "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["name"])' "$CLIP/build/timing.json")" ;;
   all) narrate; video ;;
-  *) echo "unknown step $STEP (narrate|check|stills|sheet|serve|new-long|video|all)" >&2; exit 2 ;;
+  scan) [ -f "$CLIP/build/timing.json" ] || narrate; node "$HERE/scan.mjs" "$CLIP" "$@" ;;
+  report) "$PY" "$HERE/scan_report.py" "$CLIP" "${@:-all}" ;;
+  *) echo "unknown step $STEP (narrate|check|stills|sheet|serve|new-long|video|all|scan|report)" >&2; exit 2 ;;
 esac
