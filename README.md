@@ -72,11 +72,11 @@ The engine is F# compiled to JavaScript with [Fable](https://fable.io). With the
 
 ```
 dotnet tool restore
-dotnet fable src/Engine -o engine/cli     # the command line (Node)
-dotnet fable src/Kit -o engine/web        # the browser kit
+dotnet fsi build.fsx      # src/Engine -> engine/cli (the command line), src/Kit -> engine/web (the browser kit)
 ```
 
-Commit the compiled `engine/cli` and `engine/web` along with the F# change. Scene modules (one `<key>.js` per part
+Commit the compiled `engine/cli` and `engine/web` (runtime libraries in `fable_modules` included) along with the
+F# change. Scene modules (one `<key>.js` per part
 of a video, written by the builder agents) stay small JavaScript files calling the kit's API in `KIT.md`.
 
 ## License
