@@ -1,5 +1,3 @@
-node_modules/
-__pycache__/
-build/
-out/
-.codebase-video/
+bin/
+obj/
+.fable/

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The command-line engine, compiled by Fable to Node ES modules in engine/cli (see build.fsx / README "Hacking"). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <WarningsAsErrors>FS0025</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Node.fs" />
+    <Compile Include="Wav.fs" />
+    <Compile Include="Narrate.fs" />
+    <Compile Include="Chapters.fs" />
+    <Compile Include="Check.fs" />
+    <Compile Include="ApplyFixes.fs" />
+    <Compile Include="Fill.fs" />
+    <Compile Include="ScanReport.fs" />
+    <Compile Include="Render.fs" />
+    <Compile Include="Scan.fs" />
+    <Compile Include="Video.fs" />
+    <Compile Include="Setup.fs" />
+    <Compile Include="Cv.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Fable.Core" Version="5.3.0" />
+    <PackageReference Include="Fable.Promise" Version="3.2.1" />
+  </ItemGroup>
+</Project>

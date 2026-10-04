@@ -1,0 +1,69 @@
+/// The engine's one command (replaces build.sh and setup.sh):
+///   node engine/cli/Cv.js setup                      one-time: voice model, browser driver, system checks
+///   node engine/cli/Cv.js <ws> narrate               voice script.json -> build/narration.wav, timing.js/json, captions.vtt
+///   node engine/cli/Cv.js <ws> check [--lesson f]    cue phrases, script problems, numbers the document never states
+///   node engine/cli/Cv.js <ws> stills [t...]         still frames -> build/still-<t>.png (default: the poster frame)
+///   node engine/cli/Cv.js <ws> sheet [keys...]       a labelled still per sentence, six per build/sheet[-keys]-<n>.png
+///   node engine/cli/Cv.js <ws> serve                 preview URL with narration
+///   node engine/cli/Cv.js <ws> new-long              copy templates/long/clip.html into the workspace
+///   node engine/cli/Cv.js <ws> chapters              (re)write out/<name>.chapters.vtt from timing.json
+///   node engine/cli/Cv.js <ws> video                 render and encode -> out/<name>.{mp4,webm,jpg,vtt}
+///   node engine/cli/Cv.js <ws> all                   narrate, then video
+///   node engine/cli/Cv.js <ws> scan [t0 t1 step]     DOM scan every 0.25 s -> build/scan.json
+///   node engine/cli/Cv.js <ws> report [mode]         findings from the scan (all|short|overlap|empty|...)
+///   node engine/cli/Cv.js <ws> fill                  fill the brief templates from <ws>/brief.json -> <ws>/build/brief-*.txt
+///   node engine/cli/Cv.js <ws> fix [file] [--apply]  apply a lesson-fixes JSON to build/lesson.md (dry run without --apply)
+module Cv
+
+open Fable.Core
+open Node
+
+let usage () =
+    eprint "usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|scan|report|fill|fix [...]"
+    exit 2
+
+let finish (p: JS.Promise<int>) =
+    p
+    |> Promise.map (fun code -> exit code)
+    |> Promise.catchEnd (fun e ->
+        eprint (string e)
+        exit 1)
+
+let ensureTiming (ws: string) : JS.Promise<unit> =
+    if exists (join [ ws; "build"; "timing.json" ]) then Promise.lift () else Narrate.run ws
+
+let main () =
+    match argv with
+    | [ "setup" ] -> finish (Setup.run ())
+    | wsArg :: step :: rest ->
+        let ws = resolve wsArg
+        if not (isDir ws) then
+            eprint $"no such workspace: {ws}"
+            exit 2
+        mkdirp (join [ ws; "build" ])
+        mkdirp (join [ ws; "out" ])
+        if step <> "narrate" && step <> "check" && step <> "new-long" && step <> "fill" && step <> "fix" then
+            Setup.requireReady ()
+        match step with
+        | "narrate" -> finish (Narrate.run ws |> Promise.map (fun () -> 0))
+        | "check" -> finish (Promise.lift (Check.run ws rest))
+        | "stills" | "sheet" | "serve" -> finish (ensureTiming ws |> Promise.bind (fun () -> Render.run ws step rest))
+        | "new-long" ->
+            let dst = join [ ws; "clip.html" ]
+            if exists dst then
+                eprint $"{dst} exists; not overwriting"
+                exit 1
+            copyFile (join [ engineDir; "templates"; "long"; "clip.html" ]) dst
+            printfn "%s (write script.json and one <key>.js per module; see KIT.md)" dst
+            exit 0
+        | "chapters" -> finish (Promise.lift (Video.chapters ws))
+        | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws))
+        | "all" -> finish (Narrate.run ws |> Promise.bind (fun () -> Video.run ws))
+        | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest))
+        | "report" -> finish (Promise.lift (ScanReport.run ws rest))
+        | "fill" -> finish (Promise.lift (Fill.run ws))
+        | "fix" -> finish (Promise.lift (ApplyFixes.run ws rest))
+        | _ -> usage ()
+    | _ -> usage ()
+
+main ()
