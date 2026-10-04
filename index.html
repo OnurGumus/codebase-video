@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>codebase-video: turn a repository into a narrated video that teaches it</title>
+<meta name="description" content="A Claude Code plugin that turns a code repository into a narrated, animated video that teaches it. The video is made on your computer.">
+<meta property="og:title" content="codebase-video">
+<meta property="og:description" content="Turn a code repository into a narrated video that teaches it. A Claude Code plugin.">
+<meta property="og:image" content="https://onurgumus.github.io/codebase-video/promo.jpg">
+<meta property="og:type" content="video.other">
+<style>
+  :root { --bg: #0f1420; --bg2: #171d2c; --ink: #e8ecf4; --muted: #9aa4b8; --accent: #7fb0ff; --line: #2a3246; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: clamp(30px, 6vw, 46px); line-height: 1.15; letter-spacing: -.02em; margin: 0 0 12px; }
+  h2 { font-size: 22px; margin: 44px 0 10px; }
+  p { margin: 0 0 14px; }
+  .lead { font-size: 20px; color: var(--muted); max-width: 46em; }
+  video { display: block; width: 100%; aspect-ratio: 16 / 9; margin: 28px 0 10px; background: #000;
+    border: 1px solid var(--line); border-radius: 12px; }
+  .note { color: var(--muted); font-size: 15px; }
+  pre { background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+    overflow-x: auto; font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 0 0 14px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .93em; }
+  a { color: var(--accent); }
+  ul { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  .btn { display: inline-block; margin-top: 8px; padding: 10px 18px; border-radius: 9px; background: var(--accent);
+    color: #0b1020; font-weight: 650; text-decoration: none; }
+  footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Turn a code repository into a narrated video that teaches it</h1>
+  <p class="lead">codebase-video is a plugin for Claude Code. Open a repository, ask for a video, and get an
+    <code>.mp4</code>: a voice explains how the code works while diagrams and the real source code appear on screen.</p>
+
+  <video controls preload="metadata" poster="promo.jpg">
+    <source src="promo.mp4" type="video/mp4">
+    <track kind="captions" src="promo.vtt" srclang="en" label="English" default>
+    <track kind="chapters" src="promo.chapters.vtt" srclang="en">
+  </video>
+  <p class="note">This five-minute video was made by the plugin, about the plugin's own repository. The example
+    frames in it come from a longer video the plugin made of the public
+    <a href="https://github.com/OnurGumus/FCQRS">FCQRS</a> library.</p>
+
+  <h2>Install</h2>
+  <p>You need <a href="https://claude.com/claude-code">Claude Code</a>, Node.js 18 or later, ffmpeg, and Google
+    Chrome or Chromium. Then, inside Claude Code:</p>
+<pre>/plugin marketplace add OnurGumus/codebase-video
+/plugin install codebase-video@codebase-video</pre>
+  <p>Go to the repository you want a video about and type:</p>
+<pre>/codebase-video</pre>
+  <p>The first run downloads the voice and a browser driver, about 800 MB, once.</p>
+
+  <h2>What to know</h2>
+  <ul>
+    <li><strong>The video is made on your computer.</strong> The voice, the drawing and the encoding run locally;
+      nothing is uploaded. Your code is read by Claude Code, as in any Claude Code session.</li>
+    <li><strong>Most of the work is checking.</strong> One agent writes a teaching document that points to the
+      file and lines behind every statement; fresh agents check it, the script and every scene against the code.</li>
+    <li><strong>Three lengths:</strong> short (3 to 5 minutes), tour (6 to 10) and deep (20 to 28).</li>
+  </ul>
+  <a class="btn" href="https://github.com/OnurGumus/codebase-video">Read more on GitHub</a>
+
+  <footer>MIT licensed. The engine is written in F# and compiled to JavaScript with Fable.</footer>
+</main>
+</body>
+</html>
