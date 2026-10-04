@@ -10,7 +10,7 @@
   /* Kinds of thing (a producer, a consumer, a key...), never verdicts: good/bad/warn keep those. */
   --pink: #f2a7cf; --cyan: #7fd6e6;
   /* Code: keywords, types, calls, strings, numbers, comments. */
-  --code-kw: #c3b1f2; --code-type: #7fd6e6; --code-fn: #8ab8ff; --code-str: #f4b88e; --code-num: #f2a7cf; --code-com: #7b8aa6; --code-case: #e9d49c; --term: #8ab8ff;
+  --code-kw: #c3b1f2; --code-type: #7fd6e6; --code-fn: #8ab8ff; --code-str: #f4b88e; --code-num: #f2a7cf; --code-com: #7b8aa6; --code-case: #f2a7cf; --term: #8ab8ff;
   --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
