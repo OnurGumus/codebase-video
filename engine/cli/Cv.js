@@ -1,10 +1,10 @@
 
-import { argv, engineDir, copyFile, mkdirp, isDir, resolve, join, exists, exit, eprint } from "./Node.js";
+import { argv, engineDir, copyFile, mkdirp, isDir, resolve, writeText, readText, join, exists, exit, eprint } from "./Node.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { tail, head, isEmpty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { run } from "./Narrate.js";
+import { printf, toConsole, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { requireReady, run as run_1 } from "./Setup.js";
-import { printf, toConsole, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { run as run_2 } from "./Check.js";
 import { run as run_3 } from "./Render.js";
 import { run as run_4, chapters } from "./Video.js";
@@ -32,6 +32,32 @@ export function ensureTiming(ws) {
     }
     else {
         return run(ws);
+    }
+}
+
+/**
+ * Workspaces started before the kit moved to F# carry a clip.html that loads /engine/stage.js, /engine/stage-kit.js
+ * and the frame as an inline script. A long-video clip.html is the template copied verbatim, so its script block is
+ * swapped for the new one (the old file is kept as build/clip.html.old-kit) and nothing else changes.
+ */
+export function upgradeClip(ws) {
+    const clip = join(ofArray([ws, "clip.html"]));
+    if (exists(clip)) {
+        const html = readText(clip);
+        const start = html.indexOf("<script src=\"build/timing.js\"></script>") | 0;
+        const stop = html.lastIndexOf("</body>") | 0;
+        if (html.indexOf("/engine/stage-kit.js") >= 0) {
+            if (((html.indexOf("id=\"modules\"") >= 0) && (start >= 0)) && (stop > start)) {
+                writeText(join(ofArray([ws, "build", "clip.html.old-kit"])), html);
+                const block = "<!-- The frame (chapters, cards, progress bar, toasts, modules) is engine/web/Main.js, compiled from src/Kit. -->\n<script src=\"build/timing.js\"></script>\n<script type=\"module\" src=\"/engine/web/Main.js\"></script>\n";
+                writeText(clip, (substring(html, 0, start) + block) + substring(html, stop));
+                eprint("clip.html: upgraded to the F# kit (engine/web/Main.js); the old file is build/clip.html.old-kit");
+            }
+            else {
+                eprint("clip.html loads /engine/stage-kit.js, which is gone: load build/timing.js, then <script type=\"module\" src=\"/engine/web/Main.js\">, and put your own script in a type=\"module\" script after it");
+                exit(2);
+            }
+        }
     }
 }
 
@@ -78,6 +104,9 @@ export function main() {
             mkdirp(join(ofArray([ws, "out"])));
             if (((((step !== "narrate") && (step !== "check")) && (step !== "new-long")) && (step !== "fill")) && (step !== "fix")) {
                 requireReady();
+            }
+            if (step !== "new-long") {
+                upgradeClip(ws);
             }
             switch (step) {
                 case "narrate": {

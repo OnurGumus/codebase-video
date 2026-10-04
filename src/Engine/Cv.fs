@@ -32,6 +32,28 @@ let finish (p: JS.Promise<int>) =
 let ensureTiming (ws: string) : JS.Promise<unit> =
     if exists (join [ ws; "build"; "timing.json" ]) then Promise.lift () else Narrate.run ws
 
+/// Workspaces started before the kit moved to F# carry a clip.html that loads /engine/stage.js, /engine/stage-kit.js
+/// and the frame as an inline script. A long-video clip.html is the template copied verbatim, so its script block is
+/// swapped for the new one (the old file is kept as build/clip.html.old-kit) and nothing else changes.
+let upgradeClip (ws: string) =
+    let clip = join [ ws; "clip.html" ]
+    if exists clip then
+        let html = readText clip
+        let start = html.IndexOf "<script src=\"build/timing.js\"></script>"
+        let stop = html.LastIndexOf "</body>"
+        if html.Contains "/engine/stage-kit.js" then
+            if html.Contains "id=\"modules\"" && start >= 0 && stop > start then
+                writeText (join [ ws; "build"; "clip.html.old-kit" ]) html
+                let block =
+                    "<!-- The frame (chapters, cards, progress bar, toasts, modules) is engine/web/Main.js, compiled from src/Kit. -->\n"
+                    + "<script src=\"build/timing.js\"></script>\n"
+                    + "<script type=\"module\" src=\"/engine/web/Main.js\"></script>\n"
+                writeText clip (html.Substring(0, start) + block + html.Substring stop)
+                eprint "clip.html: upgraded to the F# kit (engine/web/Main.js); the old file is build/clip.html.old-kit"
+            else
+                eprint "clip.html loads /engine/stage-kit.js, which is gone: load build/timing.js, then <script type=\"module\" src=\"/engine/web/Main.js\">, and put your own script in a type=\"module\" script after it"
+                exit 2
+
 let main () =
     match argv with
     | [ "setup" ] -> finish (Setup.run ())
@@ -44,6 +66,7 @@ let main () =
         mkdirp (join [ ws; "out" ])
         if step <> "narrate" && step <> "check" && step <> "new-long" && step <> "fill" && step <> "fix" then
             Setup.requireReady ()
+        if step <> "new-long" then upgradeClip ws
         match step with
         | "narrate" -> finish (Narrate.run ws |> Promise.map (fun () -> 0))
         | "check" -> finish (Promise.lift (Check.run ws rest))
