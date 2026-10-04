@@ -2,7 +2,7 @@
 
 A [Claude Code](https://claude.com/claude-code) plugin that turns a repository into a narrated, animated video that
 teaches it: what the system is, a map of its parts, one or more flows traced end to end with the real code on screen,
-the conventions and traps, and where to start. Chapters, pause-and-think questions and recaps included.
+the conventions and traps, and where to start. Chapters and recaps included, and pause-and-think questions in the longer lengths.
 
 Point it at your own codebase to onboard a teammate, or at someone else's to learn it.
 

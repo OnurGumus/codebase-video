@@ -96,7 +96,7 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   Two edges between the same two boxes (e.g. data one way, demand or an ack the other) are drawn in two lanes
   40 px apart, with each label on its own side, so draw both instead of one long edge that jumps over a box.
 - `K.code({ title, lines, lang, glow: [{ line, from, until, tone }], x, y })` - syntax-highlighted
-  (`lang`: "csharp" default, "javascript", "python" (also for Bazel BUILD files), "nix", "dockerfile", "sql", "json", "yaml", "bash", "plain"); `glow` lights a line's background.
+  (`lang`: "csharp" default, "fsharp", "javascript" (also for TypeScript), "python" (also for Bazel BUILD files), "nix", "dockerfile", "sql", "json", "yaml", "bash", "plain"); `glow` lights a line's background.
   Leave out `w`: a width narrower than the longest line does not wrap or clip, the line runs past the card.
   Two cards side by side rarely fit; show them one after the other. Size to plan around: about 151 + 60 px per line
   tall, and about 26 px per character of the longest line wide.
@@ -137,7 +137,7 @@ A dense video tires the viewer, so give it rests. The first long videos talked 9
 nearly two minutes at a stretch and no real pause.
 
 - `[pause]` / `[pause 2]` after a sentence in `say`: silence (1.5 s by default) so a key point lands.
-- `[think]` / `[think 4]` after a question: silence (4 s by default) with a "Pause and think" countdown
+- `[think]` / `[think 10]` after a question: silence (8 s by default) with a "Pause and think" countdown
   in the top band. The answer follows in the next sentence. About one per chapter.
 - A **recap scene** closes each chapter: id `<key>-recap`, `"recap": ["line", "line", "line"]` (2-3
   short lines, the chapter's takeaways), a `say` that speaks them one sentence per line, and
