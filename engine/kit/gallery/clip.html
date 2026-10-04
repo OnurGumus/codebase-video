@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lesson video</title>
+<link rel="stylesheet" href="/engine/stage.css">
+<style>
+/* The frame of a long lesson video (copy this file to <clip>/clip.html unchanged). Everything on screen is
+   drawn by modules: a module owns the scenes whose ids start with its key ("g1-vague" belongs to g1), lives
+   in <key>.js next to this file (Kit.module("g1", K => ...)), and shows only while its scenes play.
+   The frame adds what every long video shares: a title card as each chapter starts (the chapter is a
+   "<key>-why" scene with "chapter": "Title" in script.json; its bridge line is spoken over the card), a
+   chapter label at the top, and a progress bar split into chapters. "intro" and "outro" are modules too.
+   The opening scene "title" has no module: the frame shows the course and lesson from script.json's "card".
+   A scene's "toasts" (script.json) pop up in the band above the content, top right, on their phrase.
+   Breathing room: a [think] silence shows a "pause and think" countdown there; a scene with "recap"
+   (a chapter's last scene, no module) shows a full "So far" card, one line per sentence.
+   Keep module content inside x 60-1860, y 120-1010. */
+.layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+#label { left: 60px; top: 34px; font-size: 44px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+#label b { color: var(--accent); margin-right: 18px; }
+#card { left: 0; top: 0; width: 1920px; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#cardNum { font-size: 64px; font-weight: 700; color: var(--accent); letter-spacing: .08em; }
+#cardTitle { font-size: 96px; font-weight: 750; letter-spacing: -.035em; margin-top: 12px; }
+#bar { left: 60px; top: 1044px; width: 1800px; height: 10px; display: flex; gap: 12px; }
+#titleCard { left: 0; top: 0; width: 1920px; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+#tcCourse { font-size: 48px; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+#tcLesson { font-size: 104px; font-weight: 750; letter-spacing: -.035em; line-height: 1.08; margin: 18px 160px 0; }
+#tcSub { font-size: 48px; color: var(--muted); margin: 30px 220px 0; line-height: 1.3; }
+.seg { flex: 1; height: 10px; border-radius: 5px; background: var(--border); overflow: hidden; }
+.seg i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: 0 50%; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="modules"></div>
+  <div id="titleCard" class="at"><div id="tcCourse"></div><div id="tcLesson"></div><div id="tcSub"></div></div>
+  <div id="card" class="at"><div id="cardNum"></div><div id="cardTitle"></div></div>
+  <div id="label" class="at"></div>
+  <div id="bar" class="at"></div>
+  <div id="toasts" class="layer"></div>
+</div>
+
+<script src="build/timing.js"></script>
+<script src="/engine/stage.js"></script>
+<script src="/engine/stage-kit.js"></script>
+<script>
+window.CH = window.CH || {};
+const { cue, scene, prog, within, lerp, clamp, $, show } = Stage;
+const T = Stage.timing;
+const prefix = (id) => id.split("-")[0];
+
+// Chapters: a bridge scene ("k3-why", with "chapter": "Title") and everything up to the next bridge or the
+// outro. The card holds through the bridge; the chapter "talks" from its first content sentence.
+const CHAPTERS = [];
+for (const s of T.scenes) {
+  if (s.id.endsWith("-why")) CHAPTERS.push({ title: s.chapter || s.id, scenes: [s] });
+  else if (CHAPTERS.length && s.id !== "outro" && prefix(s.id) !== "outro") CHAPTERS.at(-1).scenes.push(s);
+}
+CHAPTERS.forEach((c, i) => {
+  c.n = i + 1;
+  c.start = c.scenes[0].start;
+  c.end = c.scenes.at(-1).end;
+  const firstContent = c.scenes.find((s) => !s.id.endsWith("-why"));
+  c.talk = firstContent ? firstContent.sentences[0].start : c.end;
+});
+
+// Modules: every scene prefix except bridges. A module is on screen during each run of its consecutive
+// scenes, from just before its first sentence to the end of the run.
+const MODULES = {};
+let prev = null;
+for (const s of T.scenes) {
+  if (s.id.endsWith("-why") || s.id === "title" || s.recap) { prev = null; continue; }
+  const k = prefix(s.id);
+  const m = (MODULES[k] ??= { key: k, runs: [] });
+  const first = s.sentences[0] ? s.sentences[0].start : s.start;
+  if (prev === k) m.runs.at(-1).end = s.end;
+  else m.runs.push({ start: Math.max(s.start, first - 0.45), end: s.end });
+  prev = k;
+}
+for (const m of Object.values(MODULES)) {
+  const d = document.createElement("div");
+  d.className = "layer"; d.id = "mod-" + m.key;
+  $("#modules").append(d);
+  m.root = d;
+}
+
+const bar = $("#bar");
+const SEG = CHAPTERS.map(() => { const s = document.createElement("div"); s.className = "seg"; s.append(document.createElement("i")); bar.append(s); return s.firstChild; });
+const OUTRO = T.scenes.find((s) => prefix(s.id) === "outro");
+const TITLE = T.scenes.find((s) => s.id === "title");
+if (T.card) {
+  $("#tcCourse").textContent = T.card.course || "";
+  $("#tcLesson").textContent = T.card.lesson || "";
+  $("#tcSub").textContent = T.card.sub || "";
+}
+
+// Each module file loads on its own: one that is missing or throws is reported and left blank, and the
+// rest still render (the renderer aborts on any uncaught page error).
+let TOASTS = null, BREAKS = null;
+try { TOASTS = Kit.frameToasts($("#toasts")); } catch (e) { console.log(`toasts: ${e.message}`); }
+try { BREAKS = Kit.frameBreaks($("#toasts")); } catch (e) { console.log(`breaks: ${e.message}`); }
+
+const loaded = (async () => {
+  for (const m of Object.values(MODULES)) {
+    try {
+      const res = await fetch(`${m.key}.js`, { cache: "no-store" });
+      if (!res.ok) { console.log(`module file ${m.key}.js: not written yet (${res.status})`); continue; }
+      new Function(await res.text() + `\n//# sourceURL=${m.key}.js`)();
+    } catch (e) { console.log(`module file ${m.key}.js failed to load: ${e.message}`); }
+  }
+  for (const m of Object.values(MODULES)) {
+    if (!CH[m.key]) continue;
+    try { CH[m.key].build?.(m.root); } catch (e) { console.log(`module ${m.key} build failed: ${e.message}`); CH[m.key] = null; }
+  }
+})();
+
+function render(t) {
+  // The opening title card: course, lesson, and one line on what the lesson is for.
+  const tc = TITLE && T.card ? within(t, 0, TITLE.end - 0.1, 0.4) : 0;
+  show($("#titleCard"), tc, 0, `scale(${lerp(0.97, 1, prog(t, 0, 0.8))})`);
+  show($("#tcSub"), TITLE && T.card ? prog(t, TITLE.sentences.at(-1).start - 0.2, 0.5) * tc : 0, 10);
+  let current = null;
+  for (const c of CHAPTERS) if (t >= c.start - 0.001 && t < c.end + 0.001) current = c;
+  const card = current ? within(t, current.start, current.talk - 0.25, 0.35) : 0;
+  show($("#card"), card, 0, `scale(${lerp(0.96, 1, card)})`);
+  if (current) {
+    $("#cardNum").textContent = `${current.n} / ${CHAPTERS.length}`;
+    $("#cardTitle").textContent = current.title;
+  }
+  for (const m of Object.values(MODULES)) {
+    let p = 0;
+    // The last run holds to the final frame, so the video does not end on an empty stage.
+    for (const r of m.runs) p = Math.max(p, within(t, r.start, r.end >= T.duration - 0.05 ? Infinity : r.end - 0.05, 0.4));
+    m.root.style.opacity = p;
+    m.root.style.visibility = p <= 0.001 ? "hidden" : "visible";
+    if (p > 0.001 && CH[m.key]) {
+      try { CH[m.key].render(t); } catch (e) { console.log(`module ${m.key} render(${t.toFixed(2)}) failed: ${e.message}`); }
+    }
+  }
+  const lab = $("#label");
+  show(lab, current ? within(t, current.talk - 0.3, current.end - 0.1, 0.35) : 0);
+  const html = current ? `<b>${current.n} / ${CHAPTERS.length}</b>${current.title}` : "";
+  if (lab.dataset.html !== html) { lab.dataset.html = html; lab.innerHTML = html; }
+  CHAPTERS.forEach((c, i) => { SEG[i].style.transform = `scaleX(${clamp((t - c.start) / (c.end - c.start))})`; });
+  bar.style.opacity = CHAPTERS.length ? within(t, CHAPTERS[0].start - 0.3, OUTRO ? OUTRO.start + 0.2 : Infinity, 0.4) : 0;
+  if (TOASTS) TOASTS.render(t);
+  if (BREAKS) BREAKS.render(t);
+}
+
+// The renderer awaits window.ready right after load, so it must exist now; Stage.play replaces it with its
+// own promise, which this one resolves to.
+window.ready = loaded.then(() => { Stage.play(render); return window.ready; });
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+{
+  "name": "kit-gallery",
+  "title": "Stage kit gallery",
+  "voice": "af_heart",
+  "lang": "en-us",
+  "speed": 1.0,
+  "poster": "br-demo",
+  "source": {
+    "lesson": "none: a test and a reference for scripts/lesson-video/stage-kit.js"
+  },
+  "scenes": [
+    {
+      "id": "title",
+      "lead": 0.6,
+      "pad": 0.6,
+      "say": "The stage kit gallery."
+    },
+    {
+      "id": "intro",
+      "lead": 0.6,
+      "pad": 1.0,
+      "say": "This gallery shows every piece of the stage kit. Each piece appears as the narrator names it."
+    },
+    {
+      "id": "k1-why",
+      "chapter": "Text, lines and chips",
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Step one: text, lines and chips."
+    },
+    {
+      "id": "tx-demo",
+      "lead": 0.6,
+      "pad": 1.0,
+      "say": "A heading sits at the top. Lines arrive with the words: first this one, then a second with a note, and a third that gets struck out. Chips appear one by one: accent, good, bad, and warn."
+    },
+    {
+      "id": "k2-why",
+      "chapter": "Tables and bars",
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Step two: tables and bars."
+    },
+    {
+      "id": "tb-demo",
+      "lead": 0.6,
+      "pad": 0.8,
+      "say": "A table fills row by row: the cache, the load balancer, and the queue."
+    },
+    {
+      "id": "br-demo",
+      "pad": 1.0,
+      "say": "Bars grow to their values against a capacity line. The database needs two and a half times its capacity, and the network eight times. Then the network drops back to one."
+    },
+    {
+      "id": "k3-why",
+      "chapter": "Timelines and flows",
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Step three: timelines and flows."
+    },
+    {
+      "id": "tl-demo",
+      "lead": 0.6,
+      "pad": 0.8,
+      "say": "A timeline stacks its segments: thirty for the lookup, ninety for the handshake, eight for the work, and [308](three hundred and eight) in all."
+    },
+    {
+      "id": "fl-demo",
+      "pad": 1.0,
+      "say": "A flow draws boxes, arrows between them, and packets moving along. The client calls the server, and the reply comes back."
+    },
+    {
+      "id": "k4-why",
+      "chapter": "Code, boards and steps",
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Step four: code, whiteboards and steps."
+    },
+    {
+      "id": "cd-demo",
+      "lead": 0.6,
+      "pad": 0.8,
+      "say": "Code lines glow as they run: read, then handle, then commit."
+    },
+    {
+      "id": "wb-demo",
+      "pad": 0.8,
+      "say": "A whiteboard types its working: fifty million times ten is five hundred million a day."
+    },
+    {
+      "id": "st-demo",
+      "pad": 1.0,
+      "say": "Steps light up in turn: find, then move, then price. And a counter counts up to three million."
+    },
+    {
+      "id": "k5-why",
+      "chapter": "Toasts",
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Last: toasts, the small badges that flag a moment."
+    },
+    {
+      "id": "to-kinds",
+      "lead": 0.4,
+      "pad": 1.0,
+      "say": "Here is a key idea. But here's the tricky part. Remember the offsets from before. Be careful with this setting. A common mistake is committing first. Surprisingly, reading removes nothing. A short note goes here. Ask yourself why that is. And a pro tip to finish.",
+      "toasts": [
+        {
+          "kind": "idea",
+          "at": "key idea"
+        },
+        {
+          "kind": "tricky",
+          "at": "the tricky part"
+        },
+        {
+          "kind": "remember",
+          "at": "Remember"
+        },
+        {
+          "kind": "careful",
+          "at": "Be careful"
+        },
+        {
+          "kind": "mistake",
+          "at": "common mistake"
+        },
+        {
+          "kind": "surprise",
+          "at": "Surprisingly"
+        },
+        {
+          "kind": "remark",
+          "at": "short note"
+        },
+        {
+          "kind": "question",
+          "at": "Ask yourself"
+        },
+        {
+          "kind": "tip",
+          "at": "pro tip"
+        }
+      ]
+    },
+    {
+      "id": "to-module",
+      "lead": 0.4,
+      "pad": 1.0,
+      "say": "A module can place its own toast too, with custom text, right where its content is."
+    },
+    {
+      "id": "k6-why",
+      "chapter": "Breathing room",
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Finally: breathing room, so a point can land."
+    },
+    {
+      "id": "bp-demo",
+      "lead": 0.4,
+      "pad": 1.0,
+      "say": "A pause after a key point gives it a moment to sink in. [pause] Now a question for you: why does a pause help at all? [think 4] Because the viewer needs time to connect it to what they already know."
+    },
+    {
+      "id": "k6-recap",
+      "lead": 0.6,
+      "hold": 2.5,
+      "pad": 0.5,
+      "recap": [
+        "A pause lets a key point land",
+        "A think gives a question its silence",
+        "A recap closes each chapter"
+      ],
+      "say": "So far: a pause lets a key point land. A think gives a question its silence. And a recap like this one closes each chapter."
+    },
+    {
+      "id": "outro",
+      "lead": 0.6,
+      "hold": 1.5,
+      "say": "That is the whole kit."
+    }
+  ],
+  "card": {
+    "course": "codebase-video",
+    "lesson": "Stage kit gallery",
+    "sub": "every component, as the narrator names it"
+  }
+}

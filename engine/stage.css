@@ -1,0 +1,51 @@
+/* Shared look for lesson animations: the learner theme's ink-and-blue palette (wwwroot/learn/theme.css)
+   on a fixed 1920x1080 stage. Videos cannot follow the page's light/dark toggle, and a dark frame reads
+   as a screen in both. The type scale is large on purpose: on a phone the frame shrinks about five
+   times, so 44px is the smallest text that stays legible there. */
+:root {
+  --bg: #0f1420; --bg2: #161d2c; --card: #182133; --border: #2a3448;
+  --ink: #eef1f7; --muted: #a9b3c6; --faint: #5d6a82;
+  --accent: #8ab8ff; --accent-dim: #8ab8ff33;
+  --good: #8fd6a8; --bad: #ff8f87; --warn: #f5c16c; --violet: #c3b1f2;
+  /* Kinds of thing (a producer, a consumer, a key...), never verdicts: good/bad/warn keep those. */
+  --pink: #f2a7cf; --cyan: #7fd6e6;
+  /* Code: keywords, types, calls, strings, numbers, comments. */
+  --code-kw: #c3b1f2; --code-type: #7fd6e6; --code-fn: #8ab8ff; --code-str: #f4b88e; --code-num: #f2a7cf; --code-com: #7b8aa6;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+
+/* Place things with explicit coordinates: .at plus left/top in the markup, motion via transform in render(t). */
+.at { position: absolute; }
+.center { transform-origin: 50% 50%; }
+
+.eyebrow { font-size: 30px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }
+.big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }
+.text { font-size: 48px; line-height: 1.3; }
+.small { font-size: 44px; line-height: 1.3; color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 46px; }
+em { font-style: normal; color: var(--accent); }
+
+.card { background: var(--card); border: 3px solid var(--border); border-radius: 28px; padding: 30px 38px; }
+.chip { display: inline-flex; align-items: center; gap: 14px; background: var(--bg2); border: 3px solid var(--border); border-radius: 999px; padding: 14px 30px; font-size: 44px; font-weight: 600; white-space: nowrap; }
+.chip.accent { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.chip.good { border-color: var(--good); color: var(--good); }
+.chip.bad { border-color: var(--bad); color: var(--bad); }
+.chip.warn { border-color: var(--warn); color: var(--warn); }
+.chip.violet { border-color: var(--violet); color: var(--violet); }
+.chip.pink { border-color: var(--pink); color: var(--pink); }
+.chip.cyan { border-color: var(--cyan); color: var(--cyan); }
+.chip.muted { color: var(--muted); }
+.bar { height: 22px; border-radius: 11px; background: var(--accent); transform-origin: 0 50%; }
+.track { height: 22px; border-radius: 11px; background: var(--border); overflow: hidden; }
+
+svg.layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; }
+svg.layer path, svg.layer line { fill: none; stroke: var(--faint); stroke-width: 5; stroke-linecap: round; }
+
+/* Burned-in captions, drawn by Stage.captions(t). Off unless a clip turns them on (silent clips always do). */
+#captions { position: absolute; left: 160px; right: 160px; bottom: 48px; text-align: center; font-size: 46px; line-height: 1.3; }
+#captions span { background: #0b0f18e6; padding: 8px 20px; border-radius: 12px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }

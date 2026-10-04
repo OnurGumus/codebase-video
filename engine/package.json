@@ -1,0 +1,7 @@
+{
+  "name": "codebase-video-engine",
+  "private": true,
+  "type": "module",
+  "description": "Renders narrated videos for engine/build.sh (installed by setup.sh into the tool home).",
+  "dependencies": { "puppeteer-core": "^25.12.0" }
+}
