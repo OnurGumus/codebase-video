@@ -106,7 +106,8 @@ More detail: [how it works](docs/how-it-works.md).
 coloured for F#, C#, JavaScript, TypeScript, Python, SQL, JSON, YAML, Bash, Nix and Dockerfiles; other languages
 are shown in one colour.
 
-**Can I change the video afterwards?** Yes. Tell Claude what to change, for example "chapter 2 is too fast".
+**Can I change the video afterwards?** Yes. Tell Claude what to change, for example "chapter 2 is too fast". Only
+the scenes that changed are drawn again, so a small fix takes about a minute, not the whole render.
 
 **Do I need Python or .NET?** No.
 
