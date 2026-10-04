@@ -1,5 +1,5 @@
 You are auditing ONE part of a narrated video that teaches a codebase. Do not edit any file. You may render extra stills
-with `{{ENGINE}}/build.sh {{WS}} stills <t...>` and sheets with `{{ENGINE}}/build.sh {{WS}} sheet <module keys>`.
+with `node {{ENGINE}}/cli/Cv.js {{WS}} stills <t...>` and sheets with `node {{ENGINE}}/cli/Cv.js {{WS}} sheet <module keys>`.
 
 The video folder is `{{WS}}/`. The teaching document is `build/lesson.md` ("{{SUBJECT}}", {{LINES}} lines), written from
 the repository {{REPO}} and fact-checked; read it in full, since nothing on screen may contradict it, and open the cited

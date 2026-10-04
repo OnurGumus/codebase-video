@@ -12,16 +12,18 @@ is uploaded. The repository is read by Claude Code's agents the same way any Cla
 
 The quality comes from separating roles and auditing every step with a fresh agent: one agent writes, another checks
 against the code, others build the visuals in parallel, others audit them, and a frame-by-frame scan catches what
-eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, filled per video by `fill.py`.
+eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, filled per video by the engine's `fill` step.
 
 ## Before you start
 
-- Paths: the engine is `${CLAUDE_PLUGIN_ROOT}/engine` (call it ENGINE below). Run every engine command with
-  `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}"` set, so the voice and browser driver live in the plugin's data dir.
-- One-time setup (skips finished steps; downloads about 200 MB the first time):
-  `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}" ${CLAUDE_PLUGIN_ROOT}/engine/setup.sh`
-  It needs Python 3.10-3.13 (or uv), Node 18+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If
-  something is missing it says how to install it: tell the user and stop.
+- Paths: the engine is `${CLAUDE_PLUGIN_ROOT}/engine` (call it ENGINE below). Every engine command is
+  `node ENGINE/cli/Cv.js WS <step>` (CV below), run with `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}"` set, so the
+  voice and browser driver live in the plugin's data dir. (The engine is written in F# and compiled to JavaScript by
+  Fable; the compiled files ship with the plugin, so only Node is needed to run it.)
+- One-time setup (skips finished steps; downloads about 250 MB the first time):
+  `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}" node ${CLAUDE_PLUGIN_ROOT}/engine/cli/Cv.js setup`
+  It needs Node 18+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If something is missing it says
+  how to install it: tell the user and stop.
 - Before agreeing the scope, skim the README, docs and top-level source folders and list the codebase's core
   features (e.g. for an event-sourcing library: aggregates, sagas, projections, hosting). Show the list and ask which
   belong in the video; never silently leave out a core feature (say plainly which ones a tour will skip).
@@ -42,15 +44,16 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
 
 1. **Brief.** Write `WS/brief.json`: `name`, `subject`, `repo` (absolute path), `length`, `audience`, `colours` (the
    drawing table below, adapted to this codebase), and optionally `care` (what to check with special care here: e.g.
-   "async ordering", "the retry and timeout defaults") and `visual`. Run
-   `python3 ${CLAUDE_PLUGIN_ROOT}/briefs/fill.py WS/brief.json` (re-run it after step 3, so briefs know the doc length).
+   "async ordering", "the retry and timeout defaults") and `visual`. Run `CV fill` (it writes `WS/build/brief-*.txt`;
+   re-run it after step 3, so briefs know the doc length).
 2. **Explore** (one agent, general-purpose): give it `WS/build/brief-explore.txt`. It writes `WS/build/lesson.md`,
    the teaching document, with a `path:lines` citation on every claim and verbatim code. Read its report.
 3. **Verify** (a FRESH agent): `WS/build/brief-verify.txt`. It checks every citation, code block and flow against the
    repository, runs the build or tests where cheap and safe, and writes `build/lesson-fixes.json` and `build/VERIFY.md`.
-   Apply: `python3 ENGINE/apply_fixes.py WS` (dry run), then `--apply`. For `deep`, run a second fresh verify on the
-   corrected document (one pass only ever finds part of what is wrong). Re-run fill.py.
-4. **Script** (one agent): `ENGINE/build.sh WS new-long` (creates clip.html), then give it `brief-writer.txt`. It writes
+   Apply: `CV fix` (dry run), then `CV fix --apply` (a second round's file: `CV fix build/lesson-fixes-2.json --apply`).
+   For `deep`, run a second fresh verify on the corrected document (one pass only ever finds part of what is wrong).
+   Re-run `CV fill`.
+4. **Script** (one agent): `CV new-long` (creates clip.html), then give it `brief-writer.txt`. It writes
    `WS/script.json`, narrates and runs `check` until clean.
 5. **Narration audit** (a FRESH agent): `brief-narration-audit.txt`. Send its findings to the writer to apply (re-narrate
    and re-check). For `deep`, a second fresh audit on the changed text.
@@ -62,9 +65,9 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
    own the same module.
 8. **Visual audit** (fresh agents, one per builder part, in parallel): `brief-visual-audit.txt` plus the part. Route each
    report's fixes to the builder that owns those modules.
-9. **Re-audit** (one fresh agent): `brief-reaudit.txt`. It scans the whole video every 0.25 s (`build.sh WS scan`, then
-   `report`) and checks stills. Route fixes to the builders; then look at stills of the changed frames yourself.
-10. **Render**: `ENGINE/build.sh WS video` (several minutes; the machine must stay awake: on macOS wrap it in
+9. **Re-audit** (one fresh agent): `brief-reaudit.txt`. It scans the whole video every 0.25 s (`CV scan`, then
+   `CV report`) and checks stills. Route fixes to the builders; then look at stills of the changed frames yourself.
+10. **Render**: `CV video` (several minutes; the machine must stay awake: on macOS wrap it in
     `caffeinate -is`). Output: `WS/out/<name>.mp4` (+ webm, poster jpg, captions vtt, chapters vtt). Look at a few
     frames of the mp4 (`ffmpeg -ss <t> -i ... -frames:v 1`), then give the user the path, the length, the chapters, what
     the audits caught, and anything left unverified.

@@ -19,8 +19,8 @@ The video is only as good as what it says, so most of the work is checking:
    call diagrams, packets travelling a flow, timelines, tables).
 5. **Audit**: fresh agents check every scene against the document and the voice; a final pass scans the whole video
    every 0.25 s for text shown too briefly, overlaps, empty stages and blinks.
-6. **Render**: headless Chrome draws every frame, a local text-to-speech voice ([Kokoro](https://github.com/thewh1teagle/kokoro-onnx))
-   narrates, ffmpeg encodes. You get `out/<name>.mp4` (plus webm, poster, captions and chapters).
+6. **Render**: headless Chrome draws every frame, a local text-to-speech voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M),
+   run by [kokoro-js](https://www.npmjs.com/package/kokoro-js)) narrates, ffmpeg encodes. You get `out/<name>.mp4` (plus webm, poster, captions and chapters).
 
 Nothing is uploaded: the voice, rendering and encoding run on your machine. The code is read by Claude Code's agents,
 exactly as in any Claude Code session on that repository.
@@ -33,17 +33,18 @@ exactly as in any Claude Code session on that repository.
 ```
 
 Then, in the repository you want to teach: `/codebase-video` (or just ask for "a video that teaches this codebase").
-The first run installs the voice model (about 200 MB) and a browser driver into the plugin's data folder.
+The first run installs the voice model (about 250 MB) and a browser driver into the plugin's data folder.
 
-Requirements: Python 3.10-3.13 (or [uv](https://github.com/astral-sh/uv)), Node 18+, ffmpeg with libx264, libvpx-vp9
-and libopus, and Google Chrome or Chromium. On macOS: `brew install python@3.13 node ffmpeg`.
+Requirements: Node 18+, ffmpeg with libx264, libvpx-vp9 and libopus, and Google Chrome or Chromium. On macOS:
+`brew install node ffmpeg`. No Python and no .NET: the engine ships compiled.
 
 ## What it costs
 
-Two lengths:
+Three lengths:
 
 | | length | agent tasks (roughly) |
 |---|---|---|
+| `short` | 3-5 minutes, an overview or promo | about 10 |
 | `tour` (default) | 6-10 minutes, 2-3 flows | about 12 |
 | `deep` | 20-28 minutes, 4-6 flows | about 30 |
 
@@ -58,9 +59,25 @@ checks for them. The finished video shows your code, so share it the way you wou
 ## Layout
 
 - `skills/codebase-video/SKILL.md`: the orchestration (what each step does, in order).
-- `briefs/`: one template per agent role, filled per video by `fill.py`.
-- `engine/`: the renderer. `build.sh <workspace> narrate|check|sheet|stills|scan|report|video`; `KIT.md` documents the
+- `briefs/`: one template per agent role, filled per video by the engine's `fill` step.
+- `src/`: the engine, in F#. `src/Engine` is the command line (narration, checks, rendering, encoding); `src/Kit` is
+  the in-browser animation kit and video frame.
+- `engine/`: what runs. `cli/` and `web/` are the compiled F# (committed, so users need only Node);
+  `node engine/cli/Cv.js <workspace> narrate|check|sheet|stills|scan|report|video|fill|fix`; `KIT.md` documents the
   animation kit; `kit/gallery/` shows every component.
+
+## Hacking on the engine
+
+The engine is F# compiled to JavaScript with [Fable](https://fable.io). With the .NET SDK (8 or later) installed:
+
+```
+dotnet tool restore
+dotnet fable src/Engine -o engine/cli     # the command line (Node)
+dotnet fable src/Kit -o engine/web        # the browser kit
+```
+
+Commit the compiled `engine/cli` and `engine/web` along with the F# change. Scene modules (one `<key>.js` per part
+of a video, written by the builder agents) stay small JavaScript files calling the kit's API in `KIT.md`.
 
 ## License
 

@@ -58,8 +58,8 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 - Never narrate the state of the local checkout (versions in flight, local-vs-published mismatches, uncommitted work).
 
 **Process** (from any directory):
-- `{{ENGINE}}/build.sh {{WS}} narrate`
-- `{{ENGINE}}/build.sh {{WS}} check --lesson {{WS}}/build/lesson.md`
+- `node {{ENGINE}}/cli/Cv.js {{WS}} narrate`
+- `node {{ENGINE}}/cli/Cv.js {{WS}} check --lesson {{WS}}/build/lesson.md`
 
 Repeat until `check` shows no warnings and its only errors are "module has no <key>.js". Then re-read the whole script
 once against the document, sentence by sentence, and fix anything that goes beyond it.
