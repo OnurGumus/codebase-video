@@ -75,7 +75,7 @@ More detail: [how it works](docs/how-it-works.md).
 
 - The video is made on your own computer. It is not uploaded anywhere.
 - Claude Code reads your code, the same as whenever you use Claude Code.
-- Passwords and keys are kept out of the video.
+- Claude is told to keep passwords and keys out of the video, and checks for them.
 - The video shows your code. Share it only with people who may see the code.
 
 ## Common questions
