@@ -31,6 +31,10 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 
 **Narration rules:**
 - Objective first: say where each chapter is going before diving in. Define every term at first use, in a few words.
+- Concepts before mechanics: introduce the general ideas the code builds on (the document's "ideas it builds on"
+  section) in general terms first, then say how this codebase maps them onto its parts, before any code or diagram
+  that relies on them. Never let a configuration or registration card (e.g. a call that registers an aggregate)
+  appear before the viewer knows what it registers.
 - Intuition before code: before the first code card of a core idea (the functions a user writes, a key class, a
   protocol), walk one plain, concrete example through it in words (real values from the document, e.g. "an account
   holds 100; withdraw 30 arrives; ... now it holds 70"), so the viewer knows what the code is for before reading it.

@@ -13,14 +13,18 @@ file, not by guessing from names.
 
 **Structure** (Markdown, `##` sections; the video follows them as chapters):
 1. `## What this is and why it exists`: the problem it solves, who calls it, the 3-5 words a newcomer must know (defined).
-2. `## The map`: the main parts and how they depend on each other (which module calls which; where data lives); the
+2. `## The ideas it builds on`: the general concepts the code assumes (for example event sourcing, an aggregate, the
+   actor model, a message queue, dependency injection, a reducer), each defined in general terms first, then how THIS
+   codebase maps it onto its own parts (which type or module plays which role, with citations). A newcomer who knows
+   none of them should understand the rest of the document after this section.
+3. `## The map`: the main parts and how they depend on each other (which module calls which; where data lives); the
    directory layout that matters, and what to ignore.
-3. One `##` section per key flow (two or three flows for a tour, four to six for a deep dive), each traced end to end:
+4. One `##` section per key flow (two or three flows for a tour, four to six for a deep dive), each traced end to end:
    the entry point, every hop in order, the data that moves, the decision points, where errors go, where it ends.
    Pick the flows a newcomer touches first. Show the real code at each important hop.
-4. `## Conventions and gotchas`: patterns the code repeats (naming, error handling, configuration, tests), and the
+5. `## Conventions and gotchas`: patterns the code repeats (naming, error handling, configuration, tests), and the
    traps a newcomer falls into, each shown with an example from the code.
-5. `## Where to start`: how to build and run it, run the tests, and two or three concrete first exercises
+6. `## Where to start`: how to build and run it, run the tests, and two or three concrete first exercises
    ("add a field to X: touch A, B, C") whose answers the document gives.
 
 **Rules (the video inherits every mistake you make):**
