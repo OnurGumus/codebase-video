@@ -1,3 +1,7 @@
+
+
+
+
 # codebase-video
 
 **Turn a code repository into a narrated video that teaches it.**
@@ -6,9 +10,9 @@ codebase-video is a plugin for [Claude Code](https://claude.com/claude-code). Yo
 video, and get an `.mp4` file: a voice explains how the code works while diagrams and the real source code appear
 on screen, chapter by chapter.
 
-[![Watch the five-minute video: a repository in, a narrated teaching video out](docs/promo.jpg)](https://onurgumus.github.io/codebase-video/)
 
-*Watch the five-minute overview (click the picture). The plugin made this video about its own repository.*
+https://github.com/user-attachments/assets/0b4e12d4-ce36-48db-9532-be7eb61ad430
+
 
 Use it to:
 
