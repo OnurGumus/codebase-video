@@ -61,6 +61,9 @@ You pick the length of the video:
 
 These times are rough. A longer video also uses more of your Claude plan.
 
+**Not sure yet?** Ask for a preview first. You get the checked write-up of your code and the narration to listen
+to, without the pictures. It is much quicker, and if you like it, Claude carries on from there to the full video.
+
 The first time, the plugin downloads a voice (about 800 MB). This happens only once.
 
 ## Is what the video says correct?
@@ -80,7 +83,9 @@ More detail: [how it works](docs/how-it-works.md).
 
 ## Common questions
 
-**Which programming languages work?** All of them. Claude reads whatever is in the folder.
+**Which programming languages work?** All of them. Claude reads whatever is in the folder. Code on screen is
+coloured for F#, C#, JavaScript, TypeScript, Python, SQL, JSON, YAML, Bash, Nix and Dockerfiles; other languages
+are shown in one colour.
 
 **Can I change the video afterwards?** Yes. Tell Claude what to change, for example "chapter 2 is too fast".
 

@@ -31,7 +31,9 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
   - the repository (default: the current directory) and what to teach: the whole repo as a tour, or one flow ("how a
     request reaches the database");
   - length: `short` (3-5 min, an overview or promo), `tour` (6-10 min, default) or `deep` (20-28 min);
-  - audience (default: "a developer joining the team").
+  - audience (default: "a developer joining the team");
+  - optionally a **preview** first (see "Preview" below): the checked document and the narrated script, no
+    visuals. Offer it when the user is trying the plugin for the first time or is unsure about the cost.
   Tell them the cost honestly: a tour runs about 12 agent tasks, a deep dive about 30; most of it is auditing.
 - Privacy: everything runs locally except the model calls Claude Code already makes. The teaching document must never
   contain secrets, tokens, internal hostnames or customer data (the explore and verify briefs say so); if the repository
@@ -71,6 +73,13 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
     `caffeinate -is`). Output: `WS/out/<name>.mp4` (+ webm, poster jpg, captions vtt, chapters vtt). Look at a few
     frames of the mp4 (`ffmpeg -ss <t> -i ... -frames:v 1`), then give the user the path, the length, the chapters, what
     the audits caught, and anything left unverified.
+
+## Preview (cheap first look)
+
+A preview stops after step 5 (about 4 agent tasks for any length, no builders, no visual audits, no render). Give
+the user: `WS/build/lesson.md` (the checked teaching document), `WS/script.json` (what the voice will say, with
+its chapters), and `WS/build/narration.wav` plus `WS/build/captions.vtt` (the narration to listen to). Say plainly
+that there are no pictures yet. If they like it, continue from step 6 in the same workspace: nothing is redone.
 
 Agents: use the general-purpose agent type; the explore, verify and audit steps benefit from the strongest model,
 builders do well on a faster one. Give each agent its filled brief by path and nothing it does not need. Agents never

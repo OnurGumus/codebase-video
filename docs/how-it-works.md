@@ -24,6 +24,9 @@ In the videos this was built on, every checking pass found real mistakes, which 
 | `tour` (the default) | 6 to 10 minutes | 2 or 3 paths through the code | about 12 agent tasks |
 | `deep` | 20 to 28 minutes | 4 to 6 paths | about 30 agent tasks |
 
+A **preview** stops after step 3: you get the checked document and the narrated script (about 4 agent tasks),
+and can continue to the full video later without redoing them.
+
 An "agent task" is one piece of work that Claude Code hands to a helper agent. More tasks means more time and
 more of your Claude usage. The final step, drawing and encoding the video, takes roughly one and a half times
 the video's length and keeps your computer busy.

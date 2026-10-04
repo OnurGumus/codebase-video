@@ -1,0 +1,26 @@
+# The plugin ships the compiled engine (engine/cli, engine/web), so the F# sources and the committed JavaScript
+# must not drift apart: rebuild and fail if anything differs.
+name: compiled output is up to date
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet tool restore
+      - run: dotnet fsi build.fsx
+      - name: compiled files match the F# sources
+        run: |
+          git add -A engine/cli engine/web
+          git diff --cached --stat --exit-code -- engine/cli engine/web
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: the command line starts
+        run: node engine/cli/Cv.js 2>&1 | grep -q "usage: node engine/cli/Cv.js"
