@@ -28,7 +28,7 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
 - Agree the scope with the user in one short exchange (sensible defaults if they do not care):
   - the repository (default: the current directory) and what to teach: the whole repo as a tour, or one flow ("how a
     request reaches the database");
-  - length: `tour` (6-10 min, default) or `deep` (20-28 min);
+  - length: `short` (3-5 min, an overview or promo), `tour` (6-10 min, default) or `deep` (20-28 min);
   - audience (default: "a developer joining the team").
   Tell them the cost honestly: a tour runs about 12 agent tasks, a deep dive about 30; most of it is auditing.
 - Privacy: everything runs locally except the model calls Claude Code already makes. The teaching document must never

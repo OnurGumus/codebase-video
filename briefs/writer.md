@@ -21,8 +21,8 @@ and number must match it exactly. When in doubt, open the cited file in the repo
   - a bridge scene `kN-why` with `"chapter": "<card title>"`, `"lead": 1.0, "pad": 0.5`, one line on why this comes next;
   - content scenes `<module>-<name>`, where the module key is a letter plus the chapter number (for example `m1-entry`,
     `f2-retry`), {{SCENES}};
-  - {{THINKS}}: `<module>-think`, a question, `[think 10]`, then the answer (taken from the document, ideally from its
-    exercises);
+  - pause-and-think scenes: {{THINKS}}. A think scene is `<module>-think`: a question, `[think 10]`, then the answer
+    (taken from the document, ideally from its exercises);
   - a closing `kN-recap` with three spoken sentences and a `"recap"` list of three short card lines in the same order,
     `"lead": 0.6, "hold": 3.5, "pad": 0.5`.
 - `outro` ties back to the intro's goal and names the document's first exercise.

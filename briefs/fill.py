@@ -5,7 +5,7 @@ brief.json (written by the skill in step 1):
   name          video name, kebab-case (the output files are out/<name>.mp4 ...)
   subject       what the video teaches, one line ("How a request flows through ky")
   repo          absolute path of the repository being taught
-  length        "tour" (6-10 min) or "deep" (20-28 min)
+  length        "short" (3-5 min), "tour" (6-10 min) or "deep" (20-28 min)
   audience      who it is for ("a developer joining the team", "a reviewer", ...)
   colours       the drawing table: what kind of thing gets which colour and icon
   care          what to check with special care in this codebase (optional)
@@ -22,6 +22,9 @@ here = Path(__file__).resolve().parent
 lesson = ws / "build" / "lesson.md"
 lines = len(lesson.read_text().split("\n")) if lesson.exists() else 0
 LENGTHS = {
+    "short": {"MINUTES": "3-5 minutes, hard cap 5.5", "WORDS": "about 450-750 spoken words", "CHAPTERS": "2-3 chapters",
+              "SCENES": "2-3 content scenes per chapter, each 20-40 s", "THINKS": "no pause-and-think scene (a short video)",
+              "DOC": "120-250 lines"},
     "tour": {"MINUTES": "6-10 minutes, hard cap 11", "WORDS": "about 800-1,400 spoken words", "CHAPTERS": "3-4 chapters",
              "SCENES": "2-4 content scenes per chapter, each 25-50 s", "THINKS": "one pause-and-think scene in each of two chapters", "DOC": "200-400 lines"},
     "deep": {"MINUTES": "20-28 minutes, hard cap 29", "WORDS": "about 2,800-3,400 spoken words", "CHAPTERS": "5-7 chapters",
