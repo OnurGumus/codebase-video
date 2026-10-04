@@ -6,7 +6,7 @@
 ///   video [fps]        -> every frame, losslessly into build/frames.mkv
 ///   serve              -> prints a URL to preview the clip with its narration
 /// The clip directory is served as the site root and the engine directory as /engine/, so clip.html loads
-/// /engine/stage.js wherever the clip lives. Frames render in WORKERS parallel pages (default 4), written in order.
+/// /engine/web/Main.js wherever the clip lives. Frames render in WORKERS parallel pages (default 4), written in order.
 module Render
 
 open Fable.Core

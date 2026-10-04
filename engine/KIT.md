@@ -48,7 +48,7 @@ Every `at`, `until`, `toneAt`, `strikeAt`, `noteAt`, `resultAt`, `from` takes a 
 
 Phrases are matched on what is **spoken** first (so `"a2-math|thirty-five thousand"` and `"a2-math|35,000"`
 both work), case-insensitively. Put an element on the word that names it, a verdict colour on the word
-that gives the verdict, never earlier. `check.py` fails on any phrase that is not in the narration.
+that gives the verdict, never earlier. `check` fails on any phrase that is not in the narration.
 
 ## One scene at a time
 
@@ -177,9 +177,9 @@ on an arrow ("writes", "fetches", "hash % 6") often says more than a caption und
 ## Checking your work
 
 ```
-build.sh <clip> sheet g1 g2          # labelled stills for your modules only: build/sheet-g1-g2-<n>.png
-build.sh <clip> stills 214.5 215.2   # exact moments (mid-transition)
-build.sh <clip> check --lesson <lesson.md>     # cue phrases, script problems, numbers not in the source document
+node engine/cli/Cv.js <clip> sheet g1 g2          # labelled stills for your modules only: build/sheet-g1-g2-<n>.png
+node engine/cli/Cv.js <clip> stills 214.5 215.2   # exact moments (mid-transition)
+node engine/cli/Cv.js <clip> check --lesson <lesson.md>     # cue phrases, script problems, numbers not in the source document
 ```
 
 Read every sheet. Never run `sheet` without module keys while others build in the same clip.

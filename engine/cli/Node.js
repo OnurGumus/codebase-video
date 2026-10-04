@@ -8,9 +8,8 @@ import * as node$003Acrypto from "node:crypto";
 import * as node$003Achild_process from "node:child_process";
 import * as node$003Ahttp from "node:http";
 import * as node$003Amodule from "node:module";
-import { singleton, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { singleton, tail, isEmpty, empty, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { skip } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { defaultOf, uncurry2 } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 
@@ -75,7 +74,28 @@ export function env(name) {
     }
 }
 
-export const argv = ofArray(skip(2, (process).argv));
+export const argv = (() => {
+    const matchValue = ofArray((process).argv);
+    let matchResult, rest;
+    if (!isEmpty(matchValue)) {
+        if (!isEmpty(tail(matchValue))) {
+            matchResult = 0;
+            rest = tail(tail(matchValue));
+        }
+        else {
+            matchResult = 1;
+        }
+    }
+    else {
+        matchResult = 1;
+    }
+    switch (matchResult) {
+        case 0:
+            return rest;
+        default:
+            return empty();
+    }
+})();
 
 export function exit(code) {
     return (process).exit(code);

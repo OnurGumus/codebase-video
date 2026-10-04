@@ -6,7 +6,7 @@
   "speed": 1.0,
   "poster": "br-demo",
   "source": {
-    "lesson": "none: a test and a reference for scripts/lesson-video/stage-kit.js"
+    "lesson": "none: a test and a reference for the kit (src/Kit/Kit.fs)"
   },
   "scenes": [
     {

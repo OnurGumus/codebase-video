@@ -531,7 +531,7 @@ export function spoken(s) {
 
 /**
  * What the listener hears, as plain text: spoken forms, and {code:...} phrases without their braces.
- * stage.js times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
+ * Stage (src/Kit/Stage.fs) times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
  */
 export function heard(s) {
     return spoken(s).replace(FOREIGN, (...a) => ((m) => value_8(group(m, 2)))(a));

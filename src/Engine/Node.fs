@@ -51,7 +51,10 @@ let env (name: string) : string option =
     if isNull v || v = "" then None else Some v
 
 /// Command-line arguments after `node Cv.js`.
-let argv: string list = (proc?argv: string[]) |> Array.skip 2 |> Array.toList
+let argv: string list =
+    match (proc?argv: string[]) |> Array.toList with
+    | _ :: _ :: rest -> rest
+    | _ -> []
 let exit (code: int) : 'a = proc?exit(code)
 let cwd () : string = proc?cwd()
 let homedir: string = os?homedir()

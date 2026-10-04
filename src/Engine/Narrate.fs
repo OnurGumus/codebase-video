@@ -4,7 +4,7 @@
 ///
 /// Writes <workspace>/build/:
 ///   narration.wav   the whole soundtrack, silence included (24 kHz mono, 16-bit)
-///   timing.js       window.TIMING for stage.js: scene, sentence and part start/end times (timing.json: the same, indented)
+///   timing.js       window.TIMING for the kit (src/Kit/Stage.fs): scene, sentence and part start/end times (timing.json: the same, indented)
 ///   captions.vtt    one cue per sentence
 ///   phonemes.txt    every phrase in a second language with the phonemes it was spoken with
 ///
@@ -28,7 +28,7 @@
 ///     ]
 ///   A scene may also carry "chapter": "Title" (long videos: on the chapter's "-why" bridge scene), and
 ///   "toasts": [{"kind": "tricky", "at": "the tricky part"}] - small pop-up badges the long-video frame shows
-///   on that phrase (kinds and optional "text"/"dur": see TOASTS in stage-kit.js).
+///   on that phrase (kinds and optional "text"/"dur": see TOASTS in src/Kit/Kit.fs).
 ///   Long videos open with a scene "title" and a top-level "card": {"course": "...", "lesson": "...", "sub": "..."}:
 ///   the frame draws the card while that scene plays, so the viewer knows the course and lesson first.
 ///   }
@@ -330,7 +330,7 @@ let spoken (s: string) : string =
     (subWith (subEmpty s BREAK) PRONOUNCE (fun m -> (group m 2).Value)).Trim()
 
 /// What the listener hears, as plain text: spoken forms, and {code:...} phrases without their braces.
-/// stage.js times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
+/// Stage (src/Kit/Stage.fs) times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
 let heard (s: string) : string =
     subWith (spoken s) FOREIGN (fun m -> (group m 2).Value)
 

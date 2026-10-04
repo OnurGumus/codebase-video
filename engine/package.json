@@ -2,6 +2,5 @@
   "name": "codebase-video-engine",
   "private": true,
   "type": "module",
-  "description": "Renders narrated videos for engine/build.sh (installed by setup.sh into the tool home).",
-  "dependencies": { "puppeteer-core": "^25.12.0" }
+  "description": "The compiled F# engine (cli/, web/). Its npm dependencies are installed by `node cli/Cv.js setup` into the tool home, not here."
 }
