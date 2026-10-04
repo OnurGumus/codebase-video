@@ -503,7 +503,7 @@
           layer.style.opacity = vis(t, layerAt, layerUntil);
           for (const nd of Object.values(nodes)) {
             const p = vis(t, nd.at, nd.until);
-            show(nd.el, p, 12);
+            show(nd.el, p, nd.n.rise ?? 12);
             const on = nd.n.tone && (nd.toneAt == null || t >= nd.toneAt);
             nd.el.style.borderColor = on ? tone(nd.n.tone) : "";
             nd.el.style.color = on && !nd.n.fill ? tone(nd.n.tone) : "";

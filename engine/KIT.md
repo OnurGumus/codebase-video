@@ -76,7 +76,7 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
 - `K.bars({ max, line: { value, label }, rows: [{ label, sub, value, at, steps: [{ value, at }], tone,
   toneAt, format }], x, y, w, gap })` - bars on one scale, a dashed capacity tick, values that count and move.
 - `K.timeline({ total, segments: [{ label, value, show, at, tone, toneAt }], sum: { text, at }, x, y, w })`
-- `K.flow({ nodes: { id: { label, sub, icon, x, y, w, at, tone, fill, toneAt, dimAt } }, edges: [{ from, to,
+- `K.flow({ nodes: { id: { label, sub, icon, x, y, w, at, tone, fill, toneAt, dimAt, until, rise } }, edges: [{ from, to,
   at, label, dashed, tone, toneAt, arrow }], packets: [{ from, to, at, dur, label, tone, fadeAt, lift }] })` - boxes
   (`icon`: an emoji before the label; `fill: true` tints the box in its tone), arrows drawn on their word with an
   optional short `label` (a verb: "writes", "fetches"), packets that travel (`fadeAt: 0.6` = lost 60% of the way;
