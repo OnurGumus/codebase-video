@@ -139,11 +139,11 @@ export function main() {
                     break;
                 }
                 case "video": {
-                    finish((pr_2 = ensureTiming(ws), pr_2.then(() => run_4(ws))));
+                    finish((pr_2 = ensureTiming(ws), pr_2.then(() => run_4(ws, rest))));
                     break;
                 }
                 case "all": {
-                    finish((pr_3 = run(ws), pr_3.then(() => run_4(ws))));
+                    finish((pr_3 = run(ws), pr_3.then(() => run_4(ws, rest))));
                     break;
                 }
                 case "scan": {

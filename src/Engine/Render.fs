@@ -3,8 +3,9 @@
 ///   sheet              -> build/sheet-<n>.png: a labelled still for every narrated sentence
 ///   sheet g1 g2        -> build/sheet-g1-g2-<n>.png: only scenes of those modules (ids "g1-…"),
 ///                         so builders working on one clip in parallel never touch each other's sheets
-///   video [fps]        -> every frame, losslessly into build/frames.mkv
 ///   serve              -> prints a URL to preview the clip with its narration
+/// and, for the `video` step (src/Engine/Video.fs), renders runs of frames, each piped into its own ffmpeg process
+/// (`ranges`): one run per scene that is not in the cache.
 /// The clip directory is served as the site root and the engine directory as /engine/, so clip.html loads
 /// /engine/web/Main.js wherever the clip lives. Frames render in WORKERS parallel pages (default 4), written in order.
 module Render
@@ -151,6 +152,13 @@ let private labelled =
         tag.textContent = label;
       }"""
 
+let private imagesLoaded =
+    """() => Promise.all(Array.from(document.images, (img) =>
+        (img.complete ? Promise.resolve() : new Promise((ok) => {
+          img.addEventListener("load", ok, { once: true });
+          img.addEventListener("error", ok, { once: true });
+        })).then(() => img.decode().catch(() => {})))).then(() => true)"""
+
 /// One headless Chrome with the clip open in as many pages as asked. A page error marks the whole run failed.
 type private Session(browser: obj, url: string) =
     let mutable failed = false
@@ -168,6 +176,9 @@ type private Session(browser: obj, url: string) =
             do! awaitJs (page?setViewport (createObj [ "width" ==> 1920; "height" ==> 1080; "deviceScaleFactor" ==> 1 ]))
             do! awaitJs (page?goto (url, createObj [ "waitUntil" ==> "load" ]))
             do! awaitJs (page?evaluate (browserFn "() => window.ready"))
+            // window.ready waits for the fonts, not for pictures a module put on the page. A run of frames may start
+            // at any scene, so the first frame drawn can be one that shows them.
+            do! awaitJs (page?evaluate (browserFn imagesLoaded))
             return page
         }
 
@@ -264,56 +275,76 @@ let private sheet (ws: string) (first: obj) (args: string list) : JS.Promise<int
             return 0
     }
 
-/// Every frame through ffmpeg into a lossless build/frames.mkv. Pages render frames in parallel; a reorder
-/// buffer hands them to ffmpeg in order.
-let private video (ws: string) (session: Session) (first: obj) (args: string list) : JS.Promise<unit> =
+/// Frame i is drawn a microsecond after i / fps. Scenes start and end on whole frames, so a time a scene computes
+/// from them ("its end less 0.05 s") can fall exactly on a frame's time, where a rounding error in the last bit,
+/// which depends on where the scene sits in the video, would decide a "t >= x" or a rounded number. The microsecond
+/// decides it instead, the same way wherever the scene sits; a cached scene then draws the same when it moves.
+let private frameTime (fps: float) (i: int) : float = float i / fps + 1e-6
+
+/// A run of frames [First, End) for one ffmpeg process: each frame is drawn at its frameTime and piped in as a PNG.
+type Range =
+    { Label: string
+      First: int
+      End: int
+      /// ffmpeg's arguments after the piped input: the encoders and the output files
+      Output: string list
+      /// called when ffmpeg has written its files and exited with 0
+      Done: unit -> unit }
+
+/// Renders one run. Pages render frames in parallel; a reorder buffer hands them to ffmpeg in order.
+/// False when a page failed or ffmpeg did.
+let private renderRange (session: Session) (workers: ResizeArray<obj>) (fps: float) (r: Range) : JS.Promise<bool> =
     promise {
-        let! (duration: float) = evalIn first "() => window.DURATION"
-        let fps = match args with a :: _ -> jsNumber a | [] -> 30.0
-        let total = int (ceil (duration * fps))
-        let workerCount = env "WORKERS" |> Option.map jsNumber |> Option.defaultValue 4.0
-        let workers = ResizeArray [ first ]
-        while float workers.Count < workerCount do
-            let! page = session.OpenPage()
-            workers.Add page
         let ff =
             childProcess?spawn (
                 "ffmpeg",
-                [| "-hide_banner"; "-loglevel"; "error"; "-y"; "-f"; "image2pipe"; "-framerate"; string fps; "-i"; "-"
-                   "-c:v"; "ffv1"; "-pix_fmt"; "yuv444p"; join [ ws; "build"; "frames.mkv" ] |],
+                List.toArray ([ "-hide_banner"; "-loglevel"; "error"; "-y"; "-f"; "image2pipe"; "-framerate"; string fps; "-i"; "-" ] @ r.Output),
                 createObj [ "stdio" ==> [| "pipe"; "inherit"; "inherit" |] ]
             )
+        let exited: int option ref = ref None
+        let closed: JS.Promise<unit> =
+            Promise.create (fun ok _ ->
+                ff?on ("close", (fun (code: obj) ->
+                    exited.Value <- Some(if isNull code then 1 else unbox code)
+                    ok ()))
+                |> ignore)
+        // ffmpeg going away early shows as its exit code, not as an unhandled EPIPE.
+        ff?stdin?on ("error", (fun (_: obj) -> ())) |> ignore
         let ready = JS.Constructors.Map.Create<int, obj>()
-        let next = ref 0
-        let written = ref 0
-        let start = JS.Constructors.Date.now ()
+        let next = ref r.First
+        let written = ref r.First
+        let seconds (frames: int) = toFixed 0 (float frames / fps)
         let flush () =
             promise {
-                while ready.has written.Value do
+                while ready.has written.Value && exited.Value.IsNone do
                     let buf = ready.get written.Value
                     ready.delete written.Value |> ignore
                     written.Value <- written.Value + 1
                     if not (ff?stdin?write (buf)) then
-                        do! Promise.create (fun ok _ -> ff?stdin?once ("drain", (fun () -> ok ())) |> ignore)
+                        do! Promise.race [ Promise.create (fun ok _ -> ff?stdin?once ("drain", (fun () -> ok ())) |> ignore); closed ]
             }
         let work (page: obj) =
             promise {
-                while next.Value < total && not session.Failed do
+                while next.Value < r.End && not session.Failed && exited.Value.IsNone do
                     let i = next.Value
                     next.Value <- i + 1
-                    let! png = frame page (float i / fps)
+                    let! png = frame page (frameTime fps i)
                     ready.set (i, png) |> ignore
                     // Keep the reorder buffer bounded: a fast worker waits for the writer to catch up.
-                    while i - written.Value > workers.Count * 8 do
+                    while i - written.Value > workers.Count * 8 && exited.Value.IsNone do
                         do! Promise.sleep 5
                     do! flush ()
-                    if float i % fps = 0.0 then stdoutWrite ("\r" + $"{toFixed 0 (float i / fps)}s / {toFixed 0 duration}s")
+                    if (i - r.First) % int fps = 0 then
+                        stdoutWrite ("\r" + $"{r.Label}  {seconds (i - r.First)}s / {seconds (r.End - r.First)}s  ")
             }
         let! _ = workers |> Seq.map work |> Promise.all
         do! flush ()
         ff?stdin?``end`` () |> ignore
-        do! Promise.create (fun ok _ -> ff?on ("close", (fun () -> ok ())) |> ignore)
-        JS.console.log $"\nrendered {total} frames in {toFixed 1 ((JS.Constructors.Date.now () - start) / 1000.0)}s"
+        do! closed
+        let ok = not session.Failed && exited.Value = Some 0 && written.Value = r.End
+        if ok then r.Done()
+        elif exited.Value <> Some 0 then eprint $"\nffmpeg failed on {r.Label}"
+        return ok
     }
 
 // Entry --------------------------------------------------------------------------------------------------------
@@ -329,44 +360,73 @@ let private clearUnfilteredSheets (ws: string) =
 /// Never resolves: serve runs until Ctrl+C.
 let private forever () : JS.Promise<int> = Promise.create (fun _ _ -> ())
 
-/// mode: stills | sheet | serve | video (video args: [fps]); returns an exit code.
+/// Opens headless Chrome on the clip and runs `job` with the session and its first page; returns an exit code
+/// (1 when a page reported an error).
+let private withChrome (clip: string) (job: Session -> obj -> JS.Promise<int>) : JS.Promise<int> =
+    promise {
+        let! server = startServer clip ForRender
+        match findChrome () with
+        | None ->
+            eprint "no Chrome found: set CHROME to the browser's executable"
+            server.Close()
+            return 2
+        | Some chrome ->
+            let puppeteer = requireFromHome "puppeteer-core"
+            let! (browser: obj) =
+                awaitJs (
+                    puppeteer?launch (
+                        createObj
+                            [ "executablePath" ==> chrome
+                              "headless" ==> true
+                              "args"
+                              ==> [| "--font-render-hinting=none"
+                                     "--force-color-profile=srgb"
+                                     "--autoplay-policy=no-user-gesture-required" |] ]
+                    )
+                )
+            let session = Session(browser, server.Url)
+            let! first = session.OpenPage()
+            let! code = job session first
+            do! awaitJs (browser?close ())
+            server.Close()
+            return (if code <> 0 then code elif session.Failed then 1 else 0)
+    }
+
+/// mode: stills | sheet | serve; returns an exit code.
 let run (ws: string) (mode: string) (args: string list) : JS.Promise<int> =
     promise {
         let clip = resolve ws
         if mode = "sheet" && args.IsEmpty then clearUnfilteredSheets clip
-        let! server = startServer clip ForRender
         if mode = "serve" then
+            let! server = startServer clip ForRender
             JS.console.log $"{server.Url}?preview   (click the page to start; ?t=12.5 freezes one moment)"
             JS.console.log "Ctrl+C to stop."
             return! forever ()
         else
-            match findChrome () with
-            | None ->
-                eprint "no Chrome found: set CHROME to the browser's executable"
-                server.Close()
-                return 2
-            | Some chrome ->
-                let puppeteer = requireFromHome "puppeteer-core"
-                let! (browser: obj) =
-                    awaitJs (
-                        puppeteer?launch (
-                            createObj
-                                [ "executablePath" ==> chrome
-                                  "headless" ==> true
-                                  "args"
-                                  ==> [| "--font-render-hinting=none"
-                                         "--force-color-profile=srgb"
-                                         "--autoplay-policy=no-user-gesture-required" |] ]
-                        )
-                    )
-                let session = Session(browser, server.Url)
-                let! first = session.OpenPage()
-                let! code =
+            return!
+                withChrome clip (fun _ first ->
                     match mode with
                     | "stills" -> stills clip first args |> Promise.map (fun () -> 0)
-                    | "sheet" -> sheet clip first args
-                    | _ -> video clip session first args |> Promise.map (fun () -> 0)
-                do! awaitJs (browser?close ())
-                server.Close()
-                return (if code <> 0 then code elif session.Failed then 1 else 0)
+                    | _ -> sheet clip first args)
     }
+
+/// Renders the runs one after another, in one Chrome. Stops at the first that fails; returns an exit code.
+let ranges (ws: string) (fps: float) (jobs: Range list) : JS.Promise<int> =
+    withChrome (resolve ws) (fun session first ->
+        promise {
+            let workerCount = env "WORKERS" |> Option.map jsNumber |> Option.defaultValue 4.0
+            let workers = ResizeArray [ first ]
+            while float workers.Count < workerCount do
+                let! page = session.OpenPage()
+                workers.Add page
+            let start = JS.Constructors.Date.now ()
+            let ok = ref true
+            let frames = ref 0
+            for job in jobs do
+                if ok.Value then
+                    let! finished = renderRange session workers fps job
+                    ok.Value <- finished
+                    if finished then frames.Value <- frames.Value + job.End - job.First
+            JS.console.log $"\nrendered {frames.Value} frames in {toFixed 1 ((JS.Constructors.Date.now () - start) / 1000.0)}s"
+            return (if ok.Value then 0 else 1)
+        })

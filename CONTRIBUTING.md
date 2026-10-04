@@ -28,3 +28,10 @@ and pull request rebuilds them and fails if the committed files differ.
 Every step of the engine is one command, `node engine/cli/Cv.js <workspace> <step>`, where the step is one of
 `narrate`, `check`, `sheet`, `stills`, `scan`, `report`, `video`, `fill` or `fix`. The scenes of each video are
 small JavaScript files that call the kit; `engine/KIT.md` describes that API.
+
+`video` renders one segment per scene and caches it in `<workspace>/build/segments/` under a key made from
+everything the scene's frames can depend on (`src/Engine/Segments.fs` lists it). If you make a frame depend on
+something new, for example a new part of the chapter frame in `src/Kit/Frame.fs`, add it to that key, or a stale
+segment will be reused. `video --full` ignores the cache. `video --lossless` writes lossless segments and joins
+them into `build/frames.mkv`; its frames must be identical to a `video --full --lossless` run after any change,
+which is how to test the key (`ffmpeg -i build/frames.mkv -f framemd5 -`).

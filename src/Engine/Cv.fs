@@ -7,7 +7,8 @@
 ///   node engine/cli/Cv.js <ws> serve                 preview URL with narration
 ///   node engine/cli/Cv.js <ws> new-long              copy templates/long/clip.html into the workspace
 ///   node engine/cli/Cv.js <ws> chapters              (re)write out/<name>.chapters.vtt from timing.json
-///   node engine/cli/Cv.js <ws> video                 render and encode -> out/<name>.{mp4,webm,jpg,vtt}
+///   node engine/cli/Cv.js <ws> video [--full]        render and encode -> out/<name>.{mp4,webm,jpg,vtt}; scenes that did
+///                                                    not change are reused from build/segments (--full: none are)
 ///   node engine/cli/Cv.js <ws> all                   narrate, then video
 ///   node engine/cli/Cv.js <ws> scan [t0 t1 step]     DOM scan every 0.25 s -> build/scan.json
 ///   node engine/cli/Cv.js <ws> report [mode]         findings from the scan (all|short|overlap|empty|...)
@@ -80,8 +81,8 @@ let main () =
             printfn "%s (write script.json and one <key>.js per module; see KIT.md)" dst
             exit 0
         | "chapters" -> finish (Promise.lift (Video.chapters ws))
-        | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws))
-        | "all" -> finish (Narrate.run ws |> Promise.bind (fun () -> Video.run ws))
+        | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws rest))
+        | "all" -> finish (Narrate.run ws |> Promise.bind (fun () -> Video.run ws rest))
         | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest))
         | "report" -> finish (Promise.lift (ScanReport.run ws rest))
         | "fill" -> finish (Promise.lift (Fill.run ws))

@@ -8,9 +8,10 @@ import * as node$003Acrypto from "node:crypto";
 import * as node$003Achild_process from "node:child_process";
 import * as node$003Ahttp from "node:http";
 import * as node$003Amodule from "node:module";
-import { singleton, tail, isEmpty, empty, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { singleton as singleton_1, sort, tail, isEmpty, empty, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { defaultOf, uncurry2 } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { singleton, map, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { defaultOf, uncurry2, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 
 export const fs = node$003Afs;
@@ -202,6 +203,22 @@ export function mtime(p) {
     return (fs.statSync(p)).mtimeMs;
 }
 
+export function fileSize(p) {
+    return (fs.statSync(p)).size;
+}
+
+/**
+ * Every file under a directory, as sorted paths relative to it with "/" between the parts.
+ */
+export function walk(dir) {
+    return toList(delay(() => collect((name) => {
+        const p = join(ofArray([dir, name]));
+        return isDir(p) ? map((rest) => ((name + "/") + rest), walk(p)) : singleton(name);
+    }, sort(readDir(dir), {
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
+    }))));
+}
+
 export function parseJson(s) {
     return JSON.parse(s);
 }
@@ -220,6 +237,13 @@ export function toJsonIndented(o, indent) {
 
 export function sha1Hex(s) {
     return ((crypto.createHash("sha1")).update(s, "utf8")).digest("hex");
+}
+
+/**
+ * sha1 of a file's bytes.
+ */
+export function sha1File(p) {
+    return ((crypto.createHash("sha1")).update(fs.readFileSync(p))).digest("hex");
 }
 
 /**
@@ -257,6 +281,6 @@ export function runCapture(cmd, args) {
  * True when the command is on PATH.
  */
 export function hasCommand(cmd) {
-    return runCapture((platform === "win32") ? "where" : "which", singleton(cmd))[0] === 0;
+    return runCapture((platform === "win32") ? "where" : "which", singleton_1(cmd))[0] === 0;
 }
 

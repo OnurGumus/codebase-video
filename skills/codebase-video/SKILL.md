@@ -69,10 +69,14 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
    report's fixes to the builder that owns those modules.
 9. **Re-audit** (one fresh agent): `brief-reaudit.txt`. It scans the whole video every 0.25 s (`CV scan`, then
    `CV report`) and checks stills. Route fixes to the builders; then look at stills of the changed frames yourself.
-10. **Render**: `CV video` (several minutes; the machine must stay awake: on macOS wrap it in
+10. **Render**: `CV video` (several minutes the first time; the machine must stay awake: on macOS wrap it in
     `caffeinate -is`). Output: `WS/out/<name>.mp4` (+ webm, poster jpg, captions vtt, chapters vtt). Look at a few
     frames of the mp4 (`ffmpeg -ss <t> -i ... -frames:v 1`), then give the user the path, the length, the chapters, what
     the audits caught, and anything left unverified.
+    A fix after the render is cheap: the video is kept as one piece per scene in `WS/build/segments/`, and `CV video`
+    draws again only the scenes that changed (a module fix: that module's scenes; a narration fix, after
+    `CV narrate`: that chapter). The rest is reused and the files are joined in seconds. The last line says how many
+    scenes were reused. `CV video --full` draws everything again; use it only if a reused scene looks wrong.
 
 ## Preview (cheap first look)
 

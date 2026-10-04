@@ -14,6 +14,7 @@
     <Compile Include="ApplyFixes.fs" />
     <Compile Include="Fill.fs" />
     <Compile Include="ScanReport.fs" />
+    <Compile Include="Segments.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="Scan.fs" />
     <Compile Include="Video.fs" />

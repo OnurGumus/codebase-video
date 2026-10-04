@@ -87,6 +87,17 @@ let copyFile (src: string) (dst: string) : unit = fs?copyFileSync(src, dst)
 let copyDir (src: string) (dst: string) : unit = fs?cpSync(src, dst, createObj [ "recursive" ==> true ])
 let rename (src: string) (dst: string) : unit = fs?renameSync(src, dst)
 let mtime (p: string) : float = fs?statSync(p)?mtimeMs
+let fileSize (p: string) : float = fs?statSync(p)?size
+
+/// Every file under a directory, as sorted paths relative to it with "/" between the parts.
+let rec walk (dir: string) : string list =
+    [ for name in readDir dir |> List.sort do
+          let p = join [ dir; name ]
+          if isDir p then
+              for rest in walk p do
+                  name + "/" + rest
+          else
+              name ]
 
 // JSON ---------------------------------------------------------------------------------------------------------
 
@@ -98,6 +109,9 @@ let toJsonIndented (o: obj) (indent: int) : string = JS.JSON.stringify(o, unbox 
 // Hashing ------------------------------------------------------------------------------------------------------
 
 let sha1Hex (s: string) : string = crypto?createHash("sha1")?update(s, "utf8")?digest("hex")
+
+/// sha1 of a file's bytes.
+let sha1File (p: string) : string = crypto?createHash("sha1")?update(fs?readFileSync(p))?digest("hex")
 
 // Child processes ----------------------------------------------------------------------------------------------
 

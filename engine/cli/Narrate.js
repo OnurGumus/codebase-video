@@ -448,6 +448,12 @@ function matchIndex(m) {
     return m.index | 0;
 }
 
+const FRAME = ~~(24000 / 30);
+
+function timeAt(frame, pos) {
+    return ((200 * frame) + (6 * Py_roundInt(((pos - (frame * FRAME)) * 1000) / 24000))) / 6000;
+}
+
 const GAP = 0.3;
 
 const PART_GAP = 0.12;
@@ -1289,11 +1295,14 @@ export function run(ws) {
     mkdirp(cache);
     const report = [];
     const audio = [];
-    const t = new FSharpRef(0);
+    const pos = new FSharpRef(0);
+    const frame = new FSharpRef(0);
     const silence = (seconds) => {
-        void (audio.push(new Audio(/* Silence */ 0, [Py_roundInt(seconds * 24000)])));
-        t.contents = (t.contents + seconds);
+        const n = Py_roundInt(seconds * 24000) | 0;
+        void (audio.push(new Audio(/* Silence */ 0, [n])));
+        pos.contents = ((pos.contents + n) | 0);
     };
+    const now = () => timeAt(frame.contents, pos.contents);
     return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
         const scenes = [];
         const seen = new Set([]);
@@ -1305,7 +1314,7 @@ export function run(ws) {
             const id = sc.id;
             return (!addToSet(toJson(id), seen) ? ((fail(concat("duplicate scene id ", Py_repr(id))), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
                 let option_11, option_9;
-                const start = t.contents;
+                const startFrame = frame.contents | 0;
                 silence(getFloat(sc, "lead", 0.4));
                 const lines = [];
                 const sceneBreaks = [];
@@ -1314,7 +1323,7 @@ export function run(ws) {
                     const s = _arg_4[1];
                     const i = _arg_4[0] | 0;
                     return ((i > 0) ? ((silence(GAP), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                        const sentenceStart = t.contents;
+                        const sentenceStart = now();
                         const parts = [];
                         const after = breaks(s);
                         const s_1 = (s.replace(BREAK, '')).trim();
@@ -1323,7 +1332,7 @@ export function run(ws) {
                             const code_3 = _arg_5[1][0];
                             return ((_arg_5[0] > 0) ? ((silence(PART_GAP), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
                                 let code_2, text, where;
-                                const partStart = t.contents;
+                                const partStart = now();
                                 return ((voiceName != null) ? (((code_2 = code_3, (text = spoken(text_2), (where = (`${Py_str(id)}[${i}]`), PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
                                     let c, p_3;
                                     let patternInput;
@@ -1366,58 +1375,62 @@ export function run(ws) {
                                 })))))).then((_arg_6) => {
                                     const samples_1 = _arg_6;
                                     void (audio.push(new Audio(/* Speech */ 1, [samples_1])));
-                                    t.contents = (t.contents + (samples_1.length / 24000));
+                                    pos.contents = ((pos.contents + samples_1.length) | 0);
                                     return Promise.resolve();
                                 })) : ((silence(readingTime(shown(text_2))), Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                                    void (parts.push(new Part(shown(text_2), heard(text_2), (code_3 == null) ? Py_ofJs(lang) : (new Py_Json(/* Str */ 4, [code_3])), Py_round(partStart, 3), Py_round(t.contents, 3))));
+                                    void (parts.push(new Part(shown(text_2), heard(text_2), (code_3 == null) ? Py_ofJs(lang) : (new Py_Json(/* Str */ 4, [code_3])), partStart, now())));
                                     return Promise.resolve();
                                 }));
                             }));
                         }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                            void (lines.push(new Sentence(shown(s_1), heard(s_1), Py_round(sentenceStart, 3), Py_round(t.contents, 3), ofSeq_1(parts))));
+                            void (lines.push(new Sentence(shown(s_1), heard(s_1), sentenceStart, now(), ofSeq_1(parts))));
                             return PromiseBuilder__For_1565554B(promise, after, (_arg_7) => {
-                                const secs = _arg_7[1];
-                                void (sceneBreaks.push(new Break(_arg_7[0], i, Py_round(t.contents, 3), Py_round(t.contents + secs, 3))));
-                                silence(secs);
+                                const breakStart = now();
+                                silence(_arg_7[1]);
+                                void (sceneBreaks.push(new Break(_arg_7[0], i, breakStart, now())));
                                 return Promise.resolve();
                             });
                         }));
                     }));
                 }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
                     silence(getFloat(sc, "hold", 0) + getFloat(sc, "pad", (lines.length > 0) ? 0.9 : 0));
-                    const msc = item(si, markedScenes);
-                    const passthrough = (key_1) => {
-                        const matchValue_3 = get$(sc, key_1);
-                        let matchResult_1, v_5;
-                        if (matchValue_3 != null) {
-                            if (Py_truthy(value_8(matchValue_3))) {
-                                matchResult_1 = 0;
-                                v_5 = value_8(matchValue_3);
+                    const over = (pos.contents % FRAME) | 0;
+                    return (((over !== 0) ? true : (pos.contents === (startFrame * FRAME))) ? ((void (audio.push(new Audio(/* Silence */ 0, [FRAME - over]))), (pos.contents = (((pos.contents + FRAME) - over) | 0), Promise.resolve()))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                        frame.contents = (~~(pos.contents / FRAME) | 0);
+                        const msc = item(si, markedScenes);
+                        const passthrough = (key_1) => {
+                            const matchValue_3 = get$(sc, key_1);
+                            let matchResult_1, v_5;
+                            if (matchValue_3 != null) {
+                                if (Py_truthy(value_8(matchValue_3))) {
+                                    matchResult_1 = 0;
+                                    v_5 = value_8(matchValue_3);
+                                }
+                                else {
+                                    matchResult_1 = 1;
+                                }
                             }
                             else {
                                 matchResult_1 = 1;
                             }
-                        }
-                        else {
-                            matchResult_1 = 1;
-                        }
-                        switch (matchResult_1) {
-                            case 0:
-                                return singleton_1([key_1, Py_ofJs(msc[key_1])]);
-                            default:
-                                return empty_1();
-                        }
-                    };
-                    void (scenes.push(new Scene(id, Py_ofJs(msc.id), Py_round(start, 3), Py_round(t.contents, 3), ofSeq_1(lines), append(passthrough("chapter"), append(passthrough("toasts"), append((sceneBreaks.length > 0) ? singleton_1(["breaks", new Py_Json(/* List */ 5, [toList(delay(() => map((b_1) => {
-                        const b = b_1;
-                        return new Py_Json(/* Obj */ 6, [ofArray([["kind", new Py_Json(/* Str */ 4, [b.kind])], ["sentence", new Py_Json(/* Int */ 2, [b.sentence])], ["start", num(b.start)], ["end", num(b.finish)]])]);
-                    }, sceneBreaks)))])]) : empty_1(), passthrough("recap")))))));
-                    return Promise.resolve();
+                            switch (matchResult_1) {
+                                case 0:
+                                    return singleton_1([key_1, Py_ofJs(msc[key_1])]);
+                                default:
+                                    return empty_1();
+                            }
+                        };
+                        void (scenes.push(new Scene(id, Py_ofJs(msc.id), startFrame / 30, frame.contents / 30, ofSeq_1(lines), append(passthrough("chapter"), append(passthrough("toasts"), append((sceneBreaks.length > 0) ? singleton_1(["breaks", new Py_Json(/* List */ 5, [toList(delay(() => map((b_1) => {
+                            const b = b_1;
+                            return new Py_Json(/* Obj */ 6, [ofArray([["kind", new Py_Json(/* Str */ 4, [b.kind])], ["sentence", new Py_Json(/* Int */ 2, [b.sentence])], ["start", num(b.start)], ["end", num(b.finish)]])]);
+                        }, sceneBreaks)))])]) : empty_1(), passthrough("recap")))))));
+                        return Promise.resolve();
+                    }));
                 }));
             }));
         }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (release().then(() => {
             let ps_1, ps_2, matchValue_6, matchValue_7, c_3;
-            const duration = Py_round(t.contents, 3);
+            const duration = frame.contents / 30;
             write(join_1(ofArray([build, "narration.wav"])), soundtrack(ofSeq_1(audio)));
             const scenes_1 = ofSeq_1(scenes);
             let posterId;

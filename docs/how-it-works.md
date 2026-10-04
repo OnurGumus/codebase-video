@@ -47,6 +47,10 @@ An "agent task" is one piece of work that Claude Code hands to a helper agent. M
 more of your Claude usage. The final step, drawing and encoding the video, takes roughly one and a half times
 the video's length and keeps your computer busy.
 
+That cost is paid once. The engine keeps the finished video as one piece per scene. When something is fixed
+afterwards, it draws again only the scenes the fix can change: a changed picture costs the scenes of that
+module, a changed sentence costs its chapter. Everything else is reused, and joining the pieces takes seconds.
+
 ## What the video contains
 
 - a short introduction that says what you will be able to do after watching;

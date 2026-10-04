@@ -1,8 +1,8 @@
 
-import { head, ofSeq as ofSeq_1, chunkBySize, iterateIndexed, indexed, filter, collect as collect_1, mapIndexed, last, length, replicate, append, exists as exists_1, map, singleton, isEmpty, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { toArray, ofSeq as ofSeq_1, chunkBySize, iterateIndexed, indexed, filter, collect as collect_1, mapIndexed, last, length, replicate, append, exists as exists_1, map, singleton, isEmpty, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { requireFromHome, childProcess, remove, readDir, eprint, run as run_1, writeBytes, extname, fsp, sep as sep_2, join, engineDir, http, resolve, exists, env } from "./Node.js";
 import { FSharpRef, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { float64_type, class_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { list_type, int32_type, float64_type, class_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { disposeSafe, getEnumerator, int32ToString, Exception, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
@@ -12,6 +12,7 @@ import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { map as map_1, empty, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
+import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 
 export function toFixed(digits, x) {
@@ -137,6 +138,8 @@ const renderAt = (0, eval)('(' + "(t) => window.render(t)" + ')');
 
 const labelled = "(t, label) => {\n        window.render(t);\n        let tag = document.getElementById(\"sheet-label\");\n        if (!tag) {\n          tag = document.createElement(\"div\");\n          tag.id = \"sheet-label\";\n          tag.style.cssText = \"position:fixed;left:0;right:0;top:0;z-index:99;padding:6px 14px;background:#000d;color:#ffd84d;font:600 34px/1.25 monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\";\n          document.body.append(tag);\n        }\n        tag.textContent = label;\n      }";
 
+const imagesLoaded = "() => Promise.all(Array.from(document.images, (img) =>\n        (img.complete ? Promise.resolve() : new Promise((ok) => {\n          img.addEventListener(\"load\", ok, { once: true });\n          img.addEventListener(\"error\", ok, { once: true });\n        })).then(() => img.decode().catch(() => {})))).then(() => true)";
+
 class Session {
     constructor(browser, url) {
         this.browser = browser;
@@ -173,7 +176,7 @@ function Session__OpenPage(_) {
             deviceScaleFactor: 1,
         })).then(() => (awaitJs(page.goto(_.url, {
             waitUntil: "load",
-        })).then(() => (awaitJs(page.evaluate((0, eval)('(' + "() => window.ready" + ')'))).then(() => (Promise.resolve(page)))))));
+        })).then(() => (awaitJs(page.evaluate((0, eval)('(' + "() => window.ready" + ')'))).then(() => (awaitJs(page.evaluate((0, eval)('(' + imagesLoaded + ')'))).then(() => (Promise.resolve(page)))))))));
     }))));
 }
 
@@ -315,65 +318,80 @@ function sheet(ws, first, args) {
     }))));
 }
 
-function video(ws, session, first, args) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (evalIn(first, "() => window.DURATION").then((_arg) => {
-        let option_1, s;
-        const duration = _arg;
-        const fps = isEmpty(args) ? 30 : (Number(head(args)));
-        const total = ~~Math.ceil(duration * fps) | 0;
-        const workerCount = defaultArg((option_1 = env("WORKERS"), (option_1 != null) ? ((s = option_1, Number(s))) : undefined), 4);
-        const workers = [first];
-        return PromiseBuilder__While_2044D34(promise, () => (workers.length < workerCount), PromiseBuilder__Delay_62FBFDE1(promise, () => (Session__OpenPage(session).then((_arg_1) => {
-            void (workers.push(_arg_1));
-            return Promise.resolve();
-        })))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-            let pr;
-            const ff = childProcess.spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", fps.toString(), "-i", "-", "-c:v", "ffv1", "-pix_fmt", "yuv444p", join(ofArray([ws, "build", "frames.mkv"]))], {
-                stdio: ["pipe", "inherit", "inherit"],
-            });
-            const ready = new Map();
-            const next = new FSharpRef(0);
-            const written = new FSharpRef(0);
-            const start = Date.now();
-            const flush = () => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => PromiseBuilder__While_2044D34(promise, () => ready.has(written.contents), PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                const buf = ready.get(written.contents);
-                ready.delete(written.contents);
-                written.contents = ((written.contents + 1) | 0);
-                return !(ff.stdin.write(buf)) ? ((new Promise((ok, _arg_2) => {
-                    ff.stdin.once("drain", (() => {
-                        ok();
-                    }));
-                })).then(() => (Promise.resolve(undefined)))) : (Promise.resolve());
-            }))));
-            return ((pr = map_1((page_1) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => PromiseBuilder__While_2044D34(promise, () => ((next.contents < total) && !Session__get_Failed(session)), PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                const i = next.contents | 0;
-                next.contents = ((i + 1) | 0);
-                return frame(page_1, i / fps).then((_arg_4) => {
-                    ready.set(i, _arg_4);
-                    return PromiseBuilder__While_2044D34(promise, () => ((i - written.contents) > (workers.length * 8)), PromiseBuilder__Delay_62FBFDE1(promise, () => ((new Promise(resolve => setTimeout(resolve, 5))).then(() => (Promise.resolve(undefined)))))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (flush().then(() => {
-                        if ((i % fps) === 0) {
-                            stdoutWrite("\r" + concat(toFixed(0, i / fps), "s / ", toFixed(0, duration), "s"));
-                            return Promise.resolve();
-                        }
-                        else {
-                            return Promise.resolve();
-                        }
-                    }))));
-                });
-            })))), workers), Promise.all(pr))).then((_arg_7) => (flush().then(() => {
-                ff.stdin.end();
-                return (new Promise((ok_1, _arg_9) => {
-                    ff.on("close", (() => {
-                        ok_1();
-                    }));
-                })).then(() => {
-                    console.log(`
-rendered ${total} frames in ${toFixed(1, (Date.now() - start) / 1000)}s`);
-                    return Promise.resolve();
-                });
-            })));
+function frameTime(fps, i) {
+    return (i / fps) + 1E-06;
+}
+
+/**
+ * A run of frames [First, End) for one ffmpeg process: each frame is drawn at its frameTime and piped in as a PNG.
+ */
+export class Range$ extends Record {
+    constructor(Label, First, End, Output, Done) {
+        super();
+        this.Label = Label;
+        this.First = (First | 0);
+        this.End = (End | 0);
+        this.Output = Output;
+        this.Done = Done;
+    }
+}
+
+export function Range$_$reflection() {
+    return record_type("Render.Range", [], Range$, () => [["Label", string_type], ["First", int32_type], ["End", int32_type], ["Output", list_type(string_type)], ["Done", lambda_type(unit_type, unit_type)]]);
+}
+
+function renderRange(session, workers, fps, r) {
+    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+        let pr;
+        const ff = childProcess.spawn("ffmpeg", toArray(append(ofArray(["-hide_banner", "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", fps.toString(), "-i", "-"]), r.Output)), {
+            stdio: ["pipe", "inherit", "inherit"],
+        });
+        const exited = new FSharpRef(undefined);
+        const closed = new Promise((ok, _arg) => {
+            ff.on("close", ((code) => {
+                exited.contents = (Operators_IsNull(code) ? 1 : code);
+                ok();
+            }));
+        });
+        ff.stdin.on("error", ((_arg_1) => {
         }));
-    }))));
+        const ready = new Map();
+        const next = new FSharpRef(r.First);
+        const written = new FSharpRef(r.First);
+        const seconds = (frames) => toFixed(0, frames / fps);
+        const flush = () => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => PromiseBuilder__While_2044D34(promise, () => (ready.has(written.contents) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise, () => {
+            const buf = ready.get(written.contents);
+            ready.delete(written.contents);
+            written.contents = ((written.contents + 1) | 0);
+            return !(ff.stdin.write(buf)) ? ((Promise.race([new Promise((ok_1, _arg_2) => {
+                ff.stdin.once("drain", (() => {
+                    ok_1();
+                }));
+            }), closed])).then(() => (Promise.resolve(undefined)))) : (Promise.resolve());
+        }))));
+        return ((pr = map_1((page) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => PromiseBuilder__While_2044D34(promise, () => (((next.contents < r.End) && !Session__get_Failed(session)) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise, () => {
+            const i = next.contents | 0;
+            next.contents = ((i + 1) | 0);
+            return frame(page, frameTime(fps, i)).then((_arg_4) => {
+                ready.set(i, _arg_4);
+                return PromiseBuilder__While_2044D34(promise, () => (((i - written.contents) > (workers.length * 8)) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise, () => ((new Promise(resolve => setTimeout(resolve, 5))).then(() => (Promise.resolve(undefined)))))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (flush().then(() => {
+                    if (((i - r.First) % ~~fps) === 0) {
+                        stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `));
+                        return Promise.resolve();
+                    }
+                    else {
+                        return Promise.resolve();
+                    }
+                }))));
+            });
+        })))), workers), Promise.all(pr))).then((_arg_7) => (flush().then(() => {
+            ff.stdin.end();
+            return closed.then(() => {
+                const ok_2 = (!Session__get_Failed(session) && equals(exited.contents, 0)) && (written.contents === r.End);
+                return (ok_2 ? ((r.Done(), Promise.resolve())) : (!equals(exited.contents, 0) ? ((eprint(concat("\nffmpeg failed on ", r.Label)), Promise.resolve())) : (Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve(ok_2))));
+            });
+        })));
+    }));
 }
 
 function clearUnfilteredSheets(ws) {
@@ -400,51 +418,93 @@ function forever() {
     });
 }
 
+function withChrome(clip, job) {
+    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (startServer(clip, ServeFor.ForRender).then((_arg) => {
+        const server = _arg;
+        const matchValue = findChrome();
+        if (matchValue != null) {
+            const chrome = matchValue;
+            const puppeteer = requireFromHome("puppeteer-core");
+            return awaitJs(puppeteer.launch({
+                executablePath: chrome,
+                headless: true,
+                args: ["--font-render-hinting=none", "--force-color-profile=srgb", "--autoplay-policy=no-user-gesture-required"],
+            })).then((_arg_1) => {
+                const browser = _arg_1;
+                const session = Session_$ctor_Z6861C5C0(browser, server.Url);
+                return Session__OpenPage(session).then((_arg_2) => (job(session, _arg_2).then((_arg_3) => {
+                    const code = _arg_3 | 0;
+                    return awaitJs(browser.close()).then(() => {
+                        server.Close();
+                        return Promise.resolve((code !== 0) ? code : (Session__get_Failed(session) ? 1 : 0));
+                    });
+                })));
+            });
+        }
+        else {
+            eprint("no Chrome found: set CHROME to the browser\'s executable");
+            server.Close();
+            return Promise.resolve(2);
+        }
+    }))));
+}
+
 /**
- * mode: stills | sheet | serve | video (video args: [fps]); returns an exit code.
+ * mode: stills | sheet | serve; returns an exit code.
  */
 export function run(ws, mode, args) {
     return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
         const clip = resolve(ws);
-        return (((mode === "sheet") && isEmpty(args)) ? ((clearUnfilteredSheets(clip), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (startServer(clip, ServeFor.ForRender).then((_arg) => {
-            const server = _arg;
-            if (mode === "serve") {
-                console.log(concat(server.Url, "?preview   (click the page to start; ?t=12.5 freezes one moment)"));
-                console.log("Ctrl+C to stop.");
-                return forever();
+        return (((mode === "sheet") && isEmpty(args)) ? ((clearUnfilteredSheets(clip), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => ((mode === "serve") ? (startServer(clip, ServeFor.ForRender).then((_arg) => {
+            console.log(concat(_arg.Url, "?preview   (click the page to start; ?t=12.5 freezes one moment)"));
+            console.log("Ctrl+C to stop.");
+            return forever();
+        })) : (withChrome(clip, (_arg_1, first) => {
+            if (mode === "stills") {
+                const pr = stills(clip, first, args);
+                return pr.then(() => 0);
             }
             else {
-                const matchValue = findChrome();
-                if (matchValue != null) {
-                    const chrome = matchValue;
-                    const puppeteer = requireFromHome("puppeteer-core");
-                    return awaitJs(puppeteer.launch({
-                        executablePath: chrome,
-                        headless: true,
-                        args: ["--font-render-hinting=none", "--force-color-profile=srgb", "--autoplay-policy=no-user-gesture-required"],
-                    })).then((_arg_1) => {
-                        const browser = _arg_1;
-                        const session = Session_$ctor_Z6861C5C0(browser, server.Url);
-                        return Session__OpenPage(session).then((_arg_2) => {
-                            let pr, pr_1;
-                            const first = _arg_2;
-                            return ((mode === "stills") ? ((pr = stills(clip, first, args), pr.then(() => 0))) : ((mode === "sheet") ? sheet(clip, first, args) : ((pr_1 = video(clip, session, first, args), pr_1.then(() => 0))))).then((_arg_3) => {
-                                const code = _arg_3 | 0;
-                                return awaitJs(browser.close()).then(() => {
-                                    server.Close();
-                                    return Promise.resolve((code !== 0) ? code : (Session__get_Failed(session) ? 1 : 0));
-                                });
-                            });
-                        });
-                    });
-                }
-                else {
-                    eprint("no Chrome found: set CHROME to the browser\'s executable");
-                    server.Close();
-                    return Promise.resolve(2);
-                }
+                return sheet(clip, first, args);
             }
-        }))));
+        })))));
     }));
+}
+
+/**
+ * Renders the runs one after another, in one Chrome. Stops at the first that fails; returns an exit code.
+ */
+export function ranges(ws, fps, jobs) {
+    return withChrome(resolve(ws), (session, first) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+        let option_1, s;
+        const workerCount = defaultArg((option_1 = env("WORKERS"), (option_1 != null) ? ((s = option_1, Number(s))) : undefined), 4);
+        const workers = [first];
+        return PromiseBuilder__While_2044D34(promise, () => (workers.length < workerCount), PromiseBuilder__Delay_62FBFDE1(promise, () => (Session__OpenPage(session).then((_arg) => {
+            void (workers.push(_arg));
+            return Promise.resolve();
+        })))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+            const start = Date.now();
+            const ok = new FSharpRef(true);
+            const frames = new FSharpRef(0);
+            return PromiseBuilder__For_1565554B(promise, jobs, (_arg_1) => {
+                const job = _arg_1;
+                return ok.contents ? (renderRange(session, workers, fps, job).then((_arg_2) => {
+                    const finished = _arg_2;
+                    ok.contents = finished;
+                    if (finished) {
+                        frames.contents = (((frames.contents + job.End) - job.First) | 0);
+                        return Promise.resolve();
+                    }
+                    else {
+                        return Promise.resolve();
+                    }
+                })) : (Promise.resolve());
+            }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                console.log(`
+rendered ${frames.contents} frames in ${toFixed(1, (Date.now() - start) / 1000)}s`);
+                return Promise.resolve(ok.contents ? 0 : 1);
+            }));
+        }));
+    })));
 }
 

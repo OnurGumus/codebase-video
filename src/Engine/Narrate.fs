@@ -4,7 +4,11 @@
 ///
 /// Writes <workspace>/build/:
 ///   narration.wav   the whole soundtrack, silence included (24 kHz mono, 16-bit)
+///                   every scene is padded with silence (under 1/30 s) to end on a whole frame at 30 fps, so a scene
+///                   covers exactly the frames [start*30, end*30) and the soundtrack is exactly `duration` long
 ///   timing.js       window.TIMING for the kit (src/Kit/Stage.fs): scene, sentence and part start/end times (timing.json: the same, indented)
+///                   scene starts and ends are whole frames; times inside a scene are its start plus whole
+///                   milliseconds (see timeAt)
 ///   captions.vtt    one cue per sentence
 ///   phonemes.txt    every phrase in a second language with the phonemes it was spoken with
 ///
@@ -276,6 +280,22 @@ let private group0 (m: obj) = (group m 0).Value
 let private matchIndex (m: obj) : int = m?index
 
 // Constants and markup ---------------------------------------------------------------------------------------------
+
+/// The frame rate of every video. Scenes end on whole frames, so the `video` step can render and cache each
+/// scene on its own (src/Engine/Video.fs).
+[<Literal>]
+let FPS = 30
+
+/// Samples per frame (800).
+let private FRAME = Wav.SR / FPS
+
+/// The time of sample `pos` in a scene that starts on frame `frame`: the scene's start plus the offset rounded to a
+/// millisecond, as one division of whole numbers. A cached scene must draw the same frames wherever it lands in
+/// the video, so a time inside a scene is always the same distance from the scene's start, to the last bit the
+/// division allows (the renderer takes care of the bit: see frameTime in Render.fs).
+let private timeAt (frame: int) (pos: int) : float =
+    let ms = Py.roundInt (float (pos - frame * FRAME) * 1000.0 / float Wav.SR)
+    float (200 * frame + 6 * ms) / 6000.0
 
 let private GAP = 0.3 // between sentences in a scene
 let private PART_GAP = 0.12 // between the voices inside one sentence
@@ -878,10 +898,13 @@ let run (ws: string) : JS.Promise<unit> =
         }
 
     let audio = ResizeArray<Audio>()
-    let t = ref 0.0 // the time so far: advanced by the seconds asked for, not by the rounded samples
+    let pos = ref 0 // the samples so far
+    let frame = ref 0 // the frame the current scene starts on
     let silence (seconds: float) =
-        audio.Add(Silence(Py.roundInt (seconds * float Wav.SR)))
-        t.Value <- t.Value + seconds
+        let n = Py.roundInt (seconds * float Wav.SR)
+        audio.Add(Silence n)
+        pos.Value <- pos.Value + n
+    let now () = timeAt frame.Value pos.Value
 
     promise {
         let scenes = ResizeArray<Scene>()
@@ -892,43 +915,49 @@ let run (ws: string) : JS.Promise<unit> =
             let sc = sceneObjs[si]
             let id: obj = sc?id
             if not (seen.Add(toJson id)) then fail $"duplicate scene id {Py.repr id}"
-            let start = t.Value
+            let startFrame = frame.Value
             silence (getFloat sc "lead" 0.4)
             let lines = ResizeArray<Sentence>()
             let sceneBreaks = ResizeArray<Break>()
             let say = get sc "say" |> Option.filter (isNull >> not) |> Option.map unbox<string> |> Option.defaultValue ""
             for i, s in List.indexed (sentences say) do
                 if i > 0 then silence GAP
-                let sentenceStart = t.Value
+                let sentenceStart = now ()
                 let parts = ResizeArray<Part>()
                 let after = breaks s
                 let s = (subEmpty s BREAK).Trim()
                 for k, (code, text) in List.indexed (pieces s) do
                     if k > 0 then silence PART_GAP
-                    let partStart = t.Value
+                    let partStart = now ()
                     if voiceName.IsSome then
                         let! samples = synth code (spoken text) $"{Py.str id}[{i}]"
                         audio.Add(Speech samples)
-                        t.Value <- t.Value + float samples.Length / float Wav.SR
+                        pos.Value <- pos.Value + samples.Length
                     else
                         silence (readingTime (shown text))
                     parts.Add
                         { Part.text = shown text
                           spoken = heard text
                           lang = (match code with Some c -> Py.Str c | None -> Py.ofJs lang)
-                          start = Py.round partStart 3
-                          finish = Py.round t.Value 3 }
+                          start = partStart
+                          finish = now () }
                 lines.Add
                     { Sentence.text = shown s
                       spoken = heard s
-                      start = Py.round sentenceStart 3
-                      finish = Py.round t.Value 3
+                      start = sentenceStart
+                      finish = now ()
                       parts = List.ofSeq parts }
                 for kind, secs in after do
-                    sceneBreaks.Add
-                        { kind = kind; sentence = i; start = Py.round t.Value 3; finish = Py.round (t.Value + secs) 3 }
+                    let breakStart = now ()
                     silence secs
+                    sceneBreaks.Add { kind = kind; sentence = i; start = breakStart; finish = now () }
             silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.Count > 0 then 0.9 else 0.0))
+            // End on a whole frame (and never on the frame the scene started on).
+            let over = pos.Value % FRAME
+            if over <> 0 || pos.Value = startFrame * FRAME then
+                audio.Add(Silence(FRAME - over))
+                pos.Value <- pos.Value + FRAME - over
+            frame.Value <- pos.Value / FRAME
             let msc = markedScenes[si]
             let passthrough key =
                 match get sc key with
@@ -939,8 +968,8 @@ let run (ws: string) : JS.Promise<unit> =
             scenes.Add
                 { id = id
                   idJson = Py.ofJs msc?id
-                  start = Py.round start 3
-                  finish = Py.round t.Value 3
+                  start = float startFrame / float FPS
+                  finish = float frame.Value / float FPS
                   sentences = List.ofSeq lines
                   extras =
                     passthrough "chapter" // a long video's chapter title, on its "-why" bridge scene
@@ -949,7 +978,7 @@ let run (ws: string) : JS.Promise<unit> =
                     @ passthrough "recap" } // a chapter's closing "So far" lines
 
         do! release ()
-        let duration = Py.round t.Value 3
+        let duration = float frame.Value / float FPS
         Wav.write (join [ build; "narration.wav" ]) (soundtrack (List.ofSeq audio))
 
         let scenes = List.ofSeq scenes

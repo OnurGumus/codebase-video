@@ -1,5 +1,15 @@
-/// Render + encode (mp4, webm, poster, captions, chapters). Port of the video() and chapters_for() steps of build.sh.
+/// Render + encode (mp4, webm, poster, captions, chapters).
 /// Output goes to <ws>/out/<name>.{mp4,webm,jpg,vtt} (+ .chapters.vtt for long videos).
+///
+/// The video is built from one segment per scene (src/Engine/Segments.fs gives each scene a key from everything its
+/// frames can depend on). A scene whose key has a segment in build/segments/ is reused; the others are rendered
+/// and encoded, each by one ffmpeg process that writes <key>.mp4 (x264) and <key>.webm (VP9), without sound. The
+/// final files are the segments joined without re-encoding, plus the narration. So a fix to one scene costs that
+/// scene, and a run with nothing changed takes seconds.
+///   video             reuse what is cached
+///   video --full      render every scene again
+///   video --lossless  for testing the engine: ffv1 segments in build/segments-lossless/, joined into
+///                     build/frames.mkv; no mp4 or webm
 module Video
 
 open Fable.Core
@@ -34,6 +44,8 @@ let rec private sequence (steps: (unit -> int) list) : int =
         | code -> code
 
 /// The finished files, as `ls -la` shows them.
+let private run' (cmd: string) (args: string list) : int = if hasCommand cmd then Node.run cmd args else 0
+
 let private list (outDir: string) (name: string) : int =
     let files =
         readDir outDir |> List.filter (fun f -> f.StartsWith(name + ".")) |> List.sort |> List.map (fun f -> join [ outDir; f ])
@@ -43,38 +55,116 @@ let private list (outDir: string) (name: string) : int =
             JS.console.log $"""{fs?statSync(f)?size}  {f}"""
         0
 
-let run (ws: string) : JS.Promise<int> =
-    Render.run ws "video" [ "30" ]
-    |> Promise.map (fun code ->
-        if code <> 0 then code
-        else
-            let name, poster = timingOf ws
-            let frames = join [ ws; "build"; "frames.mkv" ]
-            let out ext = join [ ws; "out"; $"{name}.{ext}" ]
-            // Speech normalised to -16 LUFS, the usual level for spoken web video, so clips match each other.
-            let audio =
-                [ "-i"; join [ ws; "build"; "narration.wav" ]; "-map"; "0:v"; "-map"; "1:a"
-                  "-af"; "loudnorm=I=-16:TP=-1.5:LRA=11"; "-ar"; "48000" ]
-            let ffmpeg args = fun () -> Node.run "ffmpeg" ([ "-hide_banner"; "-loglevel"; "error"; "-y" ] @ args)
-            sequence
-                [ ffmpeg (
-                      [ "-i"; frames ] @ audio
-                      @ [ "-c:v"; "libx264"; "-profile:v"; "high"; "-preset"; "slow"; "-crf"; "22"; "-pix_fmt"; "yuv420p"
-                          "-tune"; "animation"; "-c:a"; "aac"; "-b:a"; "128k"; "-movflags"; "+faststart"; "-shortest"
-                          out "mp4" ]
-                  )
-                  ffmpeg (
-                      [ "-i"; frames ] @ audio
-                      @ [ "-c:v"; "libvpx-vp9"; "-crf"; "34"; "-b:v"; "0"; "-row-mt"; "1"; "-deadline"; "good"
-                          "-cpu-used"; "2"; "-pix_fmt"; "yuv420p"; "-c:a"; "libopus"; "-b:a"; "96k"; "-shortest"
-                          out "webm" ]
-                  )
-                  ffmpeg [ "-ss"; poster; "-i"; frames; "-frames:v"; "1"; "-q:v"; "3"; out "jpg" ]
-                  fun () ->
-                      copyFile (join [ ws; "build"; "captions.vtt" ]) (out "vtt")
-                      0
-                  fun () -> chaptersFor ws name
-                  fun () ->
-                      remove frames
-                      0
-                  fun () -> list (join [ ws; "out" ]) name ])
+let private ffmpeg (args: string list) : unit -> int =
+    fun () -> Node.run "ffmpeg" ([ "-hide_banner"; "-loglevel"; "error"; "-y" ] @ args)
+
+// The encoders. A change here changes every segment's key.
+let private x264 =
+    [ "-c:v"; "libx264"; "-profile:v"; "high"; "-preset"; "slow"; "-crf"; "22"; "-pix_fmt"; "yuv420p"; "-tune"; "animation" ]
+
+let private vp9 =
+    [ "-c:v"; "libvpx-vp9"; "-crf"; "34"; "-b:v"; "0"; "-row-mt"; "1"; "-deadline"; "good"; "-cpu-used"; "2"; "-pix_fmt"; "yuv420p" ]
+
+let private ffv1 = [ "-c:v"; "ffv1"; "-pix_fmt"; "yuv444p" ]
+
+/// What draws the frames: the browser's version (or, where it will not say, its file's size and date).
+let private browserId (chrome: string) : string =
+    match runCapture chrome [ "--version" ] with
+    | 0, out, _ when out.Trim() <> "" -> out.Trim()
+    | _ -> if exists chrome then $"{chrome} {fileSize chrome} {mtime chrome}" else chrome
+
+[<Emit("$0.toFixed(6)")>]
+let private fixed6 (x: float) : string = jsNative
+
+[<Emit("Math.round($0)")>]
+let private jsRound (x: float) : float = jsNative
+
+/// A list for ffmpeg's concat demuxer: the segments in order, each with its exact length (the lengths are
+/// differences of rounded running totals, so the rounding never adds up).
+let private concatList (dir: string) (ext: string) (fps: int) (segments: Segments.Segment list) : string =
+    let micros (frame: int) = jsRound (float frame * 1e6 / float fps)
+    let file = join [ dir; $"list-{ext}.txt" ]
+    let lines =
+        "ffconcat version 1.0"
+        :: [ for s in segments do
+                 $"file '{s.Key}.{ext}'"
+                 $"duration {fixed6 ((micros s.End - micros s.First) / 1e6)}" ]
+    writeText file (String.concat "\n" lines + "\n")
+    file
+
+let run (ws: string) (args: string list) : JS.Promise<int> =
+    let full = args |> List.contains "--full"
+    let lossless = args |> List.contains "--lossless"
+    match args |> List.filter (fun a -> a <> "--full" && a <> "--lossless") with
+    | unknown :: _ ->
+        eprint $"video: unknown option {unknown} (options: --full, --lossless)"
+        Promise.lift 2
+    | [] ->
+    match Render.findChrome () with
+    | None ->
+        eprint "no Chrome found: set CHROME to the browser's executable"
+        Promise.lift 2
+    | Some chrome ->
+        let fps = Narrate.FPS
+        let name, poster = timingOf ws
+        let exts = if lossless then [ "mkv" ] else [ "mp4"; "webm" ]
+        let encoder = String.concat " " (if lossless then ffv1 else x264 @ vp9)
+        let segments = Segments.plan ws fps "1920x1080@1" (browserId chrome) encoder
+        let dir = join [ ws; "build"; (if lossless then "segments-lossless" else "segments") ]
+        mkdirp dir
+        let file (key: string) (ext: string) = join [ dir; $"{key}.{ext}" ]
+        let cached (s: Segments.Segment) = not full && exts |> List.forall (fun ext -> exists (file s.Key ext))
+        let missing = segments |> List.filter (cached >> not)
+        if not (Segments.wholeFrames ws fps) then
+            JS.console.log "timing.json is from an older engine (scenes do not end on whole frames): run narrate again, and later narration fixes will render only what they change"
+        let jobs =
+            [ for n, s in List.indexed missing ->
+                  // Written under a temporary name and renamed when complete: an interrupted run leaves nothing
+                  // that looks like a finished segment.
+                  let temp ext = file s.Key ("tmp." + ext)
+                  { Render.Range.Label = $"[{n + 1}/{missing.Length}] {s.Id}"
+                    Render.Range.First = s.First
+                    Render.Range.End = s.End
+                    Render.Range.Output =
+                      if lossless then ffv1 @ [ temp "mkv" ]
+                      else [ "-map"; "0:v" ] @ x264 @ [ temp "mp4"; "-map"; "0:v" ] @ vp9 @ [ temp "webm" ]
+                    Render.Range.Done =
+                      fun () ->
+                          for ext in exts do
+                              rename (temp ext) (file s.Key ext)
+                          writeText (file s.Key "json") s.Input } ]
+        (if jobs.IsEmpty then Promise.lift 0 else Render.ranges ws (float fps) jobs)
+        |> Promise.map (fun code ->
+            if code <> 0 then code
+            else
+                let out ext = join [ ws; "out"; $"{name}.{ext}" ]
+                let joined ext = [ "-f"; "concat"; "-safe"; "0"; "-i"; concatList dir ext fps segments ]
+                // Speech normalised to -16 LUFS, the usual level for spoken web video, so clips match each other.
+                let audio =
+                    [ "-i"; join [ ws; "build"; "narration.wav" ]; "-map"; "0:v"; "-map"; "1:a"
+                      "-af"; "loudnorm=I=-16:TP=-1.5:LRA=11"; "-ar"; "48000"; "-c:v"; "copy" ]
+                let assemble =
+                    if lossless then
+                        [ ffmpeg (joined "mkv" @ [ "-c"; "copy"; join [ ws; "build"; "frames.mkv" ] ]) ]
+                    else
+                        [ ffmpeg (joined "mp4" @ audio @ [ "-c:a"; "aac"; "-b:a"; "128k"; "-movflags"; "+faststart"; "-shortest"; out "mp4" ])
+                          ffmpeg (joined "webm" @ audio @ [ "-c:a"; "libopus"; "-b:a"; "96k"; "-shortest"; out "webm" ])
+                          ffmpeg [ "-ss"; poster; "-i"; out "mp4"; "-frames:v"; "1"; "-q:v"; "3"; out "jpg" ]
+                          fun () ->
+                              copyFile (join [ ws; "build"; "captions.vtt" ]) (out "vtt")
+                              0
+                          fun () -> chaptersFor ws name ]
+                let tidy () =
+                    // Segments no scene uses any more (and anything an interrupted run left) go, so the cache
+                    // holds one video's worth.
+                    let keep = segments |> List.map (fun s -> s.Key) |> Set.ofList
+                    for f in readDir dir do
+                        if not (f.StartsWith "list-") && not (keep.Contains(f.Split('.').[0])) then remove (join [ dir; f ])
+                    JS.console.log $"segments: {segments.Length - missing.Length} reused, {missing.Length} rendered"
+                    0
+                sequence (
+                    assemble
+                    @ [ tidy ]
+                    @ (if lossless then [ fun () -> run' "ls" [ "-la"; join [ ws; "build"; "frames.mkv" ] ] ]
+                       else [ fun () -> list (join [ ws; "out" ]) name ])
+                ))
