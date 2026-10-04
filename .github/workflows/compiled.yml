@@ -23,4 +23,5 @@ jobs:
         with:
           node-version: 20
       - name: the command line starts
-        run: node engine/cli/Cv.js 2>&1 | grep -q "usage: node engine/cli/Cv.js"
+        run: |
+          node engine/cli/Cv.js 2>&1 | grep -q "usage: node engine/cli/Cv.js"
