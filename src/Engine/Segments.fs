@@ -12,12 +12,15 @@
 ///     module, clip.html or one of those files names;
 ///   - the scene's own timing, and its neighbours' (a toast, a [think] countdown or a caption can cross a boundary);
 ///   - its module file (<prefix>.js), the timing of every scene with the same prefix and of every scene the module's
-///     text names, and when the module is on screen (its runs, as src/Kit/Frame.fs computes them);
+///     text names (as a quoted id, "p2-video" or "p2-video|word", or by another module's prefix, "p2-"), and when the
+///     module is on screen (its runs, as src/Kit/Frame.fs computes them);
 ///   - the chapters as the frame draws them: how many, which are finished, which are still to come, and the title
 ///     and times of the ones that touch the scene (the progress bar, the chapter card and the label);
 ///   - the title card, and the few times the frame uses from elsewhere in the video (time 0, the end of the title,
 ///     the first chapter's start, the outro's start, the total duration). Each of those only matters within half a
 ///     second of itself, so when it is more than 3 s outside the scene it is recorded as "before" or "after".
+/// Not in the key: the absolute position of the scene. The renderer draws each frame a microsecond late so that
+/// rounding in the last bit, which does depend on the position, cannot decide anything (frameTime in Render.fs).
 /// When unsure, the key includes more: a clip that is not a long-video frame, a clip.html with its own scripts, or a
 /// module that reads the timing directly gets the whole timing in its key. A wrong reuse would be a silent bug; an
 /// unnecessary re-render only costs time.
