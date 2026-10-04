@@ -10,7 +10,7 @@
   /* Kinds of thing (a producer, a consumer, a key...), never verdicts: good/bad/warn keep those. */
   --pink: #f2a7cf; --cyan: #7fd6e6;
   /* Code: keywords, types, calls, strings, numbers, comments. */
-  --code-kw: #c3b1f2; --code-type: #7fd6e6; --code-fn: #8ab8ff; --code-str: #f4b88e; --code-num: #f2a7cf; --code-com: #7b8aa6;
+  --code-kw: #c3b1f2; --code-type: #7fd6e6; --code-fn: #8ab8ff; --code-str: #f4b88e; --code-num: #f2a7cf; --code-com: #7b8aa6; --code-case: #e9d49c; --term: #8ab8ff;
   --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,3 +49,4 @@ svg.layer path, svg.layer line { fill: none; stroke: var(--faint); stroke-width:
 /* Burned-in captions, drawn by Stage.captions(t). Off unless a clip turns them on (silent clips always do). */
 #captions { position: absolute; left: 160px; right: 160px; bottom: 48px; text-align: center; font-size: 46px; line-height: 1.3; }
 #captions span { background: #0b0f18e6; padding: 8px 20px; border-radius: 12px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.k-term { color: var(--term); font-weight: 700; }

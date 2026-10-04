@@ -31,6 +31,10 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 
 **Narration rules:**
 - Objective first: say where each chapter is going before diving in. Define every term at first use, in a few words.
+- Intuition before code: before the first code card of a core idea (the functions a user writes, a key class, a
+  protocol), walk one plain, concrete example through it in words (real values from the document, e.g. "an account
+  holds 100; withdraw 30 arrives; ... now it holds 70"), so the viewer knows what the code is for before reading it.
+  A newcomer should never meet a function's code before knowing what goes in and what comes out.
 - Teacher-like connectives linking most sentences (so, therefore, that means, but, instead, for example, notice, here is,
   next, then, finally, the tricky part, recall...), varied, never implying a causal link that is not there. The `check`
   flow line must be at least 40% in every chapter.

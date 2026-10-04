@@ -3,6 +3,13 @@
 Reference for whoever writes the visuals of a video. A working example of every component is
 `kit/gallery/` (its `*.js` files are short; read the one you need). The code is `stage-kit.js`.
 
+## Text styles
+
+- `<span class="k-term">word</span>`: a defined term (bold, in the term colour), e.g. in a glossary line.
+- Inline code in captions: `<span style="font-family:var(--mono)">name</span>` (or the module's own mono helper).
+- F# code cards colour types (after `:` and inside `<…>`), constructor calls (`PersistEvent(…)`), union cases in
+  patterns and values (`Some`, `Open`) and keywords differently; a property after `.` stays ink.
+
 ## A module
 
 A long video is `templates/long/clip.html` (copied unchanged) plus one file per module. A module owns

@@ -60,7 +60,7 @@
 .k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }
 .k-node .k-node-icon { margin-right: 14px; }
 .k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }
-.k-code .k-str { color: var(--code-str); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }
+.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }
 .k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
 .k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
 .k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }
@@ -152,6 +152,8 @@
   };
   const TOKEN = /(\/\/.*$|--.*$|#.*$)|(@?\$?"(?:[^"\\]|\\.)*"(?:u8)?|'(?:[^'\\]|\\.)*')|(\b\d[\d_]*(?:\.\d+)?[fFdDmMlLuU]*\b)|([A-Za-z_][A-Za-z0-9_]*)/g;
   const HASH_COMMENTS = new Set(["yaml", "bash", "python", "nix", "dockerfile"]);
+  // Inside an unclosed generic argument list, e.g. "Command<Account" (arrows "->" are not brackets).
+  const inGeneric = (s) => { const t = s.replace(/->/g, ""); return (t.match(/</g) || []).length > (t.match(/>/g) || []).length; };
   function highlight(line, lang) {
     if (!lang || lang === "plain") return esc(line);
     const kw = KW[lang] || KW.csharp;
@@ -172,7 +174,15 @@
         if (kw.has(lang === "sql" ? id.toLowerCase() : id)) cls = "k-kw";
         else if ((lang === "csharp" || lang === "javascript") && next && next[1] === "(" && /^[A-Z]/.test(id)) cls = "k-fn";
         else if (lang === "python" && next && next[1] === "(") cls = "k-fn";
-        else if ((lang === "csharp" || lang === "javascript" || lang === "fsharp") && /^[A-Z]/.test(id)) cls = "k-ty";
+        else if (lang === "fsharp" && /^[A-Z]/.test(id)) {
+          // F#: Type annotations, constructor calls and union cases read differently; a property after "." stays ink.
+          const before = line.slice(0, m.index).trimEnd();
+          if (before.endsWith(".")) cls = null;
+          else if (next && next[1] === "(") cls = "k-fn";
+          else if (before.endsWith(":") || inGeneric(before)) cls = "k-ty";
+          else cls = "k-case";
+        }
+        else if ((lang === "csharp" || lang === "javascript") && /^[A-Z]/.test(id)) cls = "k-ty";
       }
       out += esc(line.slice(last, m.index)) + (cls ? `<span class="${cls}">${esc(tok)}</span>` : esc(tok));
       last = m.index + tok.length;

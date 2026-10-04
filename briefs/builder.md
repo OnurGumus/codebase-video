@@ -26,6 +26,11 @@ exists) says per scene what to show, the exact code to show, and what not to sho
   rather than re-wrapping it. At most about 9 lines on screen. Glow only the line being spoken, accent only, with an
   `until`. Put the file path in the card `title`. Prefer a small diagram over code where the narration talks about
   results.
+- Defined terms: when a scene defines a word ("aggregate: one consistency boundary"), write the word as
+  `<span class="k-term">aggregate</span>`, so terms stand out from their definitions everywhere in the video.
+- Intuition scenes (a plain example before the code): draw the example with its real values as a small picture
+  (input → function → output), and reuse the same picture's shapes when the code appears, so the viewer can map one
+  onto the other.
 - Diagrams of modules, calls and data: boxes for components (the file or module name in mono as the label or sub),
   arrows for calls or data flow in their real direction, a packet (`tone: "muted"`) travelling a flow when the
   narration follows a request through it; an arrow never appears before both its boxes.
