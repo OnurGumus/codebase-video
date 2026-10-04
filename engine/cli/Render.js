@@ -66,7 +66,7 @@ const renderTypes = ofSeq([[".html", "text/html"], [".js", "text/javascript"], [
     Compare: (x, y) => (comparePrimitives(x, y) | 0),
 });
 
-const scanTypes = ofSeq([[".html", "text/html"], [".js", "text/javascript"], [".css", "text/css"], [".json", "application/json"], [".png", "image/png"], [".svg", "image/svg+xml"], [".woff2", "font/woff2"]], {
+const scanTypes = ofSeq([[".html", "text/html"], [".js", "text/javascript"], [".css", "text/css"], [".json", "application/json"], [".png", "image/png"], [".jpg", "image/jpeg"], [".svg", "image/svg+xml"], [".woff2", "font/woff2"]], {
     Compare: (x, y) => (comparePrimitives(x, y) | 0),
 });
 

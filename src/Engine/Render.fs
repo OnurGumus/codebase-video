@@ -81,6 +81,7 @@ let private scanTypes =
           ".css", "text/css"
           ".json", "application/json"
           ".png", "image/png"
+          ".jpg", "image/jpeg"
           ".svg", "image/svg+xml"
           ".woff2", "font/woff2" ]
 
