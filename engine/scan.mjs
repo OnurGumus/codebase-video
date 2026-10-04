@@ -67,7 +67,15 @@ for (let t = Number(t0); t <= Math.min(Number(t1), D); t += Number(step)) {
       const rg = document.createRange(); rg.selectNodeContents(el); const r = rg.getBoundingClientRect();
       const path = []; for (let a = el; a && a.id !== "stage"; a = a.parentElement) path.push(id(a));
       res.push({ id: id(el), path: path.join("/"), txt: el.textContent.trim().slice(0, 90), op: +op.toFixed(2),
-        x: Math.round(r.left), y: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom), layer: layer(el) });
+        x: Math.round(r.left), y: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom), layer: layer(el),
+        ...(el.closest(".k-packet") ? { pk: 1 } : {}) });
+    }
+    // Boxes (code cards, diagram nodes, tables): text may sit inside them, but must not straddle their border.
+    for (const box of document.querySelectorAll("#modules .k-code, #modules .k-node, #modules .k-table")) {
+      const op = opacity(box), r = box.getBoundingClientRect();
+      if (op < 0.05 || r.width < 2) continue;
+      res.push({ id: id(box), path: "box", txt: `BOX[${box.className}]`, op: +op.toFixed(2), x: Math.round(r.left),
+        y: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom), layer: layer(box), box: 1 });
     }
     for (const svg of document.querySelectorAll("#modules svg")) {
       if (svg.parentElement.closest("svg")) continue;
