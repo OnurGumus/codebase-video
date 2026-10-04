@@ -104,8 +104,9 @@ def check_long(clip, script):
 # ── cues ────────────────────────────────────────────────────────────────────────────────
 SPEC = re.compile(r"""["'`]([a-z0-9]+(?:-[a-z0-9]+)+)(?:\|([^"'`|]+?)(\$)?(?:\|(\d+))?|#(\d+))?["'`]""")
 WORD_CALL = re.compile(r"""\bword\(\s*["'`]([a-z0-9]+(?:-[a-z0-9]+)+)["'`]\s*,\s*["'`]([^"'`]+)["'`]""")
-SCENE_CONST = re.compile(r"""\bconst\s+S\s*=\s*["'`]([a-z0-9]+(?:-[a-z0-9]+)+)["'`]""")
-SCENE_REF = re.compile(r"""\bS\s*\+\s*["'`]((?:\||#)[^"'`]*)["'`]""")
+# Any `const NAME = "scene-id"`, also `const A = "…", B = "…"` (S, DEC, REP ...) and its uses `NAME + "|phrase"` / `NAME + "#2"`.
+SCENE_CONST = re.compile(r"""(?:\bconst|\blet|,)\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["'`]([a-z0-9]+(?:-[a-z0-9]+)+)["'`]""")
+SCENE_REF = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\s*\+\s*["'`]((?:\||#)[^"'`]*)["'`]""")
 CUE_CALL = re.compile(r"""\b(?:cue|at|part)\(\s*["'`]([a-z0-9]+(?:-[a-z0-9]+)+)["'`]\s*(?:,\s*(-?\d+))?""")
 
 
@@ -132,14 +133,14 @@ def check_cues(clip, timing, js_files):
 
     for f in js_files:
         src = f.read_text()
-        cur = None                                    # the scene id in the nearest `const S = "…"` above
+        names = {}                                    # const NAME = "scene-id" seen so far in this file
         for ln, line in enumerate(src.splitlines(), 1):
             if line.strip().startswith("//"):
                 continue
-            if (d := SCENE_CONST.search(line)):
-                cur = d.group(1)
+            for d in SCENE_CONST.finditer(line):
+                names[d.group(1)] = d.group(2)
             # `S + "|phrase"` / `S + "#2"` is the same cue as `"<scene>|phrase"`; check it as one.
-            line = SCENE_REF.sub(lambda m: f'"{cur}{m.group(1)}"' if cur else m.group(0), line)
+            line = SCENE_REF.sub(lambda m: f'"{names[m.group(1)]}{m.group(2)}"' if m.group(1) in names else m.group(0), line)
             for m in SPEC.finditer(line):
                 sid, phrase, _end, nth, sent = m.groups()
                 if sid.split("-")[0] in ("k",) or (sid not in by_id and "|" not in m.group(0) and "#" not in m.group(0)):
