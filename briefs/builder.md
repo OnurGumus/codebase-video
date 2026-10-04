@@ -20,7 +20,7 @@ exists) says per scene what to show, the exact code to show, and what not to sho
   green as a plain highlight, never accent as plain emphasis. Short arrow labels (1-3 words). Flow edges draw an
   arrowhead at `to`, so `from` → `to` must be the real direction (who calls whom, who writes to what); never skip a hop
   the document has.
-- Code cards (K.code): `lang` "javascript", "python", "json", "yaml", "bash", "sql", "csharp" (default) or "plain"
+- Code cards (K.code): `lang` "fsharp", "csharp" (default), "javascript" (also for TypeScript), "python", "json", "yaml", "bash", "sql" or "plain"
   (use plain for languages the kit cannot highlight). Show the real code with its REAL indentation, trimmed only by
   whole lines with each cut marked by a comment line; if a real line is too wide at 44 px use `font: 40` or `font: 36`
   rather than re-wrapping it. At most about 9 lines on screen. Glow only the line being spoken, accent only, with an

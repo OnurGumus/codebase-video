@@ -146,6 +146,7 @@
     python: new Set(("and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield").split(" ")),
     javascript: new Set(("async await break case catch class const continue default delete do else export extends false finally for from function if import in instanceof let new null of return static super switch this throw true try typeof undefined var void while yield").split(" ")),
     nix: new Set(("let in with import inherit rec if then else assert or true false null").split(" ")),
+    fsharp: new Set(("abstract and as assert async base begin class default delegate do done downcast downto elif else end exception extern false finally fixed for fun function global if in inherit inline interface internal lazy let match member module mutable namespace new not null of open or override private public rec return select sig static struct task then to true try type upcast use val void when while with yield").split(" ")),
     dockerfile: new Set(("FROM RUN COPY ADD CMD ENTRYPOINT ENV ARG WORKDIR EXPOSE USER LABEL VOLUME").split(" ")),
     sql: new Set(("select from where insert into values update set delete create table alter drop index on conflict do and or not null is as join left right inner outer group by order having limit returning primary key references begin commit rollback excluded case when then else end").split(" ")),
   };
@@ -158,7 +159,8 @@
     TOKEN.lastIndex = 0;
     while ((m = TOKEN.exec(line))) {
       const [tok, com, str, num, id] = m;
-      if (com && ((com.startsWith("//") && (lang === "csharp" || lang === "javascript")) || (com.startsWith("--") && lang === "sql") || (com.startsWith("#") && HASH_COMMENTS.has(lang)))) {
+      if (str && lang === "fsharp" && str.startsWith("'") && str.length > 4) { TOKEN.lastIndex = m.index + 1; continue; } // 'T generics, not a char
+      if (com && ((com.startsWith("//") && (lang === "csharp" || lang === "javascript" || lang === "fsharp")) || (com.startsWith("--") && lang === "sql") || (com.startsWith("#") && HASH_COMMENTS.has(lang)))) {
         out += esc(line.slice(last, m.index)) + `<span class="k-com">${esc(com)}</span>`; last = m.index + tok.length; break;
       }
       if (com) { TOKEN.lastIndex = m.index + 1; continue; }        // "--" or "#" that is not a comment here
@@ -170,7 +172,7 @@
         if (kw.has(lang === "sql" ? id.toLowerCase() : id)) cls = "k-kw";
         else if ((lang === "csharp" || lang === "javascript") && next && next[1] === "(" && /^[A-Z]/.test(id)) cls = "k-fn";
         else if (lang === "python" && next && next[1] === "(") cls = "k-fn";
-        else if ((lang === "csharp" || lang === "javascript") && /^[A-Z]/.test(id)) cls = "k-ty";
+        else if ((lang === "csharp" || lang === "javascript" || lang === "fsharp") && /^[A-Z]/.test(id)) cls = "k-ty";
       }
       out += esc(line.slice(last, m.index)) + (cls ? `<span class="${cls}">${esc(tok)}</span>` : esc(tok));
       last = m.index + tok.length;
