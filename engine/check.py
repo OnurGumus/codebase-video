@@ -163,6 +163,25 @@ def check_cues(clip, timing, js_files):
                 elif i is not None and (int(i) >= len(by_id[sid]["sentences"]) or -int(i) > len(by_id[sid]["sentences"])):
                     err(f"{f.name}:{ln}: {sid} has {len(by_id[sid]['sentences'])} sentence(s), asked for {i}")
 
+
+    def toast_time(s, at):
+        """When a toast fires: the start of the sentence holding its phrase, plus the phrase's share of that
+        sentence (the kit interpolates words the same way, near enough for a 6 s spacing check)."""
+        sents = s["sentences"]
+        if not sents:
+            return s["start"]
+        if at and str(at).startswith("#"):
+            i = int(str(at)[1:])
+            return sents[min(i, len(sents) - 1)]["start"]
+        if at:
+            want = str(at).lower()
+            for se in sents:
+                for text in ((se.get("spoken") or se["text"]).lower(), se["text"].lower()):
+                    k = text.find(want)
+                    if k >= 0:
+                        return se["start"] + (se["end"] - se["start"]) * k / max(len(text), 1)
+        return sents[0]["start"]
+
     # Toasts on scenes (script.json "toasts"): known kind, a phrase that is spoken, and not crowded.
     kit = (Path(__file__).parent / "stage-kit.js").read_text()
     kinds = set(re.findall(r"^\s{4}(\w+):\s+\{ icon:", kit, re.M))
@@ -177,12 +196,12 @@ def check_cues(clip, timing, js_files):
                 err(f"{where}: {at!r} is not spoken in {s['id']}")
             if d.get("text") and len(d["text"].split()) > 5:
                 warn(f"{where}: text {d['text']!r} is long for a badge; keep it to about 4 words")
-            start = s["sentences"][0]["start"] if s["sentences"] else s["start"]
-            seen.append((start, d.get("kind"), where))
+            seen.append((toast_time(s, at), d.get("kind"), where))
     seen.sort()
+    # Every pair, in the same scene or not: two badges within 6 s crowd the top band.
     for (a, _, wa), (b, _, wb) in zip(seen, seen[1:]):
-        if b - a < 6 and wa.split()[0] != wb.split()[0]:
-            warn(f"toasts crowd: {wa} and {wb} are under 6 s apart")
+        if b - a < 6:
+            warn(f"toasts crowd: {wa} and {wb} are {b - a:.1f} s apart (keep at least 6 s)")
     if seen:
         from collections import Counter
         c = Counter(k for _, k, _ in seen)
