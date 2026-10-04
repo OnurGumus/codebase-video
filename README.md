@@ -1,9 +1,8 @@
 # codebase-video
 
-**Turn a codebase into a narrated video you can trust.**
+**Ask Claude Code for a video about your code. Get a narrated video that explains it.**
 
-Claude Code reads your code and writes down what it learned. A second Claude checks every statement against the
-code. Only then is the video made, with the real code and diagrams on screen.
+Every statement in the video is checked against your code before the video is made.
 
 https://github.com/user-attachments/assets/0b4e12d4-ce36-48db-9532-be7eb61ad430
 
@@ -85,12 +84,19 @@ Here is what the checks caught while making the five-minute video at the top of 
 | The pictures, checked against the script and the code | 1 misleading label, 3 smaller fixes |
 | The last scan of the whole video | nothing left to fix |
 
+Two kinds of checking are at work. A program checks what a program can: that every picture appears on the words
+that describe it, that nothing overlaps or flashes by too fast, that no number is shown that the write-up does
+not contain. Whether an explanation is *right* is checked by Claude, against the code, by a Claude that did not
+write it. That is careful checking, not a proof: if something in a video looks wrong, the write-up next to it
+tells you the file and line to look at.
+
 More detail: [how it works](docs/how-it-works.md).
 
 ## Is my code private?
 
-- The video is made on your own computer. It is not uploaded anywhere.
-- Claude Code reads your code, the same as whenever you use Claude Code.
+- The voice, the drawing and the video files stay on your computer. The video is not uploaded anywhere.
+- Your source code is read by Claude Code, the same as whenever you use Claude Code. The plugin does not make
+  your code more private than Claude Code already is.
 - Claude is told to keep passwords and keys out of the video, and checks for them.
 - The video shows your code. Share it only with people who may see the code.
 

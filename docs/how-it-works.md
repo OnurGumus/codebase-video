@@ -16,6 +16,21 @@ done by a fresh helper (Claude Code calls these helpers "agents") that has not s
 
 In the videos this was built on, every checking pass found real mistakes, which is why there are so many.
 
+## What a program checks, and what Claude checks
+
+Claude decides what to teach and whether it is true. The engine (the F# program in this repository) produces
+the video and checks everything that can be checked mechanically:
+
+- **Before drawing** (`check`): every picture is tied to words that are really spoken; scene names and chapters
+  are well formed; no sentence is too long for one caption; numbers and symbols the voice might misread are
+  flagged; no number appears that the checked document does not state; the narration has pauses and does not
+  read as a list of facts.
+- **After drawing** (`scan` and `report`): the whole video is examined four times per second for text on screen
+  under 3 seconds, overlaps, empty screens, content outside the frame, blinking, and pages that failed to draw.
+
+Whether an explanation is correct is a judgement, so that part is done by Claude agents reading the code, each
+one fresh. It is careful checking, not a proof.
+
 ## How much work each length is
 
 | Length | Video | Covers | Work for Claude |
@@ -55,7 +70,8 @@ the video's length and keeps your computer busy.
 ## What runs on your computer
 
 The voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)), the drawing (your Chrome) and the encoding
-(ffmpeg) all run locally; nothing is uploaded. Your code is read by Claude Code, as in any Claude Code session.
+(ffmpeg) all run locally, and the video is not uploaded anywhere. Your source code is read by Claude Code, as in
+any Claude Code session.
 
 The one-time setup downloads the voice model, the software that runs it, a browser driver, and
 [eSpeak NG](https://github.com/espeak-ng/espeak-ng) for pronunciation: about 800 MB. eSpeak NG is licensed under
