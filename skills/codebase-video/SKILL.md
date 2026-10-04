@@ -76,7 +76,9 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
 
 ## Preview (cheap first look)
 
-A preview stops after step 5 (about 4 agent tasks for any length, no builders, no visual audits, no render). Give
+A preview stops once the script has been checked (after step 5, the narration audit), before any scene is drawn:
+no builders, no visual audits, no render. That is about 4 agent tasks, or up to 6 for `deep`, which runs a second
+verify and a second narration audit. Give
 the user: `WS/build/lesson.md` (the checked teaching document), `WS/script.json` (what the voice will say, with
 its chapters), and `WS/build/narration.wav` plus `WS/build/captions.vtt` (the narration to listen to). Say plainly
 that there are no pictures yet. If they like it, continue from step 6 in the same workspace: nothing is redone.
