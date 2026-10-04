@@ -33,7 +33,9 @@ exactly as in any Claude Code session on that repository.
 ```
 
 Then, in the repository you want to teach: `/codebase-video` (or just ask for "a video that teaches this codebase").
-The first run installs the voice model (about 250 MB) and a browser driver into the plugin's data folder.
+The first run installs the voice and a browser driver into the plugin's data folder: about 800 MB in all (the
+Kokoro model, the ONNX runtime, [eSpeak NG](https://github.com/espeak-ng/espeak-ng) for pronunciation, which is
+GPL-3.0 and is downloaded there rather than shipped with this plugin, and puppeteer-core).
 
 Requirements: Node 18+, ffmpeg with libx264, libvpx-vp9 and libopus, and Google Chrome or Chromium. On macOS:
 `brew install node ffmpeg`. No Python and no .NET: the engine ships compiled.

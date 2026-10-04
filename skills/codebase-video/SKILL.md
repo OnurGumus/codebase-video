@@ -20,7 +20,7 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
   `node ENGINE/cli/Cv.js WS <step>` (CV below), run with `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}"` set, so the
   voice and browser driver live in the plugin's data dir. (The engine is written in F# and compiled to JavaScript by
   Fable; the compiled files ship with the plugin, so only Node is needed to run it.)
-- One-time setup (skips finished steps; downloads about 250 MB the first time):
+- One-time setup (skips finished steps; downloads about 800 MB the first time):
   `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}" node ${CLAUDE_PLUGIN_ROOT}/engine/cli/Cv.js setup`
   It needs Node 18+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If something is missing it says
   how to install it: tell the user and stop.
