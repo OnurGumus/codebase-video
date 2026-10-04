@@ -226,6 +226,10 @@
       },
       t: time,
       word: Stage.word,
+      /** HTML for a defined term, e.g. K.term("aggregate") + ": one consistency boundary". */
+      term: (w) => `<span class="k-term">${esc(w)}</span>`,
+      /** HTML for inline code in a caption, e.g. "returns " + K.mono("EventAction"). */
+      mono: (w) => `<span style="font-family:var(--mono)">${esc(w)}</span>`,
       /** A container that fades as one: pass it to other components as { in: group }. */
       group(o = {}) {
         const el = mk(root, "div", "k-abs", null, "left:0;top:0;width:1920px;height:1080px");

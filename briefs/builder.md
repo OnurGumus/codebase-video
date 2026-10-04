@@ -27,7 +27,7 @@ exists) says per scene what to show, the exact code to show, and what not to sho
   `until`. Put the file path in the card `title`. Prefer a small diagram over code where the narration talks about
   results.
 - Defined terms: when a scene defines a word ("aggregate: one consistency boundary"), write the word as
-  `<span class="k-term">aggregate</span>`, so terms stand out from their definitions everywhere in the video.
+  `K.term("aggregate")` (and inline code as `K.mono("name")`), so terms stand out from their definitions everywhere.
 - Concept scenes: draw the general idea first (e.g. two account boxes, each with its own event list), then the
   mapping onto this codebase's parts (each account box becomes an actor with a mailbox, keyed by its ID), reusing the
   same shapes later in the flow diagrams.
