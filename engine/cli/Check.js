@@ -8,7 +8,7 @@ import { Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.
 import { class_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { pairwise as pairwise_1, sumBy as sumBy_1, pick, tryPick, iterateIndexed as iterateIndexed_1, last as last_1, setItem, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { item as item_1, tryFindIndex, sum, collect, truncate, concat as concat_1, singleton, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, zip, toArray, contains, iterateIndexed, length, ofSeq, filter, map as map_2, sortWith, tail, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { item as item_1, tryFindIndex, sum, tryFind, collect, truncate, concat as concat_1, singleton, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_2, sortWith, tail, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { truncate as truncate_1, filter as filter_1, delay, toList as toList_1, findIndex, map as map_1 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { max, parse as parse_1, isInfinity, isNegativeInfinity, isPositiveInfinity, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
@@ -880,7 +880,7 @@ const smallNumber = Py_rx("\\d{1,2}");
 function checkScript(f, script) {
     const scenes = Py_list(script, "scenes");
     const ids = map_2(idOf, scenes);
-    const enumerator = getEnumerator(filter((x_1) => (length(filter((y_1) => (x_1 === y_1), ids)) > 1), List_distinct(ids, {
+    const enumerator = getEnumerator(filter((x_1) => (length_1(filter((y_1) => (x_1 === y_1), ids)) > 1), List_distinct(ids, {
         Equals: (x, y) => (x === y),
         GetHashCode: (x) => (stringHash(x) | 0),
     })));
@@ -941,7 +941,7 @@ function checkScript(f, script) {
                 finally {
                     disposeSafe(enumerator_4);
                 }
-                const words = length(Py_words(shown(sent))) | 0;
+                const words = length_1(Py_words(shown(sent))) | 0;
                 if (words > 32) {
                     Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: ${words} words in one sentence (one caption); split it`);
                 }
@@ -1094,7 +1094,7 @@ function checkCuesWith(f, timing, jsFiles) {
     finally {
         disposeSafe(enumerator);
     }
-    const nSentences = (sid) => (length(sentencesOf(byId.get(sid))) | 0);
+    const nSentences = (sid) => (length_1(sentencesOf(byId.get(sid))) | 0);
     const hasPhrase = (sid_1, phrase, nth) => {
         const units = map_2((se) => [lower(spokenOf(se)), lower(textOf(se))], sentencesOf(byId.get(sid_1)));
         const want = lower(phrase);
@@ -1266,7 +1266,7 @@ function checkCuesWith(f, timing, jsFiles) {
                         Findings__err_Z721C83C5(f, `${where}: ${Py_repr(at_1)} is not spoken in ${idOf(s_3)}`);
                     }
                     const text_1 = Py_get(d_1, "text");
-                    if (Py_truthy(text_1) && (length(Py_words(text_1)) > 5)) {
+                    if (Py_truthy(text_1) && (length_1(Py_words(text_1)) > 5)) {
                         Findings__warn_Z721C83C5(f, concat(where, ": text ", Py_repr(text_1), " is long for a badge; keep it to about 4 words"));
                     }
                     void (seen.push([(s_2 = s_3, (at = at_1, (sents = toArray(sentencesOf(s_2)), (sents.length === 0) ? num(s_2, "start") : ((Py_truthy(at) && Py_str(at).startsWith("#")) ? ((k = (min(parse(substring(Py_str(at), 1), 511, false, 32), sents.length - 1) | 0), num(item((k < 0) ? (k + sents.length) : k, sents), "start"))) : (Py_truthy(at) ? ((want_1 = lower(Py_str(at)), defaultArg(tryPick((se_1) => tryPick_1((text) => {
@@ -1322,7 +1322,7 @@ function checkCuesWith(f, timing, jsFiles) {
         Py_print(`toasts: ${join(", ", map_2((tupledArg_5) => (`${tupledArg_5[0]} ${tupledArg_5[1]}`), sortWith((tupledArg_3, tupledArg_4) => (comparePrimitives(tupledArg_4[1], tupledArg_3[1]) | 0), List_countBy((x_1) => x_1, map_2((tupledArg_2) => Py_str(tupledArg_2[1]), seen_1), {
             Equals: (x_2, y_1) => (x_2 === y_1),
             GetHashCode: (x_2) => (stringHash(x_2) | 0),
-        }))))} (${length(seen_1)} total)`);
+        }))))} (${length_1(seen_1)} total)`);
     }
 }
 
@@ -1508,7 +1508,7 @@ function reportFlow(f, script, longVideo) {
     const used = new Map();
     const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_2((tupledArg) => {
         const l = concat_1(tupledArg[1]);
-        return [tupledArg[0], length(l), length(filter((x) => x, l))];
+        return [tupledArg[0], length_1(l), length_1(filter((x) => x, l))];
     }, chapters(Py_list(script, "scenes"), (s) => map_2((sent) => {
         const words = map_2((m) => lower(Py_M__G_Z524259A4(m, 1)), Py_finditer(CONN_RE, shown(sent)));
         const enumerator = getEnumerator(words);
@@ -1603,11 +1603,11 @@ function reportBreathingWith(f, timing, longVideo) {
             where = lastS;
         }
         const isThink = (b_1) => (b_1.kind === "think");
-        const thinks = sumBy((s_1) => (length(filter(isThink, Py_list(s_1, "breaks"))) | 0), scenes, {
+        const thinks = sumBy((s_1) => (length_1(filter(isThink, Py_list(s_1, "breaks"))) | 0), scenes, {
             GetZero: () => 0,
             Add: (x_4, y_1) => ((x_4 + y_1) | 0),
         }) | 0;
-        const recaps = length(filter((s_2) => Py_truthy(Py_get(s_2, "recap")), scenes)) | 0;
+        const recaps = length_1(filter((s_2) => Py_truthy(Py_get(s_2, "recap")), scenes)) | 0;
         Py_print((`breathe: talking ${Py_pct(0, talk / dur)} of ${Py_fmtF(1, dur / 60)} min; longest stretch without a 1.5 s pause `) + (`${Py_fmtF(0, longest)} s (ends ${Py_fmtF(0, stop(where))} s); ${thinks} think, ${recaps} recap`));
         const enumerator = getEnumerator(scenes);
         try {
@@ -1615,7 +1615,7 @@ function reportBreathingWith(f, timing, longVideo) {
                 const s_3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
                 const recap = Py_get(s_3, "recap");
                 const nRecap = (Py_truthy(recap) ? recap.length : 0) | 0;
-                const nSent = length(sentencesOf(s_3)) | 0;
+                const nSent = length_1(sentencesOf(s_3)) | 0;
                 if (Py_truthy(recap) && (nRecap > nSent)) {
                     Findings__warn_Z721C83C5(f, (`recap: ${idOf(s_3)} has ${nRecap} lines but ${nSent} sentences; `) + "line i appears on sentence i, so the extra lines arrive late - speak one sentence per line");
                 }
@@ -1664,11 +1664,48 @@ function reportBreathing(f, timing, longVideo) {
     }
 }
 
+export const lengthCaps = ofArray([["short", 5.5], ["tour", 11], ["deep", 29]]);
+
+function reportDuration(f, clip, timing) {
+    const option_1 = timing;
+    if (option_1 != null) {
+        const minutes = num(value_8(option_1), "duration") / 60;
+        Py_print(concat("video:  ", Py_fmtF(1, minutes), " min with pauses, cards and recaps"));
+        const briefPath = join_1(ofArray([clip, "brief.json"]));
+        if (exists(briefPath)) {
+            const length = Py_str(Py_get(readJson(briefPath), "length"));
+            const matchValue = tryFind((tupledArg) => (tupledArg[0] === length), lengthCaps);
+            let matchResult, cap_1;
+            if (matchValue != null) {
+                if (minutes > matchValue[1]) {
+                    matchResult = 0;
+                    cap_1 = matchValue[1];
+                }
+                else {
+                    matchResult = 1;
+                }
+            }
+            else {
+                matchResult = 1;
+            }
+            switch (matchResult) {
+                case 0: {
+                    Findings__warn_Z721C83C5(f, `the video runs ${Py_fmtF(1, minutes)} min, over the ${Py_g(cap_1)} min cap of a '${length}' video: cut sentences or a scene`);
+                    break;
+                }
+                case 1: {
+                    break;
+                }
+            }
+        }
+    }
+}
+
 function reportLength(script, longVideo) {
     const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_2((tupledArg) => [tupledArg[0], sum(tupledArg[1], {
         GetZero: () => 0,
         Add: (x, y) => ((x + y) | 0),
-    })], chapters(Py_list(script, "scenes"), (s) => (length(Py_words(shown(say(s)))) | 0))));
+    })], chapters(Py_list(script, "scenes"), (s) => (length_1(Py_words(shown(say(s)))) | 0))));
     const total = sumBy((tuple) => (tuple[1] | 0), rows, {
         GetZero: () => 0,
         Add: (x_1, y_1) => ((x_1 + y_1) | 0),
@@ -1724,6 +1761,7 @@ export function run(ws, args) {
         checkLesson(f, script, jsFiles, readText(option_1));
     }
     reportLength(script, longVideo);
+    reportDuration(f, clip, timing);
     reportBreathing(f, timing, longVideo);
     reportFlow(f, script, longVideo);
     let enumerator_1 = getEnumerator(f.Warnings);

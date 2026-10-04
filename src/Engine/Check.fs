@@ -948,6 +948,24 @@ let private reportBreathing (f: Findings) (timing: Json option) (longVideo: bool
 
 // ── length ───────────────────────────────────────────────────────────────────────────────────────────────────
 
+/// The hard cap of each length, in minutes (the writer brief states the same caps: Fill.LENGTHS).
+let lengthCaps = [ "short", 5.5; "tour", 11.0; "deep", 29.0 ]
+
+/// The real running time (narration plus pauses, cards and recap holds) against the cap of the length that
+/// <workspace>/brief.json asks for. Words alone under-count: a video runs at about 2.15 words a second overall.
+let private reportDuration (f: Findings) (clip: string) (timing: Json option) =
+    timing
+    |> Option.iter (fun t ->
+        let minutes = num t "duration" / 60.0
+        Py.print $"video:  {Py.fmtF 1 minutes} min with pauses, cards and recaps"
+        let briefPath = join [ clip; "brief.json" ]
+        if exists briefPath then
+            let length = Py.str (Py.get (readJson briefPath) "length")
+            match List.tryFind (fun (name, _) -> name = length) lengthCaps with
+            | Some(_, cap) when minutes > cap ->
+                f.warn $"the video runs {Py.fmtF 1 minutes} min, over the {Py.g cap} min cap of a '{length}' video: cut sentences or a scene"
+            | _ -> ())
+
 let private reportLength (script: Json) (longVideo: bool) =
     let rows =
         chapters (Py.list script "scenes") (fun s -> (Py.words (shown (say s))).Length)
@@ -989,6 +1007,7 @@ let run (ws: string) (args: string list) : int =
     checkCues f timing jsFiles
     lesson |> Option.iter (fun p -> checkLesson f script jsFiles (readText p))
     reportLength script longVideo
+    reportDuration f clip timing
     reportBreathing f timing longVideo
     reportFlow f script longVideo
     for w in f.Warnings do Py.print $"warn   {w}"

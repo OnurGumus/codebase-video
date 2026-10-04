@@ -52,7 +52,7 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 - Think scenes: answerable from what was said so far, not given away in the sentences just before, short enough to hold
   by ear, and answered exactly as the document answers it.
 - Toasts: about one a minute (at most 24), `"toasts": [{"kind": "...", "at": "<exact spoken phrase in that scene>"}]`.
-  Kinds: idea, tricky, remember (only a callback to an earlier chapter), careful (a trap), mistake / surprise / tip
+  Kinds: idea, tricky, remember (only a callback to an earlier chapter), careful (a trap), mistake / surprise / tip / remark / question
   (only where the document frames it that way).
 - Where the document looks wrong or contradicts the code, follow the code, and report it.
 - Never narrate the state of the local checkout (versions in flight, local-vs-published mismatches, uncommitted work).
@@ -61,7 +61,8 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 - `node {{ENGINE}}/cli/Cv.js {{WS}} narrate`
 - `node {{ENGINE}}/cli/Cv.js {{WS}} check --lesson {{WS}}/build/lesson.md`
 
-Repeat until `check` shows no warnings and its only errors are "module has no <key>.js". Then re-read the whole script
+Repeat until `check` shows no warnings and its only errors are "module has no <key>.js" (one per module key,
+`intro` and `outro` included: builders write those files later). Then re-read the whole script
 once against the document, sentence by sentence, and fix anything that goes beyond it.
 
 **Report:** the chapters with module keys and scene ids, the document lines each module draws from, the total length,
