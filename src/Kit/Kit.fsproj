@@ -7,6 +7,7 @@
     <WarningsAsErrors>FS0025</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Interop.fs" />
     <Compile Include="Stage.fs" />
     <Compile Include="Kit.fs" />
     <Compile Include="Frame.fs" />
@@ -15,5 +16,6 @@
   <ItemGroup>
     <PackageReference Include="Fable.Core" Version="5.3.0" />
     <PackageReference Include="Fable.Browser.Dom" Version="2.20.0" />
+    <PackageReference Include="Fable.Promise" Version="3.2.1" />
   </ItemGroup>
 </Project>

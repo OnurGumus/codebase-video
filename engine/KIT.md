@@ -1,7 +1,10 @@
 # Stage kit: building video modules
 
 Reference for whoever writes the visuals of a video. A working example of every component is
-`kit/gallery/` (its `*.js` files are short; read the one you need). The code is `stage-kit.js`.
+`kit/gallery/` (its `*.js` files are short; read the one you need). The code is F# in `src/Kit/` (`Kit.fs` the
+components, `Stage.fs` the timing, `Frame.fs` the long-video frame), compiled to `engine/web/`; `clip.html` loads
+`build/timing.js`, then `/engine/web/Main.js`, which sets `window.Stage` and `window.Kit` and runs the frame. Module
+files stay plain JavaScript.
 
 ## Text styles
 
