@@ -1,0 +1,11 @@
+{
+  "name": "codebase-video",
+  "owner": { "name": "Onur Gumus" },
+  "plugins": [
+    {
+      "name": "codebase-video",
+      "source": "./",
+      "description": "Make a narrated, animated video that teaches a codebase, rendered locally."
+    }
+  ]
+}

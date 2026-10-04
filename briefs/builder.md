@@ -1,0 +1,55 @@
+You build the visual modules for part of a narrated video that teaches a codebase. Read `{{ENGINE}}/KIT.md` first
+(including "Colour by kind", "Toasts" and "Breathing room"), and the gallery module for any component you use
+(`{{ENGINE}}/kit/gallery/*.js`, rendered by `{{ENGINE}}/kit/gallery/clip.html`).
+
+The video folder is `{{WS}}/`. The teaching document is `build/lesson.md` there ({{LINES}} lines, "{{SUBJECT}}"),
+written from the repository {{REPO}} and fact-checked. Your scenes are the ones whose ids start with your module keys,
+in `script.json` (narration) and `build/timing.json` (timing and sentence split). `build/narration-vs-lesson.md` (if it
+exists) says per scene what to show, the exact code to show, and what not to show.
+
+**Rules for this video:**
+- Every label, number and code line must trace to the document (and through its citation to the code) and agree with
+  the narration at that moment. When the document cites `path:lines`, you may open that file in the repository to get
+  the code exactly; never invent or "simplify" code, never rename an identifier.
+- Time everything by phrase, never seconds: inside a module write `const S = "<scene>"` and cue `S + "|distinctive
+  words"` or `S + "#n"` (sentence n, from 0). Cue matching is case-insensitive substring, first match in the scene,
+  so use distinctive multi-word phrases and check them against `build/timing.json`. Values appear on the words that
+  say them, not earlier.
+- Colour by kind, the same across the whole video (every builder uses this mapping): {{COLOURS}}. Verdict colours are
+  for verdicts only: good/✓ = the right choice or the fix, bad/✕ = the mistake or an error, warn = caution. Never use
+  green as a plain highlight, never accent as plain emphasis. Short arrow labels (1-3 words). Flow edges draw an
+  arrowhead at `to`, so `from` → `to` must be the real direction (who calls whom, who writes to what); never skip a hop
+  the document has.
+- Code cards (K.code): `lang` "javascript", "python", "json", "yaml", "bash", "sql", "csharp" (default) or "plain"
+  (use plain for languages the kit cannot highlight). Show the real code with its REAL indentation, trimmed only by
+  whole lines with each cut marked by a comment line; if a real line is too wide at 44 px use `font: 40` or `font: 36`
+  rather than re-wrapping it. At most about 9 lines on screen. Glow only the line being spoken, accent only, with an
+  `until`. Put the file path in the card `title`. Prefer a small diagram over code where the narration talks about
+  results.
+- Diagrams of modules, calls and data: boxes for components (the file or module name in mono as the label or sub),
+  arrows for calls or data flow in their real direction, a packet (`tone: "muted"`) travelling a flow when the
+  narration follows a request through it; an arrow never appears before both its boxes.
+- The frame draws toasts and "Pause and think" countdowns in the band above y 120, the chapter cards and the recap
+  cards (`*-why` and `*-recap` are not yours). Keep content inside x 60-1860, y 240-1000.
+- Pause-and-think scenes: show the question's facts and the spoken question through the silence, but nothing that IS
+  the answer (no answer text, no verdict colour, no highlight on the deciding line). Take a still INSIDE the silence.
+- About 12-15 words on screen at once outside code, 25 at most; text at least 44 px; nothing overlaps or clips; labels
+  fit their boxes; never open a scene on an empty stage; no stage holds only its heading for more than about 4 s.
+  Nothing on screen for less than about 3 s. When two texts share a spot, each needs its own `until`.
+- In-place changes: a DRAWING that changes state in place (a box gaining a label, a diagram gaining a node, a code card
+  replaced by the same card with one more line) cross-fades: the old element gets `until: [cue, 0.35]` and BOTH old
+  and new get `rise: 0` (K.code: `slide: 0`), because the kit applies the rise on fade-out too. TEXT replaced by
+  DIFFERENT text in the same spot must not overlap: plain `until` on the replacement's cue, normal rise.
+- Kit notes: captions that replace each other need one K.lines/K.text call each, with `until`; K.code: leave out `w`;
+  K.code is about 151 + 60 px per line tall and 26 px per character wide at 44 px; K.heading title+sub is one line
+  (under ~75 characters); two K.heading calls in one scene overlap, use a text element for a second heading; K.flow
+  node `x` is the box's left edge.
+- If a module fails to build (a cue that is not spoken, a JavaScript error), the page draws every element of it at once
+  and the render prints "page error" or "build failed": always read the render output and look at your sheets.
+
+**Check** with `{{ENGINE}}/build.sh {{WS}} sheet <your keys>` (only your modules, keys as separate arguments) and
+`{{ENGINE}}/build.sh {{WS}} check --lesson {{WS}}/build/lesson.md` (other builders' missing modules are expected
+errors; yours must produce none). Read every sheet image; use `stills <t>` for moments the sheet misses (always one
+inside each think silence). Write ONLY your own module files, each `Kit.module("<key>", K => { ... })`; never edit
+script.json, clip.html or other modules. Report briefly: what each scene shows, what you did not re-view after your
+last edit, and any doubt about fidelity to the document or the code.

@@ -1,6 +1,6 @@
-# Stage kit: building lesson-video modules
+# Stage kit: building video modules
 
-Reference for whoever writes the visuals of a lesson video. A working example of every component is
+Reference for whoever writes the visuals of a video. A working example of every component is
 `kit/gallery/` (its `*.js` files are short; read the one you need). The code is `stage-kit.js`.
 
 ## A module
@@ -107,11 +107,11 @@ same thing all video long:
 | `tricky` | 🤔 The tricky part | here's where it gets subtle |
 | `remember` | 🧠 Remember | a callback to an earlier chapter |
 | `careful` | ⚠️ Be careful | a trap to avoid |
-| `mistake` | 🚫 Common mistake | the lesson's own "Common Mistake" |
-| `surprise` | 😮 Surprise | something the lesson frames as counterintuitive |
+| `mistake` | 🚫 Common mistake | the source document's own "Common Mistake" |
+| `surprise` | 😮 Surprise | something the source document frames as counterintuitive |
 | `remark` | 💬 Note | an aside |
 | `question` | 💭 Ask yourself (also the "Pause and think" badge; ❓ rendered red, a verdict colour) | a question put to the viewer |
-| `tip` | 🔧 Pro tip | the lesson's own "Pro Tip" |
+| `tip` | 🔧 Pro tip | the source document's own "Pro Tip" |
 
 In a long video, put them on scenes in `script.json`; the frame draws them top right, above the
 content, on the phrase: `"toasts": [{"kind": "tricky", "at": "the tricky part"}]` (optional `"text"`
@@ -157,7 +157,7 @@ on an arrow ("writes", "fetches", "hash % 6") often says more than a caption und
 - Chips escape their text: write → and ≤ as characters, not `&rarr;`. Headings, lines and `text` take
   HTML: write `&lt;T&gt;` for a literal `<T>`. Code in `K.code` must compile as shown (braces included).
 
-- Every label, number and example traces to the lesson and agrees with the narration at that moment.
+- Every label, number and example traces to the source document (build/lesson.md) and agrees with the narration at that moment.
 - About 12 words on screen at once; one focal change at a time; things appear as they are named.
 - Text is 44px or larger (the kit's sizes all are). Nothing overlaps or leaves the safe area.
 - Open each module by showing its subject; the viewer should always know where they are.
@@ -168,7 +168,7 @@ on an arrow ("writes", "fetches", "hash % 6") often says more than a caption und
 ```
 build.sh <clip> sheet g1 g2          # labelled stills for your modules only: build/sheet-g1-g2-<n>.png
 build.sh <clip> stills 214.5 215.2   # exact moments (mid-transition)
-build.sh <clip> check --lesson <lesson.md>     # cue phrases, script problems, numbers not in the lesson
+build.sh <clip> check --lesson <lesson.md>     # cue phrases, script problems, numbers not in the source document
 ```
 
 Read every sheet. Never run `sheet` without module keys while others build in the same clip.
