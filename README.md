@@ -1,7 +1,3 @@
-
-
-
-
 # codebase-video
 
 **Ask Claude Code for a video about your code. Get a narrated video that explains it.**
