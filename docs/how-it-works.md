@@ -43,6 +43,10 @@ A **preview** stops once the script has been checked, before any scene is drawn:
 and the narrated script (about 4 agent tasks, up to 6 for `deep`), and can continue to the full video later
 without redoing them.
 
+In tokens, the helper agents use roughly 0.4 to 0.5 million for a preview and 1.2 to 1.3 million for a short
+video (both measured on small projects), and an estimated 2 to 3 million for a tour and 6 to 8 million for a deep
+video.
+
 An "agent task" is one piece of work that Claude Code hands to a helper agent. More tasks means more time and
 more of your Claude usage. The final step, drawing and encoding the video, takes roughly one and a half times
 the video's length and keeps your computer busy.

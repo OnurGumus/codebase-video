@@ -63,18 +63,23 @@ You pick the length of the video:
 
 These times are rough, and it is the computer's time, not yours: you can do something else meanwhile.
 
-**How much of my Claude plan does it use?** It is not light, because most of the work is checking. Measured on two
-small projects, the helper agents used roughly:
+**How much of my Claude plan does it use?** It is not light, because most of the work is checking. The helper
+agents use roughly:
 
-| What you ask for | Claude tokens |
-|---|---|
-| a preview (the checked write-up and the narration, no pictures) | about 0.4 to 0.5 million |
-| a short video | about 1.2 to 1.3 million |
-| a tour or a deep video | more; not measured yet |
+| What you ask for | Claude tokens | How we know |
+|---|---|---|
+| a preview (the checked write-up and the narration, no pictures) | about 0.4 to 0.5 million | measured |
+| a short video | about 1.2 to 1.3 million | measured |
+| a tour | about 2 to 3 million | estimate |
+| a deep video | about 6 to 8 million | estimate |
 
-Most of those tokens are Claude reading your code and its own drafts, and the main Claude session adds some on
-top. A bigger project costs more, because there is more to read and check. Drawing and encoding the video happen
-on your computer and use no tokens.
+The measured rows come from two small projects. The estimates are worked out from the number of agents each
+length needs and how much each one reads; adding one chapter to an existing tour used about 1.5 million, which
+fits. Three things move these numbers: a bigger project costs more, because there is more to read and check;
+every round of fixes after a check adds some; and the main Claude session adds some on top.
+
+Most of the tokens are Claude reading your code and its own drafts. Drawing and encoding the video happen on your
+computer and use no tokens.
 
 **Not sure yet?** Ask for a preview first. You get the checked write-up of your code and the narration to listen
 to, without the pictures. It is much quicker and cheaper, and if you like it, Claude carries on from there to the
