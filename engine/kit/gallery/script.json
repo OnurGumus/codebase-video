@@ -53,6 +53,12 @@
       "say": "Bars grow to their values against a capacity line. The database needs two and a half times its capacity, and the network eight times. Then the network drops back to one."
     },
     {
+      "id": "tb-cells",
+      "lead": 0.6,
+      "pad": 2.6,
+      "say": "A table cell can also wait for its own word. The small plan serves one thousand requests for five dollars. The large plan serves ten thousand for forty dollars."
+    },
+    {
       "id": "k3-why",
       "chapter": "Timelines and flows",
       "lead": 1.0,
@@ -69,6 +75,12 @@
       "id": "fl-demo",
       "pad": 1.0,
       "say": "A flow draws boxes, arrows between them, and packets moving along. The client calls the server, and the reply comes back."
+    },
+    {
+      "id": "fl-attach",
+      "lead": 0.6,
+      "pad": 1.0,
+      "say": "An edge can choose where it meets a box. The service reads the cache from the left of its bottom side, and writes to the database from the right, so the two pairs never cross."
     },
     {
       "id": "k4-why",
