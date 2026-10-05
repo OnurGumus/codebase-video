@@ -122,6 +122,11 @@ export function run() {
         query("#modules").append(d);
         m_1.root = d;
     }
+    if (!!(timing.captions)) {
+        const modules_1 = query("#modules");
+        modules_1.style.transformOrigin = "60px 120px";
+        modules_1.style.transform = "scale(0.86)";
+    }
     const bar = query("#bar");
     const SEG = map((_arg) => {
         const s_3 = document.createElement("div");

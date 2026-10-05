@@ -24,21 +24,21 @@ open Check
 let private LENGTHS =
     [ "short",
       [ "MINUTES", "3-5 minutes, hard cap 5.5"
-        "WORDS", "about 380-600 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
+        "WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
         "CHAPTERS", "2-3 chapters"
         "SCENES", "2-3 content scenes per chapter, each 20-40 s"
         "THINKS", "no pause-and-think scene (a short video)"
         "DOC", "120-250 lines" ]
       "tour",
       [ "MINUTES", "6-10 minutes, hard cap 11"
-        "WORDS", "about 750-1,250 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
+        "WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
         "CHAPTERS", "3-4 chapters"
         "SCENES", "2-4 content scenes per chapter, each 25-50 s"
         "THINKS", "one pause-and-think scene in each of two chapters"
         "DOC", "200-400 lines" ]
       "deep",
       [ "MINUTES", "20-28 minutes, hard cap 29"
-        "WORDS", "about 2,800-3,400 spoken words"
+        "WORDS", "about 2,600-3,200 spoken words"
         "CHAPTERS", "5-7 chapters"
         "SCENES", "3-6 content scenes per chapter, each 30-60 s"
         "THINKS", "exactly one pause-and-think scene per chapter"

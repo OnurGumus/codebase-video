@@ -160,8 +160,9 @@ nearly two minutes at a stretch and no real pause.
   short lines, the chapter's takeaways), a `say` that speaks them one sentence per line, and
   `"hold": 2.5` for a quiet moment. The frame draws a full "So far" card; it needs no module file.
 
-`check` prints talk share and the longest stretch without a 1.5 s pause, and warns over 60 s, over
-85% talk, and for a chapter with neither a recap nor a think. Aim for 75-80% talk.
+`check` prints talk share and the longest stretch without a 1.5 s pause, and warns over 45 s, over
+82% talk, and for a chapter with neither a recap nor a think. Aim for 72-78% talk: when a video runs
+long, cut a fact, not a pause.
 
 ## Colour by kind
 

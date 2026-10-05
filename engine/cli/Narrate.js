@@ -454,7 +454,7 @@ function timeAt(frame, pos) {
     return ((200 * frame) + (6 * Py_roundInt(((pos - (frame * FRAME)) * 1000) / 24000))) / 6000;
 }
 
-const GAP = 0.3;
+const GAP = 0.42;
 
 const PART_GAP = 0.12;
 

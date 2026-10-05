@@ -1625,11 +1625,11 @@ function reportBreathingWith(f, timing, longVideo) {
             disposeSafe(enumerator);
         }
         if (longVideo) {
-            if (longest > 60) {
+            if (longest > 45) {
                 Findings__warn_Z721C83C5(f, `breathe: ${Py_fmtF(0, longest)} s of talk without a 1.5 s pause (ending at ${Py_fmtF(0, stop(where))} s); add a [pause] after a key point`);
             }
-            if ((talk / dur) > 0.85) {
-                Findings__warn_Z721C83C5(f, concat("breathe: talking ", Py_pct(0, talk / dur), " of the time; aim for 75-80% with [pause], [think] and recap scenes"));
+            if ((talk / dur) > 0.82) {
+                Findings__warn_Z721C83C5(f, concat("breathe: talking ", Py_pct(0, talk / dur), " of the time; aim for 72-78% with [pause], [think] and recap scenes"));
             }
             let chapter = defaultOf();
             let has = false;

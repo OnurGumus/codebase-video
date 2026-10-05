@@ -15,7 +15,7 @@
 ///   toasts   every scene "toasts" entry names a known kind (the kit's TOASTS) and a phrase spoken in that
 ///            scene; warns when toasts crowd (under 6 s apart) or one kind dominates
 ///   breathe  talk share of the running time and the longest stretch with no pause of 1.5 s or more (long
-///            videos: warns over 60 s and over 85% talk; a chapter with no recap or think gets a nudge)
+///            videos: warns over 45 s and over 82% talk; a chapter with no recap or think gets a nudge)
 ///   flow     per chapter, the share of sentences that link to the one before (so, but, remember, the tricky
 ///            part, ...); a chapter under FLOW_MIN reads as a list of facts. Also flags one connective overused.
 ///
@@ -929,10 +929,10 @@ let private reportBreathingWith (f: Findings) (timing: Json) (longVideo: bool) =
                     + "line i appears on sentence i, so the extra lines arrive late - speak one sentence per line"
                 )
         if longVideo then
-            if longest > 60.0 then
+            if longest > 45.0 then
                 f.warn $"breathe: {Py.fmtF 0 longest} s of talk without a 1.5 s pause (ending at {Py.fmtF 0 (stop where)} s); add a [pause] after a key point"
-            if talk / dur > 0.85 then
-                f.warn $"breathe: talking {Py.pct 0 (talk / dur)} of the time; aim for 75-80%% with [pause], [think] and recap scenes"
+            if talk / dur > 0.82 then
+                f.warn $"breathe: talking {Py.pct 0 (talk / dur)} of the time; aim for 72-78%% with [pause], [think] and recap scenes"
             let mutable chapter: obj = null
             let mutable has = false
             for s in scenes @ [ createObj [ "id" ==> "outro-end"; "sentences" ==> [||] ] ] do

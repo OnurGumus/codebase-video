@@ -297,7 +297,7 @@ let private timeAt (frame: int) (pos: int) : float =
     let ms = Py.roundInt (float (pos - frame * FRAME) * 1000.0 / float Wav.SR)
     float (200 * frame + 6 * ms) / 6000.0
 
-let private GAP = 0.3 // between sentences in a scene
+let private GAP = 0.42 // between sentences in a scene: a breath, so facts do not run into each other
 let private PART_GAP = 0.12 // between the voices inside one sentence
 let private KOKORO_LANGS = set [ "en-us"; "en-gb"; "fr-fr"; "es"; "it"; "ja"; "pt-br"; "cmn"; "hi" ]
 let private PRONOUNCE = regex """\[([^\]]+)\]\(([^)]+)\)""" "g"

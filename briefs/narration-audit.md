@@ -31,6 +31,9 @@ G. Recaps: three spoken sentences match three card lines in order and say only w
 H. Toasts: wrong kind, phrase not spoken in that scene, within 6 s of another, inside a think silence; more than 24.
 I. Coverage: does anything the writer cut make a later statement wrong or unsupported?
 J. The document itself: anything in it that the code contradicts (quote both).
+K. Density: places where facts arrive back to back with no room to take them in: three new facts in a row, a new
+   term or number followed at once by another, a subject change without a pause. Say where a `[pause]` belongs, and
+   which fact to cut if the video is at its length limit (cut a fact, never a pause).
 
 For each finding give replacement wording. Keep each scene's sentence count where you can. Rank must-fix / should-fix /
 nit. Also list what you checked and found correct. Do not pad. Write the report to `build/audit-narration.md` (or

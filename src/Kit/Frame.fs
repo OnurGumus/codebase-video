@@ -101,6 +101,14 @@ let run () =
         (query "#modules")?append (d)
         m.root <- d
 
+    // Captions drawn into the picture take the lowest band, and scenes are laid out down to y 1000. So with captions
+    // on, the scenes are drawn a little smaller, from the top-left corner of their area: their left edge and the
+    // heading stay where they are, and their bottom edge ends above the captions.
+    if truthy (T?captions) then
+        let modules = query "#modules"
+        modules?style?transformOrigin <- "60px 120px"
+        modules?style?transform <- "scale(0.86)"
+
     let bar = query "#bar"
     let SEG =
         CHAPTERS.ToArray()

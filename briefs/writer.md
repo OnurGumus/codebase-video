@@ -43,7 +43,12 @@ set it}, and `scenes`.
 - Teacher-like connectives linking most sentences (so, therefore, that means, but, instead, for example, notice, here is,
   next, then, finally, the tricky part, recall...), varied, never implying a causal link that is not there. The `check`
   flow line must be at least 40% in every chapter.
-- One caption per sentence: keep sentences under about 30 words. `[pause]` after each key point; about 150 words a minute.
+- One caption per sentence: keep sentences under about 30 words; about 150 words a minute while speaking.
+- Give the viewer room. People cannot take in facts that arrive back to back, so space them: a `[pause]` after every
+  key point, after each new term and after each number that matters; a `[pause 2]` where the subject changes inside
+  a scene; never three new facts in a row without a pause, and no stretch of talk over about 30 s without one. One
+  idea per sentence. The `check` breathe line should show 72-78% talk; it warns over 82%, and over 45 s without a
+  pause. If the video runs long, cut a fact, not a pause.
 - About one light humour line every two minutes, each adding NO claim and bending none.
 - `[shown](spoken)` for anything the voice would mangle or that should appear as code in the caption, e.g.
   `[fetchWithRetry](fetch with retry)`, `[src/http/client.ts](the client file in source slash H T T P)`,

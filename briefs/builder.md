@@ -41,7 +41,8 @@ exists) says per scene what to show, the exact code to show, and what not to sho
   cards (`*-why` and `*-recap` are not yours). Keep content inside x 60-1860, y 240-1000.
 - Pause-and-think scenes: show the question's facts and the spoken question through the silence, but nothing that IS
   the answer (no answer text, no verdict colour, no highlight on the deciding line). Take a still INSIDE the silence.
-- About 12-15 words on screen at once outside code, 25 at most; text at least 44 px; nothing overlaps or clips; labels
+- Leave room on screen: about 10-14 words at once outside code, 22 at most, with clear space between groups
+  (crowded frames are as hard to follow as rushed talk); text at least 44 px; nothing overlaps or clips; labels
   fit their boxes; never open a scene on an empty stage; no stage holds only its heading for more than about 4 s.
   Nothing on screen for less than about 3 s. When two texts share a spot, each needs its own `until`.
 - In-place changes: a DRAWING that changes state in place (a box gaining a label, a diagram gaining a node, a code card
