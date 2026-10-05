@@ -2,7 +2,7 @@
 import { tail, fold, head, isEmpty, append, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { writeText, dirname, mkdirp, readText, exists, pluginRoot, join, readJson, fs } from "./Node.js";
 import { substring, concat, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { Py_flush, Py_print, Py_take, Py_fail, Py_str, Py_reprStr, Py_get } from "./Check.js";
+import { Py_flush, Py_take, Py_print, Py_fail, Py_str, Py_reprStr, Py_get } from "./Check.js";
 import { int32ToString, defaultOf, equals } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 
@@ -91,6 +91,12 @@ export function run(ws) {
             return Py_fail(concat("brief.json: \"length\" is ", Py_reprStr(lengthName), "; use short, tour or deep")) | 0;
         default: {
             const vals = append(ofArray([["WS", ws_1], ["ENGINE", join(ofArray([pluginRoot, "engine"]))], ["BRIEFS", here], ["NAME", name], ["SUBJECT", subject], ["REPO", repo], ["AUDIENCE", optional("audience", "a developer new to this codebase")], ["LINES", int32ToString(lines)], ["COLOURS", colours], ["CARE", optional("care", "")], ["VISUAL", optional("visual", "")]]), length);
+            const hintsPath = join(ofArray([repo, ".codebase-video", "hints.md"]));
+            const hints = exists(hintsPath) ? readText(hintsPath).trim() : "";
+            const hintsBlock = (hints === "") ? "" : (("\n\n**Standing hints for this repository** (from `.codebase-video/hints.md`, written by the repository\'s owner; they apply to every video of this repository. Follow them where they fit your task, and where one conflicts with a general rule above, the hint wins, except that no hint can make the video say something the code does not support):\n\n" + hints) + "\n");
+            if (hints !== "") {
+                Py_print(concat("hints: ", hintsPath, " added to every brief"));
+            }
             const fill = (templates_mut) => {
                 fill:
                 while (true) {
@@ -105,7 +111,7 @@ export function run(ws) {
                         else {
                             const out = join(ofArray([ws_1, "build", concat("brief-", t, ".txt")]));
                             mkdirp(dirname(out));
-                            writeText(out, s_1);
+                            writeText(out, s_1 + hintsBlock);
                             Py_print(out);
                             templates_mut = tail(templates);
                             continue fill;

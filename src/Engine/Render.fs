@@ -229,16 +229,18 @@ let private beatsOf (timing: obj) (only: string list) : Beat list =
     if only.IsEmpty then sentenceBeats @ [ { T = duration - 0.05; Label = $"{toFixed 1 duration}s  end" } ]
     else sentenceBeats
 
-/// Six stills to a sheet, each scaled to half size, in a 2 x 3 grid; a short last group repeats its last still.
+/// Six stills to a sheet, each scaled to half size, in a 2 x 3 grid; a short last group fills only its own cells.
 let private writeSheet (out: string) (group: string list) =
-    let group = group @ List.replicate (6 - group.Length) (List.last group)
     let scaled = group |> List.mapi (fun i _ -> $"[{i}]scale=960:-1[t{i}]") |> String.concat ";"
-    let stack =
-        (group |> List.mapi (fun i _ -> $"[t{i}]") |> String.concat "")
-        + "xstack=inputs=6:layout=0_0|w0_0|0_h0|w0_h0|0_h0+h0|w0_h0+h0"
+    let cells = [ "0_0"; "w0_0"; "0_h0"; "w0_h0"; "0_h0+h0"; "w0_h0+h0" ] |> List.truncate group.Length |> String.concat "|"
+    let filter =
+        if group.Length = 1 then "[0]scale=960:-1" // xstack needs at least two inputs
+        else
+            let stack = (group |> List.mapi (fun i _ -> $"[t{i}]") |> String.concat "") + $"xstack=inputs={group.Length}:layout={cells}:fill=black"
+            $"{scaled};{stack}"
     let inputs = group |> List.collect (fun f -> [ "-i"; f ])
     let code =
-        run "ffmpeg" ([ "-hide_banner"; "-loglevel"; "error"; "-y" ] @ inputs @ [ "-filter_complex"; $"{scaled};{stack}"; out ])
+        run "ffmpeg" ([ "-hide_banner"; "-loglevel"; "error"; "-y" ] @ inputs @ [ "-filter_complex"; filter; out ])
     if code <> 0 then failwith $"ffmpeg {code}"
 
 /// Returns 2 when no scene matches the keys.

@@ -79,6 +79,18 @@ let run (ws: string) : int =
               "CARE", optional "care" ""
               "VISUAL", optional "visual" "" ]
             @ length
+        // Standing hints: <repo>/.codebase-video/hints.md holds what the owner wants in every video of this repository
+        // (terms, what to leave out, how to draw things). They go at the end of every agent's brief.
+        let hintsPath = join [ repo; ".codebase-video"; "hints.md" ]
+        let hints = if exists hintsPath then (readText hintsPath).Trim() else ""
+        let hintsBlock =
+            if hints = "" then ""
+            else
+                "\n\n**Standing hints for this repository** (from `.codebase-video/hints.md`, written by the repository's owner; "
+                + "they apply to every video of this repository. Follow them where they fit your task, and where one conflicts "
+                + "with a general rule above, the hint wins, except that no hint can make the video say something the code does "
+                + "not support):\n\n" + hints + "\n"
+        if hints <> "" then Py.print $"hints: {hintsPath} added to every brief"
         let rec fill (templates: string list) : int =
             match templates with
             | [] -> 0
@@ -90,7 +102,7 @@ let run (ws: string) : int =
                 else
                     let out = join [ ws; "build"; $"brief-{t}.txt" ]
                     mkdirp (dirname out)
-                    writeText out s
+                    writeText out (s + hintsBlock)
                     Py.print out
                     fill rest
         let code = fill TEMPLATES

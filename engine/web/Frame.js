@@ -202,7 +202,7 @@ export function run() {
         play((t) => {
             let c_4, o;
             const withTitle = (TITLE != null) && (!!(timing.card));
-            const tc = withTitle ? within(t, 0, value(TITLE).end - 0.1, 0.4) : 0;
+            const tc = withTitle ? within(t, -1, value(TITLE).end - 0.1, 0.4) : 0;
             show(query("#titleCard"), tc, 0, `scale(${lerp(0.97, 1, progIO(t, 0, 0.8))})`);
             const lastSentence = withTitle ? (value(TITLE).sentences.at(-1)) : defaultOf();
             show(query("#tcSub"), withTitle ? (progIO(t, lastSentence.start - 0.2, 0.5) * tc) : 0, 10, "");

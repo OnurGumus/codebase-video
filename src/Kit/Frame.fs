@@ -163,7 +163,8 @@ let run () =
     let render (t: float) =
         // The opening title card: course, lesson, and one line on what the lesson is for.
         let withTitle = TITLE.IsSome && truthy T.card
-        let tc = if withTitle then within t 0.0 (TITLE.Value.``end`` - 0.1) 0.4 else 0.0
+        // No fade-in: the card is fully there on frame 0, because players show the first frame as the thumbnail.
+        let tc = if withTitle then within t -1.0 (TITLE.Value.``end`` - 0.1) 0.4 else 0.0
         show (query "#titleCard") tc 0.0 $"scale({lerp 0.97 1.0 (progIO t 0.0 0.8)})"
         let lastSentence = if withTitle then at TITLE.Value.sentences (box -1) else Unchecked.defaultof<_>
         show (query "#tcSub") (if withTitle then progIO t (lastSentence.start - 0.2) 0.5 * tc else 0.0) 10.0 ""

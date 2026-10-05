@@ -1,6 +1,6 @@
 
-import { toArray, ofSeq as ofSeq_1, chunkBySize, iterateIndexed, indexed, filter, collect as collect_1, mapIndexed, last, length, replicate, append, exists as exists_1, map, singleton, isEmpty, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { requireFromHome, childProcess, remove, readDir, eprint, run as run_1, writeBytes, extname, fsp, sep as sep_2, join, engineDir, http, resolve, exists, env } from "./Node.js";
+import { toArray, ofSeq as ofSeq_1, chunkBySize, iterateIndexed, indexed, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, singleton, isEmpty, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { requireFromHome, childProcess, remove, readDir, eprint, run as run_1, writeBytes, extname, fsp, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
 import { FSharpRef, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { list_type, int32_type, float64_type, class_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
@@ -103,7 +103,7 @@ export function startServer(ws, flavour) {
             const patternInput = url.startsWith("/engine/") ? [engineDir, substring(url, "/engine/".length)] : [clip, substring(url, 1)];
             const baseDir = patternInput[0];
             const file = resolve(join(ofArray([baseDir, patternInput[1]])));
-            if (!file.startsWith(baseDir + sep_2)) {
+            if (!file.startsWith(baseDir + sep_3)) {
                 (res.writeHead(403)).end();
             }
             else if (equals(flavour, ServeFor.ForScan) && file.endsWith(".wav")) {
@@ -262,10 +262,10 @@ function beatsOf(timing, only) {
 }
 
 function writeSheet(out, group) {
-    const group_1 = append(group, replicate(6 - length(group), last(group)));
-    const scaled = join_1(";", mapIndexed((i, _arg) => (`[${i}]scale=960:-1[t${i}]`), group_1));
-    const stack = join_1("", mapIndexed((i_1, _arg_1) => (`[t${i_1}]`), group_1)) + "xstack=inputs=6:layout=0_0|w0_0|0_h0|w0_h0|0_h0+h0|w0_h0+h0";
-    const code = run_1("ffmpeg", append(ofArray(["-hide_banner", "-loglevel", "error", "-y"]), append(collect_1((f) => ofArray(["-i", f]), group_1), ofArray(["-filter_complex", concat(scaled, ";", stack), out])))) | 0;
+    const scaled = join_1(";", mapIndexed((i, _arg) => (`[${i}]scale=960:-1[t${i}]`), group));
+    const cells = join_1("|", truncate(length(group), ofArray(["0_0", "w0_0", "0_h0", "w0_h0", "0_h0+h0", "w0_h0+h0"])));
+    const filter = (length(group) === 1) ? "[0]scale=960:-1" : concat(scaled, ";", join_1("", mapIndexed((i_1, _arg_1) => (`[t${i_1}]`), group)) + (`xstack=inputs=${length(group)}:layout=${cells}:fill=black`));
+    const code = run_1("ffmpeg", append(ofArray(["-hide_banner", "-loglevel", "error", "-y"]), append(collect_1((f) => ofArray(["-i", f]), group), ofArray(["-filter_complex", filter, out])))) | 0;
     if (code !== 0) {
         throw new Exception(`ffmpeg ${code}`);
     }
@@ -273,7 +273,7 @@ function writeSheet(out, group) {
 
 function sheet(ws, first, args) {
     return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (evalIn(first, "() => window.TIMING").then((_arg) => {
-        const only = filter((a) => (a !== ""), args);
+        const only = filter_1((a) => (a !== ""), args);
         const tag = isEmpty(only) ? "" : (join_1("-", only) + "-");
         const beats = beatsOf(_arg, only);
         if (isEmpty(beats)) {

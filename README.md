@@ -109,6 +109,10 @@ are shown in one colour.
 **Can I change the video afterwards?** Yes. Tell Claude what to change, for example "chapter 2 is too fast". Only
 the scenes that changed are drawn again, so a small fix takes about a minute, not the whole render.
 
+**Can I give it hints?** Yes. Say them when you ask: what to cover, what to leave out, who will watch, what to check
+extra carefully. For hints that should apply to every video of a project (your team's terms, parts to always
+skip), put them in a file named `.codebase-video/hints.md` in that project. Claude will offer to save them for you.
+
 **Do I need Python or .NET?** No.
 
 **Does the voice need an account or a key?** No. The voice runs on your computer.

@@ -35,6 +35,12 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
   - optionally a **preview** first (see "Preview" below): the checked document and the narrated script, no
     visuals. Offer it when the user is trying the plugin for the first time or is unsure about the cost.
   Tell them the cost honestly: a tour runs about 12 agent tasks, a deep dive about 30; most of it is auditing.
+- Standing hints: if `<repo>/.codebase-video/hints.md` exists, read it before agreeing the scope and tell the user
+  in one line that it applies; `CV fill` adds it to every agent's brief. It holds what the owner wants in every video
+  of this repository: terms to use or avoid, what to leave out, how to draw things, who the usual audience is. When
+  the user gives a hint that sounds standing ("always...", "never...", "we call it..."), offer to save it there. The
+  folder's `.gitignore` keeps the file out of git; to share it with a team, add a line `!hints.md` to
+  `<repo>/.codebase-video/.gitignore`.
 - Privacy: everything runs locally except the model calls Claude Code already makes. The teaching document must never
   contain secrets, tokens, internal hostnames or customer data (the explore and verify briefs say so); if the repository
   is confidential, remind the user that the finished video shows its code and should be shared accordingly.
