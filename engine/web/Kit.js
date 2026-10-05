@@ -628,7 +628,33 @@ export function kitFor(root) {
                 const matchValue_12 = T0(r_1.until);
                 return {
                     at: matchValue_10,
-                    cells: map((c_5) => mk(box_2, "div", "k-td", c_5, defaultOf()), r_1.cells),
+                    cells: map((c_5) => {
+                        if (((typeof c_5) === "string") ? true : ((c_5 == null))) {
+                            const el_22 = mk(box_2, "div", "k-td", c_5, defaultOf());
+                            return {
+                                at: noTime,
+                                d: defaultOf(),
+                                el: el_22,
+                                own: false,
+                                toneAt: noTime,
+                                until: noTime,
+                            };
+                        }
+                        else {
+                            const d_3 = c_5;
+                            const el_23 = mk(box_2, "div", "k-td", ((d_3.html == null)) ? esc((d_3.text ?? "")) : d_3.html, defaultOf());
+                            const at_6 = T0(d_3.at);
+                            const until_5 = T0(d_3.until);
+                            return {
+                                at: at_6,
+                                d: d_3,
+                                el: el_23,
+                                own: true,
+                                toneAt: T0(d_3.toneAt),
+                                until: until_5,
+                            };
+                        }
+                    }, r_1.cells),
                     r: r_1,
                     toneAt: matchValue_11,
                     until: matchValue_12,
@@ -649,9 +675,10 @@ export function kitFor(root) {
                         const p_1 = vis$0027(t_6, row.at, row.until);
                         const next_1 = item(rows_1, i_1 + 1);
                         const current = (((!!(o_14.focus)) && !((row.at == null))) && (t_6 >= row.at)) && ((!(!!(next_1)) ? true : ((next_1.at == null))) ? true : (t_6 < next_1.at));
-                        iterateIndexed((k, c_6) => {
-                            c_6.style.opacity = p_1;
-                            c_6.style.color = (isOn(row.r.tone, row.toneAt, t_6) ? tone(row.r.tone) : "");
+                        iterateIndexed((k, cell) => {
+                            const c_6 = cell.el;
+                            c_6.style.opacity = (cell.own ? (p_1 * vis$0027(t_6, cell.at, cell.until)) : p_1);
+                            c_6.style.color = ((cell.own && isOn(cell.d.tone, cell.toneAt, t_6)) ? tone(cell.d.tone) : (isOn(row.r.tone, row.toneAt, t_6) ? tone(row.r.tone) : ""));
                             c_6.style.fontWeight = (((k === 0) && current) ? "650" : "");
                             c_6.style.background = (current ? "color-mix(in srgb, var(--accent) 10%, transparent)" : "");
                         }, row.cells);
@@ -749,11 +776,11 @@ export function kitFor(root) {
             let x_1 = 0;
             const segs = map((s_3) => {
                 const sw = (s_3.value / o_18.total) * w_4;
-                const el_37 = mk(box_4, "div", "k-seg", concat((!!(s_3.label)) ? concat("<div class=\"k-seg-label\">", s_3.label, "</div>") : "", "<div class=\"k-seg-value\">", String((s_3.show ?? s_3.value)), "</div>"), `left:${x_1}px;width:${max(sw - 4, 8)}px`);
+                const el_39 = mk(box_4, "div", "k-seg", concat((!!(s_3.label)) ? concat("<div class=\"k-seg-label\">", s_3.label, "</div>") : "", "<div class=\"k-seg-value\">", String((s_3.show ?? s_3.value)), "</div>"), `left:${x_1}px;width:${max(sw - 4, 8)}px`);
                 x_1 = (x_1 + sw);
                 return {
                     at: T0(s_3.at),
-                    el: el_37,
+                    el: el_39,
                     s: s_3,
                     toneAt: T0(s_3.toneAt),
                 };
@@ -788,6 +815,44 @@ export function kitFor(root) {
             svg.setAttribute("width", "1920");
             svg.setAttribute("height", "1080");
             layer.append(svg);
+            const matchValue_26 = TAt(o_20.at);
+            const layerUntil = TUntil(o_20.until);
+            const partUntil = (spec_4) => {
+                let c_7;
+                if (!((spec_4 == null))) {
+                    return T0(spec_4);
+                }
+                else {
+                    const matchValue_28 = sceneCtx.contents;
+                    let matchResult, c_8;
+                    if (matchValue_28 != null) {
+                        if ((c_7 = matchValue_28, ((layerUntil == null)) ? true : (layerUntil > c_7.until))) {
+                            matchResult = 0;
+                            c_8 = matchValue_28;
+                        }
+                        else {
+                            matchResult = 1;
+                        }
+                    }
+                    else {
+                        matchResult = 1;
+                    }
+                    switch (matchResult) {
+                        case 0:
+                            return c_8.until;
+                        default:
+                            return noTime;
+                    }
+                }
+            };
+            const along = (start, size, centre, pos) => {
+                if (pos == null) {
+                    return centre;
+                }
+                else {
+                    return start + (size * clamp01(pos));
+                }
+            };
             const nodes = {};
             const arr_1 = Object.entries((o_20.nodes || {}));
             for (let idx_5 = 0; idx_5 <= (arr_1.length - 1); idx_5++) {
@@ -795,49 +860,47 @@ export function kitFor(root) {
                 const n = forLoopVar[1];
                 const icon = (!!(n.icon)) ? concat("<span class=\"k-node-icon\">", n.icon, "</span>") : "";
                 const sub_3 = (!!(n.sub)) ? concat("<span class=\"k-node-sub\">", n.sub, "</span>") : "";
-                const el_44 = mk(layer, "div", "k-node", concat(icon, n.label, sub_3), `left:${n.x}px;top:${n.y}px`);
+                const el_46 = mk(layer, "div", "k-node", concat(icon, n.label, sub_3), `left:${n.x}px;top:${n.y}px`);
                 if (!!(n.w)) {
-                    el_44.style.width = (`${n.w}px`);
+                    el_46.style.width = (`${n.w}px`);
                 }
-                const at_11 = T0(n.at);
+                const at_12 = T0(n.at);
                 const toneAt_6 = T0(n.toneAt);
                 const dimAt = T0(n.dimAt);
                 nodes[forLoopVar[0]] = {
-                    at: at_11,
+                    at: at_12,
                     dimAt: dimAt,
-                    el: el_44,
+                    el: el_46,
                     n: n,
                     toneAt: toneAt_6,
-                    until: TUntil(n.until),
+                    until: partUntil(n.until),
                 };
             }
             const box_5 = (id_3) => {
                 const e_1 = (nodes[id_3]).el;
                 return new Box(e_1.offsetLeft, e_1.offsetTop, e_1.offsetWidth, e_1.offsetHeight);
             };
-            const centre = (b) => (new Point(b.x + (b.w / 2), b.y + (b.h / 2)));
+            const centre_1 = (b) => (new Point(b.x + (b.w / 2), b.y + (b.h / 2)));
             const edges = map((e_2) => {
-                let matchValue_26;
+                let matchValue_29;
                 const path = createSvg("path");
                 svg.append(path);
                 return new EdgeState(e_2, path, (!!(e_2.label)) ? mk(layer, "div", "k-edge-label", e_2.label, defaultOf()) : defaultOf(), map((en) => {
-                    const el_46 = createSvg("polygon");
-                    svg.append(el_46);
-                    return new Head(en, el_46);
-                }, (matchValue_26 = defaultArg(e_2.arrow, "end"), (matchValue_26 === "both") ? ["start", "end"] : ((matchValue_26 === "end") ? ["end"] : []))), T0(e_2.at), T0(e_2.toneAt), TUntil(e_2.until), 0, 0);
+                    const el_48 = createSvg("polygon");
+                    svg.append(el_48);
+                    return new Head(en, el_48);
+                }, (matchValue_29 = defaultArg(e_2.arrow, "end"), (matchValue_29 === "both") ? ["start", "end"] : ((matchValue_29 === "end") ? ["end"] : []))), T0(e_2.at), T0(e_2.toneAt), partUntil(e_2.until), 0, 0);
             }, (o_20.edges || []));
             const packets = map((p_4) => {
-                const el_47 = mk(layer, "div", concat("chip ", (p_4.tone || "accent"), " k-packet"), esc((p_4.label || "")), defaultOf());
+                const el_49 = mk(layer, "div", concat("chip ", (p_4.tone || "accent"), " k-packet"), esc((p_4.label || "")), defaultOf());
                 return {
                     at: T0(p_4.at),
                     dur: defaultArg(p_4.dur, 1),
-                    el: el_47,
+                    el: el_49,
                     p: p_4,
                     until: TUntil(p_4.until),
                 };
             }, (o_20.packets || []));
-            const matchValue_27 = TAt(o_20.at);
-            const matchValue_28 = TUntil(o_20.until);
             let laidOut = false;
             return add({
                 el: layer,
@@ -861,16 +924,16 @@ export function kitFor(root) {
                         }
                         for (let idx_8 = 0; idx_8 <= (edges.length - 1); idx_8++) {
                             const ed_2 = item_1(idx_8, edges);
-                            const matchValue_29 = box_5(ed_2.e.from);
+                            const matchValue_30 = box_5(ed_2.e.from);
                             const b_1 = box_5(ed_2.e.to);
-                            const a = matchValue_29;
-                            const matchValue_31 = centre(a);
-                            const cb = centre(b_1);
-                            const ca = matchValue_31;
+                            const a = matchValue_30;
+                            const matchValue_32 = centre_1(a);
+                            const cb = centre_1(b_1);
+                            const ca = matchValue_32;
                             const dy = cb.y - ca.y;
                             const dx = cb.x - ca.x;
                             const horiz = (Math.abs(dx) * a.h) > (Math.abs(dy) * a.w);
-                            const patternInput_13 = horiz ? [new Point((dx > 0) ? (a.x + a.w) : a.x, ca.y + ed_2.lane), new Point((dx > 0) ? b_1.x : (b_1.x + b_1.w), cb.y + ed_2.lane)] : [new Point(ca.x + ed_2.lane, (dy > 0) ? (a.y + a.h) : a.y), new Point(cb.x + ed_2.lane, (dy > 0) ? b_1.y : (b_1.y + b_1.h))];
+                            const patternInput_13 = horiz ? [new Point((dx > 0) ? (a.x + a.w) : a.x, along(a.y, a.h, ca.y, ed_2.e.fromPos) + ed_2.lane), new Point((dx > 0) ? b_1.x : (b_1.x + b_1.w), along(b_1.y, b_1.h, cb.y, ed_2.e.toPos) + ed_2.lane)] : [new Point(along(a.x, a.w, ca.x, ed_2.e.fromPos) + ed_2.lane, (dy > 0) ? (a.y + a.h) : a.y), new Point(along(b_1.x, b_1.w, cb.x, ed_2.e.toPos) + ed_2.lane, (dy > 0) ? b_1.y : (b_1.y + b_1.h))];
                             const p2 = patternInput_13[1];
                             const p1 = patternInput_13[0];
                             const curved = horiz;
@@ -883,9 +946,9 @@ export function kitFor(root) {
                             for (let idx_9 = 0; idx_9 <= (arr_3.length - 1); idx_9++) {
                                 const hd = item_1(idx_9, arr_3);
                                 const isEnd = hd.end === "end";
-                                const matchValue_35 = isEnd ? p2 : p1;
+                                const matchValue_36 = isEnd ? p2 : p1;
                                 const u = isEnd ? dirEnd : dirStart;
-                                const tip = matchValue_35;
+                                const tip = matchValue_36;
                                 const q = new Point(tip.x - (u.x * 28), tip.y - (u.y * 28));
                                 if (isEnd) {
                                     q2 = q;
@@ -900,8 +963,8 @@ export function kitFor(root) {
                                 hd.el.setAttribute("points", `${tip.x},${tip.y} ${bx + nx},${by + ny} ${bx - nx},${by - ny}`);
                             }
                             const mx = (q1.x + q2.x) / 2;
-                            const d_2 = curved ? (`M${q1.x},${q1.y} C${mx},${q1.y} ${mx},${q2.y} ${q2.x},${q2.y}`) : (`M${q1.x},${q1.y} L${q2.x},${q2.y}`);
-                            ed_2.path.setAttribute("d", d_2);
+                            const d_4 = curved ? (`M${q1.x},${q1.y} C${mx},${q1.y} ${mx},${q2.y} ${q2.x},${q2.y}`) : (`M${q1.x},${q1.y} L${q2.x},${q2.y}`);
+                            ed_2.path.setAttribute("d", d_4);
                             ed_2.path.style.fill = "none";
                             ed_2.path.style.strokeWidth = "5";
                             ed_2.path.style.strokeLinecap = "round";
@@ -917,7 +980,7 @@ export function kitFor(root) {
                         }
                         laidOut = true;
                     }
-                    layer.style.opacity = vis$0027(t_9, matchValue_27, matchValue_28);
+                    layer.style.opacity = vis$0027(t_9, matchValue_26, layerUntil);
                     const arr_4 = Object.values(nodes);
                     for (let idx_10 = 0; idx_10 <= (arr_4.length - 1); idx_10++) {
                         const nd_1 = item_1(idx_10, arr_4);
@@ -955,30 +1018,30 @@ export function kitFor(root) {
                     }
                     for (let idx_13 = 0; idx_13 <= (packets.length - 1); idx_13++) {
                         const pk = item_1(idx_13, packets);
-                        const matchValue_41 = box_5(pk.p.from);
+                        const matchValue_42 = box_5(pk.p.from);
                         const B = box_5(pk.p.to);
-                        const A = matchValue_41;
-                        const matchValue_43 = centre(A);
-                        const cb_1 = centre(B);
-                        const ca_1 = matchValue_43;
+                        const A = matchValue_42;
+                        const matchValue_44 = centre_1(A);
+                        const cb_1 = centre_1(B);
+                        const ca_1 = matchValue_44;
                         const w_5 = pk.el.offsetWidth;
                         const h_1 = pk.el.offsetHeight;
                         let patternInput_20;
                         if ((Math.abs(cb_1.x - ca_1.x) * (A.h + B.h)) >= (Math.abs(cb_1.y - ca_1.y) * (A.w + B.w))) {
                             const right = cb_1.x >= ca_1.x;
-                            patternInput_20 = [new Point(right ? (((A.x + A.w) + 14) + (w_5 / 2)) : ((A.x - 14) - (w_5 / 2)), ca_1.y), new Point(right ? ((B.x - 14) - (w_5 / 2)) : (((B.x + B.w) + 14) + (w_5 / 2)), cb_1.y)];
+                            patternInput_20 = [new Point(right ? (((A.x + A.w) + 14) + (w_5 / 2)) : ((A.x - 14) - (w_5 / 2)), along(A.y, A.h, ca_1.y, pk.p.fromPos)), new Point(right ? ((B.x - 14) - (w_5 / 2)) : (((B.x + B.w) + 14) + (w_5 / 2)), along(B.y, B.h, cb_1.y, pk.p.toPos))];
                         }
                         else {
                             const down = cb_1.y >= ca_1.y;
-                            patternInput_20 = [new Point(ca_1.x, down ? (((A.y + A.h) + 14) + (h_1 / 2)) : ((A.y - 14) - (h_1 / 2))), new Point(cb_1.x, down ? ((B.y - 14) - (h_1 / 2)) : (((B.y + B.h) + 14) + (h_1 / 2)))];
+                            patternInput_20 = [new Point(along(A.x, A.w, ca_1.x, pk.p.fromPos), down ? (((A.y + A.h) + 14) + (h_1 / 2)) : ((A.y - 14) - (h_1 / 2))), new Point(along(B.x, B.w, cb_1.x, pk.p.toPos), down ? ((B.y - 14) - (h_1 / 2)) : (((B.y + B.h) + 14) + (h_1 / 2)))];
                         }
                         const b_2 = patternInput_20[1];
                         const a_1 = patternInput_20[0];
-                        const f_1 = prog(t_9, pk.at, pk.dur, ease.inOut);
+                        const f_2 = prog(t_9, pk.at, pk.dur, ease.inOut);
                         const moving = ((!((pk.at == null)) && (t_9 >= pk.at)) && (t_9 < ((pk.at + pk.dur) + 0.05))) && (((pk.until == null)) ? true : (t_9 < pk.until));
                         const fadeAt = defaultArg(pk.p.fadeAt, 1);
-                        const fade = (f_1 > fadeAt) ? (1 - clamp01((f_1 - fadeAt) / ((1 - fadeAt) + 1E-06))) : 1;
-                        show(pk.el, moving ? fade : 0, 0, `translate(${lerp(a_1.x, b_2.x, f_1) - (w_5 / 2)}px, ${(lerp(a_1.y, b_2.y, f_1) - (h_1 / 2)) + defaultArg(pk.p.lift, 0)}px)`);
+                        const fade = (f_2 > fadeAt) ? (1 - clamp01((f_2 - fadeAt) / ((1 - fadeAt) + 1E-06))) : 1;
+                        show(pk.el, moving ? fade : 0, 0, `translate(${lerp(a_1.x, b_2.x, f_2) - (w_5 / 2)}px, ${(lerp(a_1.y, b_2.y, f_2) - (h_1 / 2)) + defaultArg(pk.p.lift, 0)}px)`);
                     }
                 },
             });
@@ -1009,12 +1072,12 @@ export function kitFor(root) {
                 g: g_3,
                 until: TUntil(g_3.until),
             }), (o_22.glow || []));
-            const matchValue_48 = TAt(o_22.at);
-            const matchValue_49 = TUntil(o_22.until);
+            const matchValue_49 = TAt(o_22.at);
+            const matchValue_50 = TUntil(o_22.until);
             return add({
                 el: card,
                 render: (t_10) => {
-                    show(card, vis$0027(t_10, matchValue_48, matchValue_49), defaultArg(o_22.slide, 20), "");
+                    show(card, vis$0027(t_10, matchValue_49, matchValue_50), defaultArg(o_22.slide, 20), "");
                     iterateIndexed((i_3, l_2) => {
                         let p_7 = 0;
                         let colour = "var(--accent)";
@@ -1049,10 +1112,10 @@ export function kitFor(root) {
                 const label_3 = mk(row_2, "div", "k-br-label", (r_6.label || ""), defaultOf());
                 const text_1 = mk(row_2, "div", "k-br-text", "", defaultOf());
                 const result = (!!(r_6.result)) ? mk(row_2, "div", "k-br-result", esc(r_6.result), defaultOf()) : defaultOf();
-                const at_15 = T0(r_6.at);
+                const at_16 = T0(r_6.at);
                 const resultAt = T0(r_6.resultAt);
                 return {
-                    at: at_15,
+                    at: at_16,
                     dimAt: T0(r_6.dimAt),
                     label: label_3,
                     r: r_6,
@@ -1062,12 +1125,12 @@ export function kitFor(root) {
                     text: text_1,
                 };
             }, o_24.rows);
-            const at_16 = T0((o_24.at ?? ((o_24.rows.length > 0) ? item_1(0, o_24.rows).at : defaultOf())));
-            const until_10 = TUntil(o_24.until);
+            const at_17 = T0((o_24.at ?? ((o_24.rows.length > 0) ? item_1(0, o_24.rows).at : defaultOf())));
+            const until_11 = TUntil(o_24.until);
             return add({
                 el: card_1,
                 render: (t_11) => {
-                    show(card_1, vis$0027(t_11, at_16, until_10), 16, "");
+                    show(card_1, vis$0027(t_11, at_17, until_11), 16, "");
                     for (let idx_16 = 0; idx_16 <= (rows_3.length - 1); idx_16++) {
                         const r_7 = item_1(idx_16, rows_3);
                         const p_8 = ((r_7.at == null)) ? 1 : progIO(t_11, r_7.at - 0.1, 0.3);
@@ -1091,12 +1154,12 @@ export function kitFor(root) {
             const els = mapIndexed((i_4, l_3) => mk(box_6, "div", "k-step", `<b>${i_4 + 1}</b>${String(l_3)}`, defaultOf()), labels);
             const ats = map(T0, (o_26.ats || []));
             const atOf = (i_5) => item(ats, i_5);
-            const at_17 = T0((o_26.at ?? item(ats, 0)));
-            const until_11 = TUntil(o_26.until);
+            const at_18 = T0((o_26.at ?? item(ats, 0)));
+            const until_12 = TUntil(o_26.until);
             return add({
                 el: box_6,
                 render: (t_12) => {
-                    show(box_6, vis$0027(t_12, at_17, until_11), 12, "");
+                    show(box_6, vis$0027(t_12, at_18, until_12), 12, "");
                     iterateIndexed((i_6, e_3) => {
                         const ai = atOf(i_6);
                         const reached = !((ai == null)) && (t_12 >= ai);
@@ -1112,19 +1175,19 @@ export function kitFor(root) {
         },
         counter(o_27) {
             const o_28 = opts(o_27);
-            const el_69 = mk(host(o_28), "div", concat("k-", (o_28.size || "counter")), defaultOf(), defaultOf());
-            place(el_69, o_28);
-            const matchValue_50 = TAt(o_28.at);
-            const matchValue_51 = TUntil(o_28.until);
-            const matchValue_52 = T0(o_28.toneAt);
-            const at_18 = matchValue_50;
+            const el_71 = mk(host(o_28), "div", concat("k-", (o_28.size || "counter")), defaultOf(), defaultOf());
+            place(el_71, o_28);
+            const matchValue_51 = TAt(o_28.at);
+            const matchValue_52 = TUntil(o_28.until);
+            const matchValue_53 = T0(o_28.toneAt);
+            const at_19 = matchValue_51;
             const fmt_1 = (!!(o_28.format)) ? o_28.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
             return add({
-                el: el_69,
+                el: el_71,
                 render: (t_13) => {
-                    show(el_69, vis$0027(t_13, at_18, matchValue_51), 10, "");
-                    el_69.textContent = fmt_1(lerp(defaultArg(o_28.from, 0), o_28.to, prog(t_13, at_18, defaultArg(o_28.dur, 1.2), ease.inOut)));
-                    el_69.style.color = (isOn(o_28.tone, matchValue_52, t_13) ? tone(o_28.tone) : "");
+                    show(el_71, vis$0027(t_13, at_19, matchValue_52), 10, "");
+                    el_71.textContent = fmt_1(lerp(defaultArg(o_28.from, 0), o_28.to, prog(t_13, at_19, defaultArg(o_28.dur, 1.2), ease.inOut)));
+                    el_71.style.color = (isOn(o_28.tone, matchValue_53, t_13) ? tone(o_28.tone) : "");
                 },
             });
         },
@@ -1139,22 +1202,22 @@ export function kitFor(root) {
                 tt.el.style.right = "";
             }
             tt.el.style.top = (`${defaultArg(o_30.y, 130)}px`);
-            const matchValue_53 = TAt(o_30.at);
-            const matchValue_54 = TUntil(o_30.until);
-            const at_19 = matchValue_53;
+            const matchValue_54 = TAt(o_30.at);
+            const matchValue_55 = TUntil(o_30.until);
+            const at_20 = matchValue_54;
             return add({
                 el: tt.el,
                 render: (t_14) => {
-                    tt.draw(t_14, at_19, min((matchValue_54 ?? (Infinity)), at_19 + defaultArg(o_30.dur, TOAST_DUR)));
+                    tt.draw(t_14, at_20, min((matchValue_55 ?? (Infinity)), at_20 + defaultArg(o_30.dur, TOAST_DUR)));
                 },
             });
         },
         custom(build, render) {
-            const el_75 = build(root);
+            const el_77 = build(root);
             return add({
-                el: el_75,
+                el: el_77,
                 render: (t_15) => {
-                    render(t_15, el_75);
+                    render(t_15, el_77);
                 },
             });
         },

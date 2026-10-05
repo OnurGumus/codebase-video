@@ -97,8 +97,18 @@ type ChipsOpts =
     inherit Opts
     abstract gap: float option
 
+/// A table cell with its own time: { html | text, at, until, tone, toneAt }. A plain string is a cell that
+/// appears with its row.
+type TableCell =
+    abstract html: obj
+    abstract text: obj
+    abstract at: Spec
+    abstract until: Spec
+    abstract tone: string
+    abstract toneAt: Spec
+
 type TableRow =
-    abstract cells: string[]
+    abstract cells: obj[]
     abstract at: Spec
     abstract until: Spec
     abstract tone: string
@@ -182,6 +192,8 @@ type FlowEdge =
     abstract tone: string
     abstract toneAt: Spec
     abstract arrow: string option
+    abstract fromPos: float option
+    abstract toPos: float option
 
 type Packet =
     abstract from: string
@@ -193,6 +205,8 @@ type Packet =
     abstract tone: string
     abstract fadeAt: float option
     abstract lift: float option
+    abstract fromPos: float option
+    abstract toPos: float option
 
 type FlowOpts =
     inherit Opts
@@ -736,6 +750,8 @@ let kitFor (root: HTMLElement) : IKit =
 
         /// A table: { cols: ["Pressure", "Move", "Price"], widths: [1, 1, 1], rows: [{ cells, at, tone, toneAt }],
         /// headerAt, focus } . focus highlights the newest row while it is being spoken.
+        /// A cell is a string (appears with its row) or { html | text, at, until, tone, toneAt }: such a cell waits
+        /// for its own `at` inside its row, so a number is not on screen before it is spoken.
         member _.table o =
             let o = opts o
             let box = mk (host o) "div" "k-table" null null
@@ -747,7 +763,19 @@ let kitFor (root: HTMLElement) : IKit =
                 o.rows
                 |> Array.map (fun r ->
                     let at, toneAt, until = T0 r.at, T0 r.toneAt, T0 r.until
-                    {| r = r; at = at; toneAt = toneAt; until = until; cells = r.cells |> Array.map (fun c -> mk box "div" "k-td" c null) |})
+                    let cells =
+                        r.cells
+                        |> Array.map (fun c ->
+                            // A string cell is drawn and timed exactly as before; an object cell brings its own times.
+                            if jsTypeof c = "string" || isNil c then
+                                {| el = mk box "div" "k-td" c null; own = false; d = unbox<TableCell> null; at = noTime
+                                   until = noTime; toneAt = noTime |}
+                            else
+                                let d = unbox<TableCell> c
+                                let html: obj = if isNil d.html then (esc (ifNil d.text ("" :> obj)) :> obj) else d.html
+                                {| el = mk box "div" "k-td" html null; own = true; d = d; at = T0 d.at; until = T0 d.until
+                                   toneAt = T0 d.toneAt |})
+                    {| r = r; at = at; toneAt = toneAt; until = until; cells = cells |})
             let at, until, headerAt = T0 o.at, TUntil o.until, T0(ifNil o.headerAt o.at)
             add
                 {| el = box
@@ -765,9 +793,14 @@ let kitFor (root: HTMLElement) : IKit =
                                 truthy o.focus && not (isNil row.at) && t >= row.at
                                 && (not (truthy next) || isNil next.at || t < next.at)
                             row.cells
-                            |> Array.iteri (fun k c ->
-                                c.style?opacity <- p
-                                c.style.color <- if isOn row.r.tone row.toneAt t then tone row.r.tone else ""
+                            |> Array.iteri (fun k cell ->
+                                let c = cell.el
+                                // A cell with its own times is seen only while both its row and it are on.
+                                c.style?opacity <- if cell.own then p * vis' t cell.at cell.until else p
+                                c.style.color <-
+                                    if cell.own && isOn cell.d.tone cell.toneAt t then tone cell.d.tone
+                                    elif isOn row.r.tone row.toneAt t then tone row.r.tone
+                                    else ""
                                 c.style.fontWeight <- if k = 0 && current then "650" else ""
                                 c.style.background <- if current then "color-mix(in srgb, var(--accent) 10%, transparent)" else "")) |}
 
@@ -877,6 +910,8 @@ let kitFor (root: HTMLElement) : IKit =
         /// tone, fadeAt (0..1 of the trip, where it fades: a lost reply), until }] }.
         /// Edges run between the nearest sides of two boxes, with an arrowhead at `to` (arrow: "end" default, "both",
         /// "none"); packets travel centre to centre.
+        /// `fromPos` / `toPos` (edges and packets) move an end along the side it meets: 0..1, left to right on a top or
+        /// bottom side, top to bottom on a left or right side; left out = 0.5, the side's centre.
         member _.flow o =
             let o = opts o
             let HEAD_L, HEAD_W, LANE = 28.0, 26.0, 40.0
@@ -886,6 +921,23 @@ let kitFor (root: HTMLElement) : IKit =
             svg.setAttribute ("width", "1920")
             svg.setAttribute ("height", "1080")
             layer?append (svg)
+            let layerAt, layerUntil = TAt o.at, TUntil o.until
+            // When a node or edge leaves. With its own `until`, then. Without one it leaves with the layer and has no
+            // fade of its own: giving it the scene's end as well, which the layer already has, multiplied two fades
+            // (p * p), and a diagram left faster than the text beside it. Only in a flow that outlives its scene (an
+            // `until` of its own, later than the scene's end) does such a part still leave at the scene's end.
+            let partUntil (spec: Spec) : Time =
+                if not (isNil spec) then T0 spec
+                else
+                    match sceneCtx.Value with
+                    | Some c when isNil layerUntil || layerUntil > c.until -> c.until
+                    | _ -> noTime
+            // Where an end meets a box side that starts at `start` and is `size` long: `pos` 0..1 along it, or the
+            // centre as before when the edge does not say.
+            let along (start: float) (size: float) (centre: float) (pos: float option) : float =
+                match pos with
+                | Some f -> start + size * clamp01 f
+                | None -> centre
             let nodes = table ()
             for (id, n: FlowNode) in entries (jsOr o.nodes (createEmpty)) do
                 let icon = if truthy n.icon then $"""<span class="k-node-icon">{n.icon}</span>""" else ""
@@ -895,7 +947,7 @@ let kitFor (root: HTMLElement) : IKit =
                 let at = T0 n.at
                 let toneAt = T0 n.toneAt
                 let dimAt = T0 n.dimAt
-                put nodes id {| n = n; el = el; at = at; toneAt = toneAt; dimAt = dimAt; until = TUntil n.until |}
+                put nodes id {| n = n; el = el; at = at; toneAt = toneAt; dimAt = dimAt; until = partUntil n.until |}
             let box (id: string) : Box =
                 let e: HTMLElement = (get<obj> nodes id)?el
                 { x = e.offsetLeft; y = e.offsetTop; w = e.offsetWidth; h = e.offsetHeight }
@@ -919,7 +971,7 @@ let kitFor (root: HTMLElement) : IKit =
                             { ``end`` = en; el = el })
                     let at = T0 e.at
                     let toneAt = T0 e.toneAt
-                    { e = e; path = path; label = label; heads = heads; at = at; toneAt = toneAt; until = TUntil e.until
+                    { e = e; path = path; label = label; heads = heads; at = at; toneAt = toneAt; until = partUntil e.until
                       lane = 0.0; len = 0.0 })
             let packets =
                 jsOr o.packets [||]
@@ -927,7 +979,6 @@ let kitFor (root: HTMLElement) : IKit =
                     let el = mk layer "div" $"""chip {jsOr p.tone "accent"} k-packet""" (esc (jsOr p.label "")) null
                     let at = T0 p.at
                     {| p = p; el = el; at = at; dur = defaultArg p.dur 1.0; until = TUntil p.until |})
-            let layerAt, layerUntil = TAt o.at, TUntil o.until
             let mutable laidOut = false
             let layout () =
                 // Box sizes are only known once the fonts are in, so edges are routed on the first render.
@@ -947,11 +998,11 @@ let kitFor (root: HTMLElement) : IKit =
                     let horiz = abs dx * a.h > abs dy * a.w
                     let p1, p2 =
                         if horiz then
-                            { x = (if dx > 0.0 then a.x + a.w else a.x); y = ca.y + ed.lane },
-                            { x = (if dx > 0.0 then b.x else b.x + b.w); y = cb.y + ed.lane }
+                            { x = (if dx > 0.0 then a.x + a.w else a.x); y = along a.y a.h ca.y ed.e.fromPos + ed.lane },
+                            { x = (if dx > 0.0 then b.x else b.x + b.w); y = along b.y b.h cb.y ed.e.toPos + ed.lane }
                         else
-                            { x = ca.x + ed.lane; y = (if dy > 0.0 then a.y + a.h else a.y) },
-                            { x = cb.x + ed.lane; y = (if dy > 0.0 then b.y else b.y + b.h) }
+                            { x = along a.x a.w ca.x ed.e.fromPos + ed.lane; y = (if dy > 0.0 then a.y + a.h else a.y) },
+                            { x = along b.x b.w cb.x ed.e.toPos + ed.lane; y = (if dy > 0.0 then b.y else b.y + b.h) }
                     let curved = horiz
                     // Direction of travel where the line meets each box: along x for the curve, along the line otherwise.
                     let len = jsOr (hypot (p2.x - p1.x) (p2.y - p1.y)) 1.0
@@ -1028,12 +1079,16 @@ let kitFor (root: HTMLElement) : IKit =
                             let a, b =
                                 if horiz then
                                     let right = cb.x >= ca.x
-                                    { x = (if right then A.x + A.w + gap + w / 2.0 else A.x - gap - w / 2.0); y = ca.y },
-                                    { x = (if right then B.x - gap - w / 2.0 else B.x + B.w + gap + w / 2.0); y = cb.y }
+                                    { x = (if right then A.x + A.w + gap + w / 2.0 else A.x - gap - w / 2.0)
+                                      y = along A.y A.h ca.y pk.p.fromPos },
+                                    { x = (if right then B.x - gap - w / 2.0 else B.x + B.w + gap + w / 2.0)
+                                      y = along B.y B.h cb.y pk.p.toPos }
                                 else
                                     let down = cb.y >= ca.y
-                                    { x = ca.x; y = (if down then A.y + A.h + gap + h / 2.0 else A.y - gap - h / 2.0) },
-                                    { x = cb.x; y = (if down then B.y - gap - h / 2.0 else B.y + B.h + gap + h / 2.0) }
+                                    { x = along A.x A.w ca.x pk.p.fromPos
+                                      y = (if down then A.y + A.h + gap + h / 2.0 else A.y - gap - h / 2.0) },
+                                    { x = along B.x B.w cb.x pk.p.toPos
+                                      y = (if down then B.y - gap - h / 2.0 else B.y + B.h + gap + h / 2.0) }
                             let f = prog t pk.at pk.dur ease.inOut
                             let moving =
                                 not (isNil pk.at) && t >= pk.at && t < pk.at + pk.dur + 0.05 && (isNil pk.until || t < pk.until)

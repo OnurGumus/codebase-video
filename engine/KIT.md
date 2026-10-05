@@ -84,17 +84,34 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   emoji and symbols as literal characters, not HTML entities.
 - `K.table({ cols, widths, rows: [{ cells, at, tone, toneAt }], focus, headerAt, x, y, w })` - `focus` The card appears at `at`, else at `headerAt`, else with its first row. `focus` follows row index and `at` order, so do not use it when rows are narrated out of order.
   highlights the row being spoken.
+  A cell is a string, which appears with its row, or `{ html, at, until, tone, toneAt }` (`text` instead of `html`
+  for plain text, escaped like a chip): such a cell waits inside its row for its own `at`, so a number is not on
+  screen before it is spoken. A cell is never seen before its row; its `tone` wins over the row's.
+  `["Small", { html: "1,000", at: "tb-cells|one thousand" }, { text: "$5", at: "tb-cells|five dollars", tone: "good" }]`
 - `K.bars({ max, line: { value, label }, rows: [{ label, sub, value, at, steps: [{ value, at }], tone,
   toneAt, format }], x, y, w, gap })` - bars on one scale, a dashed capacity tick, values that count and move.
 - `K.timeline({ total, segments: [{ label, value, show, at, tone, toneAt }], sum: { text, at }, x, y, w })`
 - `K.flow({ nodes: { id: { label, sub, icon, x, y, w, at, tone, fill, toneAt, dimAt, until, rise } }, edges: [{ from, to,
-  at, label, dashed, tone, toneAt, arrow }], packets: [{ from, to, at, dur, label, tone, fadeAt, lift }] })` - boxes
+  at, label, dashed, tone, toneAt, arrow, fromPos, toPos }], packets: [{ from, to, at, dur, label, tone, fadeAt, lift,
+  fromPos, toPos }] })` - boxes
   (`icon`: an emoji before the label; `fill: true` tints the box in its tone), arrows drawn on their word with an
   optional short `label` (a verb: "writes", "fetches"), packets that travel (`fadeAt: 0.6` = lost 60% of the way;
   `lift` offsets a return lane). Every edge gets an arrowhead at `to` (`arrow: "both"` or `"none"` to change it),
   so `from` → `to` must be the real direction: who sends, writes or calls whom. Label the edge with that verb.
   Two edges between the same two boxes (e.g. data one way, demand or an ack the other) are drawn in two lanes
   40 px apart, with each label on its own side, so draw both instead of one long edge that jumps over a box.
+  An edge starts and ends at the centre of the box side it meets. `fromPos` and `toPos` move an end along that
+  side: a fraction from 0 to 1, left to right on a top or bottom side, top to bottom on a left or right side;
+  0.5, or leaving it out, is the centre. They are positions, not times. Use them when two pairs of edges leave
+  the same side of one box and would cross or stack their labels: `{ from: "saga", to: "journal", fromPos: 0.25 }`
+  and `{ from: "saga", to: "pubsub", fromPos: 0.75 }` leave the saga's bottom side a quarter and three quarters
+  of the way along. The kit still picks the side, from the two boxes' centres. The 40 px lanes are added on top,
+  so for a pair to stay parallel the edge back swaps the two values (`{ from: "journal", to: "saga", toPos: 0.25 }`).
+  Stay between about 0.15 and 0.85, clear of the rounded corners. Between two boxes of different shapes placed
+  diagonally, the edge out and the edge back can pick different sides (as they always could): read the sheet.
+  A packet takes the same two fields, to travel beside such an edge. Do not add hidden nodes to act as anchors.
+  A node or edge with no `until` leaves with the flow, at the same rate as text beside it; give one its own
+  `until` only to remove it earlier.
 - `K.code({ title, lines, lang, glow: [{ line, from, until, tone }], x, y })` - syntax-highlighted
   (`lang`: "csharp" default, "fsharp", "javascript" (also for TypeScript), "python" (also for Bazel BUILD files), "nix", "dockerfile", "sql", "json", "yaml", "bash", "plain"); `glow` lights a line's background.
   Leave out `w`: a width narrower than the longest line does not wrap or clip, the line runs past the card.
