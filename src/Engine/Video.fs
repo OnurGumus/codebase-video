@@ -76,6 +76,9 @@ let private browserId (chrome: string) : string =
 [<Emit("$0.toFixed(6)")>]
 let private fixed6 (x: float) : string = jsNative
 
+[<Emit("$0.toFixed(1)")>]
+let private fixed1 (x: float) : string = jsNative
+
 [<Emit("Math.round($0)")>]
 let private jsRound (x: float) : float = jsNative
 
@@ -91,6 +94,67 @@ let private concatList (dir: string) (ext: string) (fps: int) (segments: Segment
                  $"duration {fixed6 ((micros s.End - micros s.First) / 1e6)}" ]
     writeText file (String.concat "\n" lines + "\n")
     file
+
+/// GitHub plays a video attached to a README or an issue only up to 10 MB, so a `short` video (the length meant for
+/// overviews and promos) is kept under that, with a little room to spare. CODEBASE_VIDEO_SHORT_MAX_MB changes the
+/// limit (e.g. 100 on a paid GitHub plan).
+[<Emit("Number($0)")>]
+let private toNumber (s: string) : float = jsNative
+
+let private MAX_MB =
+    match env "CODEBASE_VIDEO_SHORT_MAX_MB" |> Option.map toNumber with
+    | Some mb when mb > 0.0 -> mb
+    | _ -> 10.0
+
+let private ATTACH_LIMIT = MAX_MB * 1e6 * 0.98
+
+/// Speech from a 24 kHz mono voice: 64 kbit/s mono AAC is transparent for it, and at 128 the sound would be half of
+/// a short video's size.
+let private AAC_KBPS = 64.0
+
+/// The length the workspace's brief asks for ("short", "tour", "deep"), or "" when there is no brief.
+let private lengthOf (ws: string) : string =
+    let brief = join [ ws; "brief.json" ]
+    if exists brief then
+        let v: obj = (readJson brief)?length
+        if isNull v then "tour" else string v
+    else ""
+
+/// When a short video's mp4 is over the limit, encodes its picture again in two passes at the bitrate that fits
+/// (the cached segments stay as they are). Returns 0, also when the file was already small enough.
+let private fitShort (ws: string) (mp4: string) : int =
+    let megabytes (bytes: float) = fixed1 (bytes / 1e6)
+    if lengthOf ws <> "short" then 0
+    else
+        let size = fileSize mp4
+        if size <= ATTACH_LIMIT then
+            JS.console.log $"mp4: {megabytes size} MB (a short video is kept under {MAX_MB} MB; GitHub plays up to 10 MB inline)"
+            0
+        else
+            let timing = readJson (join [ ws; "build"; "timing.json" ])
+            let seconds: float = timing?duration
+            let kbps = floor (ATTACH_LIMIT * 8.0 / seconds / 1000.0 - AAC_KBPS - 6.0)
+            let log = join [ ws; "build"; "fit-pass" ]
+            let big = join [ ws; "build"; "fit-source.mp4" ]
+            let picture = [ "-c:v"; "libx264"; "-profile:v"; "high"; "-preset"; "slow"; "-b:v"; $"{kbps}k"; "-pix_fmt"; "yuv420p"; "-passlogfile"; log ]
+            JS.console.log $"mp4: {megabytes size} MB is over the {MAX_MB} MB a short video may have; encoding the picture again at {kbps} kbit/s"
+            rename mp4 big
+            let code =
+                sequence
+                    [ ffmpeg ([ "-i"; big ] @ picture @ [ "-pass"; "1"; "-an"; "-f"; "null"; (if platform = "win32" then "NUL" else "/dev/null") ])
+                      ffmpeg ([ "-i"; big ] @ picture @ [ "-pass"; "2"; "-c:a"; "copy"; "-movflags"; "+faststart"; mp4 ]) ]
+            for f in readDir (join [ ws; "build" ]) do
+                if f.StartsWith "fit-pass" then remove (join [ ws; "build"; f ])
+            if code <> 0 then
+                rename big mp4
+                code
+            else
+                remove big
+                let fitted = fileSize mp4
+                JS.console.log $"mp4: now {megabytes fitted} MB"
+                if fitted > MAX_MB * 1e6 then
+                    eprint $"the mp4 is still over {MAX_MB} MB: shorten the video, or host it elsewhere"
+                0
 
 let run (ws: string) (args: string list) : JS.Promise<int> =
     let full = args |> List.contains "--full"
@@ -147,8 +211,9 @@ let run (ws: string) (args: string list) : JS.Promise<int> =
                     if lossless then
                         [ ffmpeg (joined "mkv" @ [ "-c"; "copy"; join [ ws; "build"; "frames.mkv" ] ]) ]
                     else
-                        [ ffmpeg (joined "mp4" @ audio @ [ "-c:a"; "aac"; "-b:a"; "128k"; "-movflags"; "+faststart"; "-shortest"; out "mp4" ])
-                          ffmpeg (joined "webm" @ audio @ [ "-c:a"; "libopus"; "-b:a"; "96k"; "-shortest"; out "webm" ])
+                        [ ffmpeg (joined "mp4" @ audio @ [ "-c:a"; "aac"; "-b:a"; $"{AAC_KBPS}k"; "-ac"; "1"; "-movflags"; "+faststart"; "-shortest"; out "mp4" ])
+                          (fun () -> fitShort ws (out "mp4"))
+                          ffmpeg (joined "webm" @ audio @ [ "-c:a"; "libopus"; "-b:a"; "48k"; "-ac"; "1"; "-shortest"; out "webm" ])
                           ffmpeg [ "-ss"; poster; "-i"; out "mp4"; "-frames:v"; "1"; "-q:v"; "3"; out "jpg" ]
                           fun () ->
                               copyFile (join [ ws; "build"; "captions.vtt" ]) (out "vtt")

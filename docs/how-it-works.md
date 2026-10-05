@@ -75,6 +75,13 @@ module, a changed sentence costs its chapter. Everything else is reused, and joi
     <video name>.chapters.vtt   chapter markers
 ```
 
+## Short videos and GitHub
+
+GitHub plays a video attached to a README only up to 10 MB, and shows the video's first frame before it plays. A
+short video is therefore kept under 10 MB (the engine checks the file and, if needed, encodes the picture again to
+fit), and its first frame is drawn as a thumbnail: the title, a red border, a play button and the length. Longer
+videos do not fit in 10 MB; host them elsewhere and link to them. `CODEBASE_VIDEO_SHORT_MAX_MB` changes the limit.
+
 ## What runs on your computer
 
 The voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)), the drawing (your Chrome) and the encoding

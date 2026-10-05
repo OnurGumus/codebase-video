@@ -12,7 +12,8 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 
 **Output:** {{WS}}/script.json with top-level `"name": "{{NAME}}"`, `title`, `"voice": "af_heart"`, `"lang": "en-us"`,
 `"speed": 0.87`, `poster` (a scene id whose last frame will make a good still), `readsFine` (a list), `source`
-{"repo", "document"}, `card` {course: the repository name, lesson: the subject, sub: one line}, and `scenes`.
+{"repo", "document"}, `card` {course: the repository name, lesson: the subject, sub: one line; leave out `thumbnail` unless you are told to
+set it}, and `scenes`.
 
 **Structure:**
 - `title` (one line naming the subject and the repository), `intro` (the goal: what the viewer will be able to do after

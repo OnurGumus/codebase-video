@@ -134,6 +134,10 @@ the scenes that changed are drawn again, so a small fix takes about a minute, no
 extra carefully. For hints that should apply to every video of a project (your team's terms, parts to always
 skip), put them in a file named `.codebase-video/hints.md` in that project. Claude will offer to save them for you.
 
+**Can I put the video in my README?** Yes, a short one. GitHub plays a video inside a README only up to 10 MB, so
+short videos are kept under that, and their first frame is drawn as a thumbnail with a play button, like the one
+at the top of this page. Edit your README on github.com and drag the `.mp4` into the editor.
+
 **Do I need Python or .NET?** No.
 
 **Does the voice need an account or a key?** No. The voice runs on your computer.

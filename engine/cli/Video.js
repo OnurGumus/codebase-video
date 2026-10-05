@@ -1,10 +1,12 @@
 
-import { eprint, copyFile, rename, mkdirp, writeText, mtime, fileSize, exists, runCapture, fs, readDir, run as run_1, hasCommand, remove, join, readJson } from "./Node.js";
+import { copyFile, mkdirp, eprint, platform, rename, env, writeText, mtime, fileSize, exists, runCapture, fs, readDir, run as run_1, hasCommand, remove, join, readJson } from "./Node.js";
 import { indexed, length, forAll, contains, singleton, append, cons, filter, sort, map, tail, head, isEmpty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { split, join as join_1, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { write } from "./Chapters.js";
 import { stringHash, disposeSafe, getEnumerator, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { singleton as singleton_1, append as append_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
+import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { ranges, Range$, findChrome } from "./Render.js";
 import { wholeFrames, plan } from "./Segments.js";
 import { FSharpSet__Contains, ofList } from "./fable_modules/fable-library-js.5.19.0/Set.js";
@@ -133,6 +135,103 @@ function concatList(dir, ext, fps, segments) {
     return file;
 }
 
+const MAX_MB = (() => {
+    let s;
+    let matchValue;
+    const option_1 = env("CODEBASE_VIDEO_SHORT_MAX_MB");
+    matchValue = ((option_1 != null) ? ((s = option_1, Number(s))) : undefined);
+    let matchResult, mb_1;
+    if (matchValue != null) {
+        if (matchValue > 0) {
+            matchResult = 0;
+            mb_1 = matchValue;
+        }
+        else {
+            matchResult = 1;
+        }
+    }
+    else {
+        matchResult = 1;
+    }
+    switch (matchResult) {
+        case 0:
+            return mb_1;
+        default:
+            return 10;
+    }
+})();
+
+const ATTACH_LIMIT = (MAX_MB * 1000000) * 0.98;
+
+const AAC_KBPS = 64;
+
+function lengthOf(ws) {
+    const brief = join(ofArray([ws, "brief.json"]));
+    if (exists(brief)) {
+        const v = readJson(brief).length;
+        if (Operators_IsNull(v)) {
+            return "tour";
+        }
+        else {
+            return toString(v);
+        }
+    }
+    else {
+        return "";
+    }
+}
+
+function fitShort(ws, mp4) {
+    let args, args_1;
+    const megabytes = (bytes) => ((bytes / 1000000).toFixed(1));
+    if (lengthOf(ws) !== "short") {
+        return 0;
+    }
+    else {
+        const size = fileSize(mp4);
+        if (size <= ATTACH_LIMIT) {
+            console.log(`mp4: ${megabytes(size)} MB (a short video is kept under ${MAX_MB} MB; GitHub plays up to 10 MB inline)`);
+            return 0;
+        }
+        else {
+            const timing = readJson(join(ofArray([ws, "build", "timing.json"])));
+            const seconds = timing.duration;
+            const kbps = Math.floor(((((ATTACH_LIMIT * 8) / seconds) / 1000) - AAC_KBPS) - 6);
+            const log = join(ofArray([ws, "build", "fit-pass"]));
+            const big = join(ofArray([ws, "build", "fit-source.mp4"]));
+            const picture = ofArray(["-c:v", "libx264", "-profile:v", "high", "-preset", "slow", "-b:v", `${kbps}k`, "-pix_fmt", "yuv420p", "-passlogfile", log]);
+            console.log(`mp4: ${megabytes(size)} MB is over the ${MAX_MB} MB a short video may have; encoding the picture again at ${kbps} kbit/s`);
+            rename(mp4, big);
+            const code = sequence(ofArray([(args = append(ofArray(["-i", big]), append(picture, ofArray(["-pass", "1", "-an", "-f", "null", (platform === "win32") ? "NUL" : "/dev/null"]))), () => (ffmpeg(args, undefined) | 0)), (args_1 = append(ofArray(["-i", big]), append(picture, ofArray(["-pass", "2", "-c:a", "copy", "-movflags", "+faststart", mp4]))), () => (ffmpeg(args_1, undefined) | 0))])) | 0;
+            const enumerator = getEnumerator(readDir(join(ofArray([ws, "build"]))));
+            try {
+                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                    const f = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    if (f.startsWith("fit-pass")) {
+                        remove(join(ofArray([ws, "build", f])));
+                    }
+                }
+            }
+            finally {
+                disposeSafe(enumerator);
+            }
+            if (code !== 0) {
+                rename(big, mp4);
+                return code | 0;
+            }
+            else {
+                remove(big);
+                const fitted = fileSize(mp4);
+                console.log(concat("mp4: now ", megabytes(fitted), " MB"));
+                if (fitted > (MAX_MB * 1000000)) {
+                    eprint(`the mp4 is still over ${MAX_MB} MB: shorten the video, or host it elsewhere`);
+                }
+                return 0;
+            }
+        }
+    }
+}
+
 export function run(ws, args) {
     const full = contains("--full", args, {
         Equals: (x, y) => (x === y),
@@ -193,7 +292,7 @@ export function run(ws, args) {
                     const out = (ext_4) => join(ofArray([ws, "out", `${name}.${ext_4}`]));
                     const joined = (ext_5) => ofArray(["-f", "concat", "-safe", "0", "-i", concatList(dir, ext_5, 30, segments)]);
                     const audio = ofArray(["-i", join(ofArray([ws, "build", "narration.wav"])), "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:v", "copy"]);
-                    return sequence(append(lossless ? singleton((args_1 = append(joined("mkv"), ofArray(["-c", "copy", join(ofArray([ws, "build", "frames.mkv"]))])), () => (ffmpeg(args_1, undefined) | 0))) : ofArray([(args_2 = append(joined("mp4"), append(audio, ofArray(["-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", "-shortest", out("mp4")]))), () => (ffmpeg(args_2, undefined) | 0)), (args_3 = append(joined("webm"), append(audio, ofArray(["-c:a", "libopus", "-b:a", "96k", "-shortest", out("webm")]))), () => (ffmpeg(args_3, undefined) | 0)), (args_4 = ofArray(["-ss", patternInput[1], "-i", out("mp4"), "-frames:v", "1", "-q:v", "3", out("jpg")]), () => (ffmpeg(args_4, undefined) | 0)), () => {
+                    return sequence(append(lossless ? singleton((args_1 = append(joined("mkv"), ofArray(["-c", "copy", join(ofArray([ws, "build", "frames.mkv"]))])), () => (ffmpeg(args_1, undefined) | 0))) : ofArray([(args_2 = append(joined("mp4"), append(audio, ofArray(["-c:a", "aac", "-b:a", `${AAC_KBPS}k`, "-ac", "1", "-movflags", "+faststart", "-shortest", out("mp4")]))), () => (ffmpeg(args_2, undefined) | 0)), () => (fitShort(ws, out("mp4")) | 0), (args_3 = append(joined("webm"), append(audio, ofArray(["-c:a", "libopus", "-b:a", "48k", "-ac", "1", "-shortest", out("webm")]))), () => (ffmpeg(args_3, undefined) | 0)), (args_4 = ofArray(["-ss", patternInput[1], "-i", out("mp4"), "-frames:v", "1", "-q:v", "3", out("jpg")]), () => (ffmpeg(args_4, undefined) | 0)), () => {
                         copyFile(join(ofArray([ws, "build", "captions.vtt"])), out("vtt"));
                         return 0;
                     }, () => (chaptersFor(ws, name) | 0)]), append(singleton(() => {

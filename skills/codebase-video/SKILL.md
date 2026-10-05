@@ -84,6 +84,17 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
     `CV narrate`: that chapter). The rest is reused and the files are joined in seconds. The last line says how many
     scenes were reused. `CV video --full` draws everything again; use it only if a reused scene looks wrong.
 
+## Sharing on GitHub (short videos)
+
+GitHub plays a video attached to a README or an issue only up to 10 MB, and shows its first frame as the thumbnail.
+So for a `short` video the engine keeps the mp4 under 10 MB (it says the size at the end of `CV video`, and encodes
+the picture again if it is over), and draws the first frame as a thumbnail: the title, a red border, a play button
+and the length. For a `tour` or `deep` video the thumbnail is off; set `"thumbnail": true` inside the script's `card`
+when the user wants it, or `false` in a short video's `card` when they do not. A longer video will not fit in 10 MB:
+tell the user to host it elsewhere (a release asset, a project page, a video site) and link it.
+To attach the video, the user edits the README on github.com and drags `WS/out/<name>.mp4` into the editor; a link
+to a file in the repository does not play.
+
 ## Preview (cheap first look)
 
 A preview stops once the script has been checked (after step 5, the narration audit), before any scene is drawn:

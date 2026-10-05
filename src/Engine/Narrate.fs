@@ -818,6 +818,20 @@ let private soundtrack (audio: Audio list) : float32[] =
             at <- at + s.Length
     out
 
+[<Emit("Object.assign({}, $0, { thumbnail: $1 })")>]
+let private withThumbnail (card: obj) (thumbnail: obj) : obj = jsNative
+
+[<Emit("($0 === undefined || $0 === null)")>]
+let private isNil (x: obj) : bool = jsNative
+
+/// The length the workspace's brief asks for ("short", "tour", "deep"), or "" when there is no brief.
+let private briefLength (ws: string) : string =
+    let brief = join [ ws; "brief.json" ]
+    if exists brief then
+        let v: obj = (readJson brief)?length
+        if isNil v then "tour" else string v
+    else ""
+
 let run (ws: string) : JS.Promise<unit> =
     requirePackages voicePackages
     let clip = resolve ws
@@ -1001,7 +1015,16 @@ let run (ws: string) : JS.Promise<unit> =
                   "poster", num (Py.round poster 3)
                   "scenes", Py.List(List.map sceneJson scenes) ]
                 @ (match get script "card" with
-                   | Some c when Py.truthy c -> [ "card", Py.ofJs marked?card ] // long videos: {"course", "lesson", "sub"} for the opening title card
+                   | Some c when Py.truthy c ->
+                       // long videos: {"course", "lesson", "sub"} for the opening title card. "thumbnail" becomes the
+                       // video's length ("5:08") when the first frame is to be drawn as a thumbnail (title, red
+                       // border, play button): asked for with "thumbnail": true, and the default for a short video,
+                       // the length meant for a README. false otherwise.
+                       let asked: obj = c?thumbnail
+                       let on = if isNil asked then briefLength ws = "short" else Py.truthy asked
+                       let total = int (System.Math.Round duration)
+                       let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
+                       [ "card", Py.ofJs (withThumbnail marked?card (if on then box label else box false)) ]
                    | _ -> [])
             )
         writeText (join [ build; "timing.json" ]) (Py.dumpsIndented 2 timing)

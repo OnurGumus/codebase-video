@@ -1,5 +1,5 @@
 
-import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { toString, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { record_type, float64_type, int32_type, array_type, class_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { fold, tryFind as tryFind_1, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { concat, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
@@ -137,6 +137,20 @@ export function run() {
         query("#tcLesson").textContent = ((timing.card.lesson || ""));
         query("#tcSub").textContent = ((timing.card.sub || ""));
     }
+    const thumbLabel = ((!!(timing.card)) && (!!(timing.card.thumbnail))) ? toString(timing.card.thumbnail) : "";
+    let THUMB;
+    if (thumbLabel === "") {
+        THUMB = undefined;
+    }
+    else {
+        const el = document.createElement("div");
+        el.id = "thumb";
+        el.style.cssText = "position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:50;display:none;pointer-events:none";
+        el.innerHTML = "<div style=\"position:absolute;left:0;top:0;right:0;bottom:0;border:18px solid #e5383b;box-sizing:border-box\"></div><div style=\"position:absolute;left:855px;top:560px;width:210px;height:210px;border-radius:50%;background:#e5383b;box-shadow:0 18px 60px #000a\"><div style=\"position:absolute;left:78px;top:55px;border-style:solid;border-width:50px 0 50px 82px;border-color:transparent transparent transparent #fff\"></div></div><div id=\"thumbLen\" style=\"position:absolute;right:70px;bottom:60px;font-size:40px;font-weight:650;color:#fff;background:#000a;padding:8px 20px;border-radius:10px\"></div>";
+        query("#titleCard").parentElement.append(el);
+        el.querySelector("#thumbLen").textContent = thumbLabel;
+        THUMB = el;
+    }
     let TOASTS;
     try {
         TOASTS = frameToasts(query("#toasts"));
@@ -203,7 +217,17 @@ export function run() {
             let c_4, o;
             const withTitle = (TITLE != null) && (!!(timing.card));
             const tc = withTitle ? within(t, -1, value(TITLE).end - 0.1, 0.4) : 0;
-            show(query("#titleCard"), tc, 0, `scale(${lerp(0.97, 1, progIO(t, 0, 0.8))})`);
+            const thumbOn = (THUMB != null) && (t < 0.02);
+            const option_1 = THUMB;
+            if (option_1 != null) {
+                const el_1 = option_1;
+                el_1.style.display = (thumbOn ? "block" : "none");
+            }
+            const titleCard = query("#titleCard");
+            titleCard.style.justifyContent = (thumbOn ? "flex-start" : "");
+            titleCard.style.paddingTop = (thumbOn ? "110px" : "");
+            titleCard.style.boxSizing = (thumbOn ? "border-box" : "");
+            show(titleCard, tc, 0, thumbOn ? "" : (`scale(${lerp(0.97, 1, progIO(t, 0, 0.8))})`));
             const lastSentence = withTitle ? (value(TITLE).sentences.at(-1)) : defaultOf();
             show(query("#tcSub"), withTitle ? (progIO(t, lastSentence.start - 0.2, 0.5) * tc) : 0, 10, "");
             let current = undefined;
@@ -222,22 +246,22 @@ export function run() {
                 card = within(t, c_2.start, c_2.talk - 0.25, 0.35);
             }
             show(query("#card"), card, 0, `scale(${lerp(0.96, 1, card)})`);
-            const option_1 = current;
-            if (option_1 != null) {
-                const c_3 = option_1;
+            const option_3 = current;
+            if (option_3 != null) {
+                const c_3 = option_3;
                 query("#cardNum").textContent = (`${c_3.n} / ${CHAPTERS.length}`);
                 query("#cardTitle").textContent = c_3.title;
             }
             for (let idx_4 = 0; idx_4 <= (modules.length - 1); idx_4++) {
-                let el, el_1;
+                let el_2, el_3;
                 const m_5 = item(idx_4, modules);
                 let p_1 = 0;
                 for (let i_2 = 0; i_2 <= (m_5.runs.length - 1); i_2++) {
                     const r = item(i_2, m_5.runs);
                     p_1 = max(p_1, within(t, r.start, (r.end >= (timing.duration - 0.05)) ? (Infinity) : (r.end - 0.05), 0.4));
                 }
-                ((el = m_5.root, el.style)).opacity = p_1;
-                ((el_1 = m_5.root, el_1.style)).visibility = ((p_1 <= 0.001) ? "hidden" : "visible");
+                ((el_2 = m_5.root, el_2.style)).opacity = p_1;
+                ((el_3 = m_5.root, el_3.style)).visibility = ((p_1 <= 0.001) ? "hidden" : "visible");
                 if ((p_1 > 0.001) && (!!(hooks(m_5.key)))) {
                     try {
                         hooks(m_5.key).render(t);
@@ -262,17 +286,17 @@ export function run() {
                 lab.innerHTML = html;
             }
             iterateIndexed((i_3, c_6) => {
-                let el_2;
-                ((el_2 = item(i_3, SEG), el_2.style)).transform = (`scaleX(${clamp01((t - c_6.start) / (c_6.end - c_6.start))})`);
+                let el_4;
+                ((el_4 = item(i_3, SEG), el_4.style)).transform = (`scaleX(${clamp01((t - c_6.start) / (c_6.end - c_6.start))})`);
             }, CHAPTERS);
             bar.style.opacity = ((CHAPTERS.length > 0) ? within(t, item(0, CHAPTERS).start - 0.3, (OUTRO == null) ? (Infinity) : ((o = OUTRO, o.start + 0.2)), 0.4) : 0);
-            const option_3 = TOASTS;
-            if (option_3 != null) {
-                option_3.render(t);
-            }
-            const option_5 = BREAKS;
+            const option_5 = TOASTS;
             if (option_5 != null) {
                 option_5.render(t);
+            }
+            const option_7 = BREAKS;
+            if (option_7 != null) {
+                option_7.render(t);
             }
         });
         return window["ready"];

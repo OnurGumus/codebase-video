@@ -117,6 +117,24 @@ let run () =
         (query "#tcLesson").textContent <- jsOr T.card.lesson ""
         (query "#tcSub").textContent <- jsOr T.card.sub ""
 
+    // The thumbnail: players show a video's first frame before it plays, so frame 0 can be drawn as one (the title
+    // moved up, a red border, a play button, the length). narrate puts the length in card.thumbnail when it is wanted.
+    let thumbLabel: string = if truthy T.card && truthy (T.card?thumbnail) then string (T.card?thumbnail) else ""
+    let THUMB =
+        if thumbLabel = "" then None
+        else
+            let el = document.createElement "div"
+            el.id <- "thumb"
+            el?style?cssText <- "position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:50;display:none;pointer-events:none"
+            el.innerHTML <-
+                "<div style=\"position:absolute;left:0;top:0;right:0;bottom:0;border:18px solid #e5383b;box-sizing:border-box\"></div>"
+                + "<div style=\"position:absolute;left:855px;top:560px;width:210px;height:210px;border-radius:50%;background:#e5383b;box-shadow:0 18px 60px #000a\">"
+                + "<div style=\"position:absolute;left:78px;top:55px;border-style:solid;border-width:50px 0 50px 82px;border-color:transparent transparent transparent #fff\"></div></div>"
+                + "<div id=\"thumbLen\" style=\"position:absolute;right:70px;bottom:60px;font-size:40px;font-weight:650;color:#fff;background:#000a;padding:8px 20px;border-radius:10px\"></div>"
+            (query "#titleCard").parentElement?append (el)
+            (el.querySelector "#thumbLen").textContent <- thumbLabel
+            Some el
+
     // Each module file loads on its own: one that is missing or throws is reported and left blank, and the
     // rest still render (the renderer aborts on any uncaught page error).
     let TOASTS =
@@ -165,7 +183,14 @@ let run () =
         let withTitle = TITLE.IsSome && truthy T.card
         // No fade-in: the card is fully there on frame 0, because players show the first frame as the thumbnail.
         let tc = if withTitle then within t -1.0 (TITLE.Value.``end`` - 0.1) 0.4 else 0.0
-        show (query "#titleCard") tc 0.0 $"scale({lerp 0.97 1.0 (progIO t 0.0 0.8)})"
+        // Frame 0 only (frames are drawn a microsecond after their time): the title sits above the play button.
+        let thumbOn = THUMB.IsSome && t < 0.02
+        THUMB |> Option.iter (fun el -> el?style?display <- (if thumbOn then "block" else "none"))
+        let titleCard = query "#titleCard"
+        titleCard?style?justifyContent <- (if thumbOn then "flex-start" else "")
+        titleCard?style?paddingTop <- (if thumbOn then "110px" else "")
+        titleCard?style?boxSizing <- (if thumbOn then "border-box" else "")
+        show titleCard tc 0.0 (if thumbOn then "" else $"scale({lerp 0.97 1.0 (progIO t 0.0 0.8)})")
         let lastSentence = if withTitle then at TITLE.Value.sentences (box -1) else Unchecked.defaultof<_>
         show (query "#tcSub") (if withTitle then progIO t (lastSentence.start - 0.2) 0.5 * tc else 0.0) 10.0 ""
         let mutable current = None

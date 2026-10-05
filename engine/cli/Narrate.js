@@ -3,14 +3,14 @@ import { read, write, concat as concat_3, trim as trim_1, roundHalfEven } from "
 import { max, isNegativeInfinity, isPositiveInfinity, parse } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { toConsole, trim, concat, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { concat as concat_2, truncate, choose, reverse, mapIndexed, setItem, map as map_1, item, equalsWith } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { Lazy, Exception, disposeSafe, getEnumerator, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { round, Lazy, Exception, disposeSafe, getEnumerator, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { op_UnaryNegation_Int32, parse as parse_1 } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { append as append_1, empty, singleton, collect, delay, toList, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { toString, FSharpRef, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { last as last_1, tryFind, item as item_1, length, indexed, sort, sumBy, concat as concat_1, filter, unzip, cons, tail, head, append, empty as empty_1, singleton as singleton_1, exists as exists_1, ofSeq as ofSeq_1, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve as resolve_1, dirname, requireFromHome, url, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
+import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve as resolve_1, readJson, dirname, requireFromHome, url, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
 import { defaultArg, some, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { empty as empty_2, FSharpMap__ContainsKey, FSharpMap__TryFind, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
@@ -1226,6 +1226,22 @@ function soundtrack(audio) {
     return out;
 }
 
+function briefLength(ws) {
+    const brief = join_1(ofArray([ws, "brief.json"]));
+    if (exists(brief)) {
+        const v = readJson(brief).length;
+        if ((v === undefined || v === null)) {
+            return "tour";
+        }
+        else {
+            return toString(v);
+        }
+    }
+    else {
+        return "";
+    }
+}
+
 export function run(ws) {
     let v_1, option_2;
     requirePackages(voicePackages);
@@ -1429,7 +1445,7 @@ export function run(ws) {
                 }));
             }));
         }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (release().then(() => {
-            let ps_1, ps_2, matchValue_6, matchValue_7, c_3;
+            let ps_1, ps_2, matchValue_6, matchValue_7, c_3, asked, on, total, label;
             const duration = frame.contents / 30;
             write(join_1(ofArray([build, "narration.wav"])), soundtrack(ofSeq_1(audio)));
             const scenes_1 = ofSeq_1(scenes);
@@ -1459,7 +1475,7 @@ export function run(ws) {
             let poster;
             const matchValue_5 = tryFind((s_2) => (toJson(s_2.id) === toJson(posterId)), scenes_1);
             poster = ((matchValue_5 != null) ? (isEmpty(matchValue_5.sentences) ? ((ps_1 = matchValue_5, ps_1.finish - 0.1)) : ((ps_2 = matchValue_5, last_1(ps_2.sentences).finish))) : fail(concat("poster scene ", Py_repr(posterId), " not found")));
-            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_6 = get$(script, "title"), (matchValue_6 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_6)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), (matchValue_7 = get$(script, "card"), (matchValue_7 != null) ? (Py_truthy(value_8(matchValue_7)) ? ((c_3 = value_8(matchValue_7), singleton_1(["card", Py_ofJs(marked.card)]))) : empty_1()) : empty_1()))]);
+            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_6 = get$(script, "title"), (matchValue_6 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_6)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), (matchValue_7 = get$(script, "card"), (matchValue_7 != null) ? (Py_truthy(value_8(matchValue_7)) ? ((c_3 = value_8(matchValue_7), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton_1(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty_1()) : empty_1()))]);
             writeText(join_1(ofArray([build, "timing.json"])), Py_dumpsIndented(2, timing));
             writeText(join_1(ofArray([build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
             const cues = toList(delay(() => append_1(singleton("WEBVTT"), delay(() => append_1(singleton(""), delay(() => collect((s_4) => collect((c_4) => append_1(singleton(concat(vttTime(c_4.start), " --> ", vttTime(c_4.finish))), delay(() => append_1(singleton(c_4.text), delay(() => singleton(""))))), s_4.sentences), scenes_1)))))));
