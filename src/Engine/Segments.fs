@@ -317,6 +317,7 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
                         "frames" ==> (if aligned then box (finish - first) else box [| first; finish |])
                         "voiced" ==> timing?voiced
                         "card" ==> (if isNil timing?card then null else timing?card)
+                        "captions" ==> (if isNil timing?captions then false else timing?captions)
                         "scene" ==> sceneAt k
                         "before" ==> before
                         "after" ==> after

@@ -273,7 +273,7 @@ export function time(spec) {
     }
 }
 
-let captionsOn = !timing.voiced;
+let captionsOn = !timing.voiced ? true : (!!(timing.captions));
 
 export function setCaptions(on) {
     captionsOn = on;

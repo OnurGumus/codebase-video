@@ -1445,7 +1445,7 @@ export function run(ws) {
                 }));
             }));
         }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (release().then(() => {
-            let ps_1, ps_2, matchValue_6, matchValue_7, c_3, asked, on, total, label;
+            let ps_1, ps_2, matchValue_6, matchValue_7, matchValue_8, c_3, asked, on, total, label;
             const duration = frame.contents / 30;
             write(join_1(ofArray([build, "narration.wav"])), soundtrack(ofSeq_1(audio)));
             const scenes_1 = ofSeq_1(scenes);
@@ -1475,7 +1475,7 @@ export function run(ws) {
             let poster;
             const matchValue_5 = tryFind((s_2) => (toJson(s_2.id) === toJson(posterId)), scenes_1);
             poster = ((matchValue_5 != null) ? (isEmpty(matchValue_5.sentences) ? ((ps_1 = matchValue_5, ps_1.finish - 0.1)) : ((ps_2 = matchValue_5, last_1(ps_2.sentences).finish))) : fail(concat("poster scene ", Py_repr(posterId), " not found")));
-            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_6 = get$(script, "title"), (matchValue_6 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_6)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), (matchValue_7 = get$(script, "card"), (matchValue_7 != null) ? (Py_truthy(value_8(matchValue_7)) ? ((c_3 = value_8(matchValue_7), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton_1(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty_1()) : empty_1()))]);
+            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_6 = get$(script, "title"), (matchValue_6 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_6)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_7 = get$(script, "captions"), (matchValue_7 == null) ? false : Py_truthy(value_8(matchValue_7)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), (matchValue_8 = get$(script, "card"), (matchValue_8 != null) ? (Py_truthy(value_8(matchValue_8)) ? ((c_3 = value_8(matchValue_8), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton_1(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty_1()) : empty_1()))]);
             writeText(join_1(ofArray([build, "timing.json"])), Py_dumpsIndented(2, timing));
             writeText(join_1(ofArray([build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
             const cues = toList(delay(() => append_1(singleton("WEBVTT"), delay(() => append_1(singleton(""), delay(() => collect((s_4) => collect((c_4) => append_1(singleton(concat(vttTime(c_4.start), " --> ", vttTime(c_4.finish))), delay(() => append_1(singleton(c_4.text), delay(() => singleton(""))))), s_4.sentences), scenes_1)))))));

@@ -138,6 +138,10 @@ skip), put them in a file named `.codebase-video/hints.md` in that project. Clau
 short videos are kept under that, and their first frame is drawn as a thumbnail with a play button, like the one
 at the top of this page. Edit your README on github.com and drag the `.mp4` into the editor.
 
+**Does the video have captions?** You always get a separate captions file (`.vtt`) that video players can load. If
+you want the words drawn into the picture itself, for example for a README, where the player starts muted, ask for
+"captions in the video". They are off unless you ask.
+
 **Do I need Python or .NET?** No.
 
 **Does the voice need an account or a key?** No. The voice runs on your computer.

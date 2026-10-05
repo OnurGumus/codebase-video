@@ -1011,6 +1011,9 @@ let run (ws: string) : JS.Promise<unit> =
                 [ "name", Py.Str name
                   "title", (match get script "title" with Some v -> Py.ofJs v | None -> Py.Str "")
                   "voiced", Py.Bool voiceName.IsSome
+                  // "captions": true in script.json draws each sentence at the bottom of the picture as it is spoken
+                  // (for players that start muted or cannot load the separate .vtt file). Off unless asked for.
+                  "captions", Py.Bool (match get script "captions" with Some v -> Py.truthy v | None -> false)
                   "duration", num duration
                   "poster", num (Py.round poster 3)
                   "scenes", Py.List(List.map sceneJson scenes) ]

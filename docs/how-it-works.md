@@ -80,7 +80,8 @@ module, a changed sentence costs its chapter. Everything else is reused, and joi
 GitHub plays a video attached to a README only up to 10 MB, and shows the video's first frame before it plays. A
 short video is therefore kept under 10 MB (the engine checks the file and, if needed, encodes the picture again to
 fit), and its first frame is drawn as a thumbnail: the title, a red border, a play button and the length. Longer
-videos do not fit in 10 MB; host them elsewhere and link to them. `CODEBASE_VIDEO_SHORT_MAX_MB` changes the limit.
+videos do not fit in 10 MB; host them elsewhere and link to them. Captions come as a separate `.vtt` file; with
+`"captions": true` in the script they are also drawn into the picture, which helps where the player starts muted. `CODEBASE_VIDEO_SHORT_MAX_MB` changes the limit.
 
 ## What runs on your computer
 

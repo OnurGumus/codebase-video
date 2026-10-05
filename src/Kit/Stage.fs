@@ -250,7 +250,7 @@ let rec time (spec: Spec) : float =
 // ── Captions and playback ────────────────────────────────────────────────────────────────────────────────
 
 /// Burned-in captions from the narration. Silent clips need them; narrated ones may opt in.
-let mutable private captionsOn = not timing.voiced
+let mutable private captionsOn = not timing.voiced || truthy (timing?captions)
 
 let setCaptions (on: bool) = captionsOn <- on
 

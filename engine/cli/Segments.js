@@ -403,6 +403,7 @@ export function plan(ws, fps, size, browser, encoder) {
             frames: aligned ? (finish_1 - first_1) : (new Int32Array([first_1, finish_1])),
             voiced: timing.voiced,
             card: ((timing.card == null)) ? defaultOf() : timing.card,
+            captions: ((timing.captions == null)) ? false : timing.captions,
             scene: sceneAt(k_3),
             before: before,
             after: after,

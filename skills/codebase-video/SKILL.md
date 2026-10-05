@@ -92,6 +92,10 @@ the picture again if it is over), and draws the first frame as a thumbnail: the 
 and the length. For a `tour` or `deep` video the thumbnail is off; set `"thumbnail": true` inside the script's `card`
 when the user wants it, or `false` in a short video's `card` when they do not. A longer video will not fit in 10 MB:
 tell the user to host it elsewhere (a release asset, a project page, a video site) and link it.
+Captions are a separate file (`WS/out/<name>.vtt`) and are not drawn into the picture. GitHub's player cannot load
+that file and starts muted, so offer captions in the picture for a video meant for a README: set `"captions": true`
+at the top level of `script.json`, narrate again, and each sentence is shown at the bottom as it is spoken. Leave it
+off otherwise; it covers the lowest part of the scene.
 To attach the video, the user edits the README on github.com and drags `WS/out/<name>.mp4` into the editor; a link
 to a file in the repository does not play.
 
