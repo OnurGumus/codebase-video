@@ -51,7 +51,8 @@ exists) says per scene what to show, the exact code to show, and what not to sho
 - Kit notes: captions that replace each other need one K.lines/K.text call each, with `until`; K.code: leave out `w`;
   K.code is about 151 + 60 px per line tall and 26 px per character wide at 44 px; K.heading title+sub is one line
   (under ~75 characters); two K.heading calls in one scene overlap, use a text element for a second heading; K.flow
-  node `x` is the box's left edge.
+  node `x` is the box's left edge; when two pairs of edges leave one side of a box, move their ends with `fromPos` /
+  `toPos` (never hidden anchor nodes); in a K.table give a cell its own `at` when its value is spoken later than its row.
 - If a module fails to build (a cue that is not spoken, a JavaScript error), the page draws every element of it at once
   and the render prints "page error" or "build failed": always read the render output and look at your sheets.
 
