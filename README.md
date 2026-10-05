@@ -51,7 +51,7 @@ A video file (`.mp4`) with captions, saved inside your project in a folder calle
 
 Your code is not changed. Git ignores that folder, so nothing is committed by accident.
 
-## How long does it take?
+## How long does it take, and what does it cost?
 
 You pick the length of the video:
 
@@ -61,11 +61,27 @@ You pick the length of the video:
 | tour (the usual choice) | 6 to 10 minutes | an hour or more |
 | deep | 20 to 28 minutes | several hours |
 
-These times are rough, and it is the computer's time, not yours: you can do something else meanwhile. A longer
-video also uses more of your Claude plan.
+These times are rough, and it is the computer's time, not yours: you can do something else meanwhile.
+
+**How much of my Claude plan does it use?** It is not light, because most of the work is checking. Measured on two
+small projects, the helper agents used roughly:
+
+| What you ask for | Claude tokens |
+|---|---|
+| a preview (the checked write-up and the narration, no pictures) | about 0.4 to 0.5 million |
+| a short video | about 1.2 to 1.3 million |
+| a tour or a deep video | more; not measured yet |
+
+Most of those tokens are Claude reading your code and its own drafts, and the main Claude session adds some on
+top. A bigger project costs more, because there is more to read and check. Drawing and encoding the video happen
+on your computer and use no tokens.
 
 **Not sure yet?** Ask for a preview first. You get the checked write-up of your code and the narration to listen
-to, without the pictures. It is much quicker, and if you like it, Claude carries on from there to the full video.
+to, without the pictures. It is much quicker and cheaper, and if you like it, Claude carries on from there to the
+full video without redoing anything.
+
+**Changing a video afterwards is quick.** Only the scenes that changed are drawn again: about a minute for a
+changed picture or sentence in a five-minute video, where drawing the whole video takes about five.
 
 The first time, the plugin downloads a voice (about 800 MB). This happens only once.
 
