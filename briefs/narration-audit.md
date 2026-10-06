@@ -34,6 +34,10 @@ J. The document itself: anything in it that the code contradicts (quote both).
 K. Density: places where facts arrive back to back with no room to take them in: three new facts in a row, a new
    term or number followed at once by another, a subject change without a pause. Say where a `[pause]` belongs, and
    which fact to cut if the video is at its length limit (cut a fact, never a pause).
+L. The map (`"map"` at the top of `script.json`; KIT.md, "The shared map"): every part and connection against the
+   lists that end the document's `## The map` section and against the code: a part the document does not have, a
+   wrong kind, an arrow pointing against the call or the data, a wrong verb. Each bridge scene's `"path"` against the
+   order its chapter's flow reaches the parts. Each scene's `"inside"` against what the scene is about.
 
 For each finding give replacement wording. Keep each scene's sentence count where you can. Rank must-fix / should-fix /
 nit. Also list what you checked and found correct. Do not pad. Write the report to `build/audit-narration.md` (or

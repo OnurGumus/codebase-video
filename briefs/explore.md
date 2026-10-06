@@ -18,7 +18,10 @@ file, not by guessing from names.
    codebase maps it onto its own parts (which type or module plays which role, with citations). A newcomer who knows
    none of them should understand the rest of the document after this section.
 3. `## The map`: the main parts and how they depend on each other (which module calls which; where data lives); the
-   directory layout that matters, and what to ignore.
+   directory layout that matters, and what to ignore. End the section with two lists the video's map is drawn from:
+   `Parts:` the 2 to 7 main parts, each with a short name (12 characters at most), its kind (a caller, an entry
+   point, an internal module, a data store, an external service ...) and a citation; and `Connections:` each pair
+   that talks, as `A -> B: verb` in the direction the call or the data really goes, with a citation.
 4. One `##` section per key flow (two or three flows for a tour, four to six for a deep dive), each traced end to end:
    the entry point, every hop in order, the data that moves, the decision points, where errors go, where it ends.
    Pick the flows a newcomer touches first. Show the real code at each important hop.

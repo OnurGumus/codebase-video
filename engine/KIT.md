@@ -67,6 +67,50 @@ Kit.module("mk1", (K) => {
 });
 ```
 
+## The shared map
+
+A long video can declare one map of the system's main parts, once, in `script.json`. The frame then draws it for
+you in two places, always the same picture, so the viewer keeps their bearings from chapter to chapter.
+
+```json
+"map": {
+  "kinds": { "entry": { "tone": "accent", "icon": "▶" }, "store": { "tone": "cyan", "icon": "🗄️" } },
+  "parts": [ { "id": "endpoint", "label": "Endpoint", "kind": "entry", "col": 0, "row": 1 },
+             { "id": "journal",  "label": "Journal",  "kind": "store", "col": 1, "row": 1 } ],
+  "edges": [ { "from": "endpoint", "to": "journal", "label": "appends" } ]
+}
+```
+
+- `kinds` is the video's colour-by-kind table in a form the kit can read: a tone and an icon for each kind of part.
+- `parts`: 2 to 7 of them, each with a `label` of at most 12 characters and a cell on a grid of 4 columns (`col` 0-3)
+  by 3 rows (`row` 0-2). Lay the main flow out left to right along one row; put what it branches to above and below.
+- `edges`: `from` → `to` is the real direction, `label` a verb. The verb is drawn on an arrow between two parts of
+  the same row when it fits between their boxes (about 6 characters between neighbouring columns), or of the same
+  column. Other arrows are drawn without it; the render output names each label that was left out.
+
+**A chapter's path.** On a chapter's bridge scene, `"path": ["endpoint", "journal"]` replaces the plain chapter card
+with the map: the chapter's number and title at the top, every part dim, and the path's parts and edges lighting up
+in order while the bridge line is spoken. Consecutive parts of a path must be joined by an edge. A bridge scene
+without `path` keeps the plain card.
+
+**Inside a part.** On a content scene, `"inside": "journal"` draws the scene inside that part. Over the scene's lead
+the map returns, the part's box grows into a dashed boundary around the content area, and its icon and label become a
+tag at the top right. Consecutive scenes inside the same part are one visit: the boundary holds for all of them, and
+shrinks back to the box at the end of the last. The module draws its content exactly as usual and never draws a
+boundary of its own.
+
+- The first scene of a visit needs `"lead": 1.4` (1.2 at least): nothing of the module is shown during the zoom.
+- The last scene needs `pad` plus `hold` of 1.5 s or more, for the zoom out.
+- In an `inside` scene keep the heading under about 60 characters, so the row's right end is free for the tag.
+- Not on a bridge or recap scene. A think scene may be inside.
+
+**In a module.** `K.map({ reveal: { endpoint: "m3-parts|the endpoint", journal: "m3-parts|a journal" } })` draws the
+same map inside a module, for the chapter that introduces it: a part named in `reveal` appears on its cue, the others
+with the component, an edge once both its parts have. It takes `at`, `until` and `in`, and nothing about positions,
+labels or colours. Never redraw the map by hand with `K.flow`.
+
+`check` verifies the map, every path and every visit before anything is drawn.
+
 ## Components
 
 All take `at` (appear), `until` (leave), `in: group` (parent). Positions are stage pixels on 1920x1080;
@@ -126,6 +170,7 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   around: 6 messages at the default `y: 240`, and about 4 actors; with 4 actors a label between neighbours has
   about 400 px (some 16 characters). Split a longer exchange across two scenes, repeating the actors.
   No activation bars, notes or `alt` / `loop` frames: say those in the narration, or show the branch as its own diagram.
+- `K.map({ reveal: { partId: at }, at, until })` - the video's shared map, see "The shared map" above.
 - `K.code({ title, lines, lang, glow: [{ line, from, until, tone }], x, y })` - syntax-highlighted
   (`lang`: "csharp" default, "fsharp", "javascript" (also for TypeScript), "python" (also for Bazel BUILD files), "nix", "dockerfile", "sql", "json", "yaml", "bash", "plain"); `glow` lights a line's background.
   Leave out `w`: a width narrower than the longest line does not wrap or clip, the line runs past the card.

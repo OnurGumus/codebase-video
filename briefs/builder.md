@@ -54,6 +54,11 @@ exists) says per scene what to show, the exact code to show, and what not to sho
   replaced by the same card with one more line) cross-fades: the old element gets `until: [cue, 0.35]` and BOTH old
   and new get `rise: 0` (K.code: `slide: 0`), because the kit applies the rise on fade-out too. TEXT replaced by
   DIFFERENT text in the same spot must not overlap: plain `until` on the replacement's cue, normal rise.
+- The shared map (KIT.md, "The shared map"): the frame draws the chapter openers and the boundary of an `inside`
+  scene; you do not. In the chapter that introduces the parts, show them with `K.map` and `reveal`, never a K.flow
+  that looks like the map. In a scene with `"inside"` in script.json, draw only what is inside that part, keep the
+  heading under about 60 characters, and show nothing before the scene's first sentence (the zoom is playing). A part
+  of the map has the same tone and icon wherever your modules draw it.
 - Kit notes: captions that replace each other need one K.lines/K.text call each, with `until`; K.code: leave out `w`;
   K.code is about 151 + 60 px per line tall and 26 px per character wide at 44 px; K.heading title+sub is one line
   (under ~75 characters); two K.heading calls in one scene overlap, use a text element for a second heading; K.flow

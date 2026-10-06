@@ -15,6 +15,9 @@ https://github.com/user-attachments/assets/98c04504-aac9-43aa-afda-cc8d9962a076
 A plugin for [Claude Code](https://claude.com/claude-code). You point it at a folder of code. It reads the code
 and makes a video in which a voice explains how the code works, with diagrams and the real code on screen.
 
+Each chapter that follows a path through the code opens on one map of the project's main parts, with that path lit
+up, and the video zooms into a part when it goes inside it, so you always know where you are.
+
 People use it to:
 
 - help a new teammate understand a project;

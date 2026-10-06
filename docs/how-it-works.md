@@ -62,6 +62,8 @@ module, a changed sentence costs its chapter. Everything else is reused, and joi
 - the actual code on screen, copied exactly, with the line being discussed highlighted (coloured for F#, C#,
   JavaScript and TypeScript, Python, SQL, JSON, YAML, Bash, Nix and Dockerfiles);
 - diagrams of the parts and of who calls whom;
+- one map of the main parts for the whole video: each chapter that follows a path through the code opens on the map
+  with that path lit up, and a scene about the inside of one part zooms into that part's box;
 - a recap after each chapter, and in longer videos a few "pause and think" questions.
 
 ## The files you get

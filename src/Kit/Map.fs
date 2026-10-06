@@ -7,8 +7,8 @@
 /// each part and edge is, and how far a zoom into one part has gone. It knows nothing of scenes or chapters.
 ///
 /// Parts sit in the cells of a 4 by 3 grid over the module area (x 60-1860, y 240-1000), each an icon and a label
-/// in a box 96 px tall. A part is dim (35%, neutral) or lit (its kind's tone). An edge's label is drawn only when
-/// it fits between its two boxes.
+/// in a box 96 px tall. A part is dim (35%, neutral) or lit (its kind's tone). An edge's label is drawn only on an
+/// arrow between two parts of one row, when it fits between their boxes, or of one column.
 module Map
 
 open Fable.Core
@@ -149,10 +149,12 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             g.label.style.left <- $"{r.label.x}px"
             g.label.style.top <- $"{r.label.y}px"
             g.label.style.transform <- r.labelTransform
-            // A label over a sideways arrow has the gap between the two boxes to itself, less 20 px each side;
-            // beside an upright arrow it has the row.
+            // A label over a level arrow has the gap between the two boxes to itself, less 20 px each side; beside
+            // an upright arrow it has the row. An arrow between two rows and two columns is a steep curve where its
+            // label would go, so it carries none.
             let gap = if a.x + a.w <= b.x then b.x - (a.x + a.w) else a.x - (b.x + b.w)
-            g.fits <- not r.horiz || g.label.offsetWidth + 40.0 <= gap
+            let level = (part g.e.from).p.row = (part g.e.``to``).p.row
+            g.fits <- not r.horiz || (level && g.label.offsetWidth + 40.0 <= gap)
             if not g.fits && truthy g.e.label then
                 log $"map: label {stringify g.e.label} on {g.e.from} -> {g.e.``to``} does not fit, not drawn"
         laidOut <- true

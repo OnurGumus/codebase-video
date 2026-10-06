@@ -24,7 +24,9 @@ Find:
 7. a visual gag that adds or bends a claim;
 8. diagrams that teach a false structure: arrow directions against who calls or writes to whom in the code, a missing
    hop, a dependency the code does not have; in a sequence diagram also the order of the messages against the order
-   the code makes the calls, and a reply drawn as a call or the other way round;
+   the code makes the calls, and a reply drawn as a call or the other way round; on a chapter's opening map, the
+   lit path against the order that chapter's flow reaches the parts; in a scene drawn inside a boundary, the tag
+   against the part the scene is really about, and content that belongs to another part;
 9. in-place swaps that blink or jump (a drawing must cross-fade with rise 0 on both elements; text replaced by different
    text must not overlap), and any module drawn all at once (its build failed: look for "page error" in render output).
 {{VISUAL}}

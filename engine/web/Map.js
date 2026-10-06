@@ -185,7 +185,8 @@ export function build(parent, def) {
                 g.label.style.top = (`${r.label.y}px`);
                 g.label.style.transform = r.labelTransform;
                 const gap = ((a.x + a.w) <= b.x) ? (b.x - (a.x + a.w)) : (a.x - (b.x + b.w));
-                g.fits = (!r.horiz ? true : ((g.label.offsetWidth + 40) <= gap));
+                const level = part_1(g.e.from).p.row === part_1(g.e.to).p.row;
+                g.fits = (!r.horiz ? true : (level && ((g.label.offsetWidth + 40) <= gap)));
                 if (!g.fits && (!!(g.e.label))) {
                     console.log(`map: label ${JSON.stringify(g.e.label)} on ${g.e.from} -> ${g.e.to} does not fit, not drawn`);
                 }

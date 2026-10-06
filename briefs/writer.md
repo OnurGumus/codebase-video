@@ -27,6 +27,13 @@ set it}, and `scenes`.
   - a closing `kN-recap` with three spoken sentences and a `"recap"` list of three short card lines in the same order,
     `"lead": 0.6, "hold": 3.5, "pad": 0.5`.
 - `outro` ties back to the intro's goal and names the document's first exercise.
+- The map (KIT.md, "The shared map"): write a top-level `"map"` from the `Parts:` and `Connections:` lists that end the
+  document's `## The map` section: the same names, kinds and directions, nothing added. Put the main flow left to
+  right along one row. `kinds` gives each kind the tone and icon of this video's colour table: {{COLOURS}}.
+  On the bridge scene of each chapter that follows a flow, add `"path"`: the parts that flow touches, in the order it
+  reaches them. On each content scene that is about the inside of one part, add `"inside": "<part id>"`; give the
+  first scene of such a run `"lead": 1.4` and the last one `"pad": 1.6`. Leave `inside` off scenes that are about how
+  parts talk to each other.
 - Target {{MINUTES}}: {{WORDS}}. File paths, identifiers and flags cost several spoken words each. Plan the cut before
   you write: follow one flow end to end rather than skimming all of them, and say in `intro-path` what is left for later.
 

@@ -61,7 +61,9 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
    Apply: `CV fix` (dry run), then `CV fix --apply` (a second round's file: `CV fix build/lesson-fixes-2.json --apply`).
    For `deep`, run a second fresh verify on the corrected document (one pass only ever finds part of what is wrong).
    Re-run `CV fill`.
-4. **Script** (one agent): `CV new-long` (creates clip.html), then give it `brief-writer.txt`. It writes
+4. **Script** (one agent): `CV new-long` (creates clip.html), then give it `brief-writer.txt`. It also writes the
+   video's map of the main parts into the script (a chapter then opens on the map with its path lit, and a scene
+   about the inside of one part is drawn inside that part's box; `check` verifies all of it). It writes
    `WS/script.json`, narrates and runs `check` until clean.
 5. **Narration audit** (a FRESH agent): `brief-narration-audit.txt`. Send its findings to the writer to apply (re-narrate
    and re-check). For `deep`, a second fresh audit on the changed text.
@@ -125,6 +127,9 @@ publish anything and never write outside WS (the repository itself is read-only 
 - code = K.code cards titled with the file path, real indentation, the spoken line glowing in accent;
 - verdict colours only for verdicts: green ✓ the right choice, red ✕ the mistake or an error path the narration calls
   an error, amber a caution.
+
+The writer turns this table into `map.kinds` in `script.json` (a tone and an icon per kind), which is what the frame
+uses for the parts of the shared map; builders use the same table for everything else.
 
 ## Rules that keep the videos right (learned the hard way)
 

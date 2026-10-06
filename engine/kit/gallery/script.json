@@ -8,6 +8,73 @@
   "source": {
     "lesson": "none: a test and a reference for the kit (src/Kit/Kit.fs)"
   },
+  "map": {
+    "kinds": {
+      "caller": {
+        "tone": "muted",
+        "icon": "👤"
+      },
+      "service": {
+        "tone": "accent",
+        "icon": "⚙️"
+      },
+      "cache": {
+        "tone": "violet",
+        "icon": "⚡"
+      },
+      "store": {
+        "tone": "cyan",
+        "icon": "🗄️"
+      }
+    },
+    "parts": [
+      {
+        "id": "client",
+        "label": "client",
+        "kind": "caller",
+        "col": 0,
+        "row": 1
+      },
+      {
+        "id": "service",
+        "label": "service",
+        "kind": "service",
+        "col": 1,
+        "row": 1
+      },
+      {
+        "id": "cache",
+        "label": "cache",
+        "kind": "cache",
+        "col": 2,
+        "row": 0
+      },
+      {
+        "id": "database",
+        "label": "database",
+        "kind": "store",
+        "col": 2,
+        "row": 2
+      }
+    ],
+    "edges": [
+      {
+        "from": "client",
+        "to": "service",
+        "label": "calls"
+      },
+      {
+        "from": "service",
+        "to": "cache",
+        "label": "reads"
+      },
+      {
+        "from": "service",
+        "to": "database",
+        "label": "writes"
+      }
+    ]
+  },
   "scenes": [
     {
       "id": "title",
@@ -167,6 +234,38 @@
       "lead": 0.4,
       "pad": 1.0,
       "say": "A module can place its own toast too, with custom text, right where its content is."
+    },
+    {
+      "id": "km-why",
+      "chapter": "The shared map",
+      "path": [
+        "client",
+        "service",
+        "database"
+      ],
+      "lead": 1.0,
+      "pad": 0.5,
+      "say": "Next: one map for the whole video, and a chapter's path across it."
+    },
+    {
+      "id": "mp-map",
+      "lead": 0.6,
+      "pad": 1.0,
+      "say": "A module can draw the same map, part by part: a client, a service, a cache, and a database."
+    },
+    {
+      "id": "mp-inside",
+      "inside": "service",
+      "lead": 1.4,
+      "pad": 0.8,
+      "say": "A scene can go inside one part. Then that part's box grows into a boundary around the scene."
+    },
+    {
+      "id": "mp-inside2",
+      "inside": "service",
+      "lead": 0.6,
+      "pad": 1.6,
+      "say": "The boundary stays while the scenes stay inside, and shrinks back to the box when they leave."
     },
     {
       "id": "k6-why",
