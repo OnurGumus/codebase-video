@@ -62,11 +62,13 @@ type Route =
 
 /// Routes an arrow between the nearest sides of two boxes. `lane` shifts it sideways (two edges between the same
 /// boxes run side by side); `fromPos` / `toPos` move an end along its side. The line stops short of each arrowed end
-/// so the head's tip, not the line's cap, touches the box.
-let route (a: Box) (b: Box) (lane: float) (fromPos: float option) (toPos: float option) (ends: string[]) : Route =
+/// so the head's tip, not the line's cap, touches the box. `sideways` says which sides it joins: Some true the left
+/// and right sides (a curve), Some false the top and bottom (a straight line), None whichever the boxes' positions
+/// suggest.
+let route (a: Box) (b: Box) (lane: float) (fromPos: float option) (toPos: float option) (ends: string[]) (sideways: bool option) : Route =
     let ca, cb = centre a, centre b
     let dx, dy = cb.x - ca.x, cb.y - ca.y
-    let horiz = abs dx * a.h > abs dy * a.w
+    let horiz = defaultArg sideways (abs dx * a.h > abs dy * a.w)
     let p1, p2 =
         if horiz then
             { x = (if dx > 0.0 then a.x + a.w else a.x); y = along a.y a.h ca.y fromPos + lane },

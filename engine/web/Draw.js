@@ -3,6 +3,7 @@ import { replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { bool_type, array_type, tuple_type, string_type, record_type, float64_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { clamp01 } from "./Stage.js";
+import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { map, delay, toArray } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 
 const TONE = {
@@ -119,15 +120,17 @@ export function Route_$reflection() {
 /**
  * Routes an arrow between the nearest sides of two boxes. `lane` shifts it sideways (two edges between the same
  * boxes run side by side); `fromPos` / `toPos` move an end along its side. The line stops short of each arrowed end
- * so the head's tip, not the line's cap, touches the box.
+ * so the head's tip, not the line's cap, touches the box. `sideways` says which sides it joins: Some true the left
+ * and right sides (a curve), Some false the top and bottom (a straight line), None whichever the boxes' positions
+ * suggest.
  */
-export function route(a, b, lane, fromPos, toPos, ends) {
+export function route(a, b, lane, fromPos, toPos, ends, sideways) {
     const matchValue = centre(a);
     const cb = centre(b);
     const ca = matchValue;
     const dy = cb.y - ca.y;
     const dx = cb.x - ca.x;
-    const horiz = (Math.abs(dx) * a.h) > (Math.abs(dy) * a.w);
+    const horiz = defaultArg(sideways, (Math.abs(dx) * a.h) > (Math.abs(dy) * a.w));
     const patternInput_2 = horiz ? [new Point((dx > 0) ? (a.x + a.w) : a.x, along(a.y, a.h, ca.y, fromPos) + lane), new Point((dx > 0) ? b.x : (b.x + b.w), along(b.y, b.h, cb.y, toPos) + lane)] : [new Point(along(a.x, a.w, ca.x, fromPos) + lane, (dy > 0) ? (a.y + a.h) : a.y), new Point(along(b.x, b.w, cb.x, toPos) + lane, (dy > 0) ? b.y : (b.y + b.h))];
     const p2 = patternInput_2[1];
     const p1 = patternInput_2[0];

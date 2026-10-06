@@ -240,6 +240,10 @@ type SequenceOpts =
     abstract gap: float option
     abstract dim: bool
 
+type MapOpts =
+    inherit Opts
+    abstract reveal: obj
+
 type Glow =
     abstract line: int
     abstract from: Spec
@@ -307,6 +311,7 @@ type IKit =
     abstract timeline: ?o: TimelineOpts -> Comp
     abstract flow: ?o: FlowOpts -> Comp
     abstract sequence: ?o: SequenceOpts -> Comp
+    abstract map: ?o: MapOpts -> Comp
     abstract code: ?o: CodeOpts -> Comp
     abstract board: ?o: BoardOpts -> Comp
     abstract steps: labels: obj[] * ?o: StepsOpts -> Comp
@@ -371,6 +376,8 @@ let private CSS =
 .k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }
 .k-seq-label { color: var(--ink); }
 .k-seq-label.k-seq-reply { color: var(--muted); }
+.k-map-bound { border-radius: 22px; }
+.k-map-tag { font-size: 46px; font-weight: 650; white-space: nowrap; padding: 2px 22px; border-radius: 14px; transform: translate(-50%, -50%); }
 .k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }
 .k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }
 .k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
@@ -986,7 +993,7 @@ let kitFor (root: HTMLElement) : IKit =
                 for group: ResizeArray<EdgeState> in values pairs do
                     group |> Seq.iteri (fun k ed -> ed.lane <- (float k - float (group.Count - 1) / 2.0) * LANE)
                 for ed in edges do
-                    let r = route (box ed.e.from) (box ed.e.``to``) ed.lane ed.e.fromPos ed.e.toPos (ed.heads |> Array.map (fun hd -> hd.``end``))
+                    let r = route (box ed.e.from) (box ed.e.``to``) ed.lane ed.e.fromPos ed.e.toPos (ed.heads |> Array.map (fun hd -> hd.``end``)) None
                     for hd in ed.heads do
                         hd.el.setAttribute ("points", r.heads |> Array.find (fun (en, _) -> en = hd.``end``) |> snd)
                     ed.path.setAttribute ("d", r.d)
@@ -1202,6 +1209,38 @@ let kitFor (root: HTMLElement) : IKit =
                             if not (isNull ms.label) then
                                 ms.label.style?opacity <- p
                                 ms.label.style.color <- if on then tone ms.m.tone else "") |}
+
+        /// The video's shared map (script.json "map"), drawn inside a module, for the chapter that introduces it:
+        /// { reveal: { partId: at, ... }, at, until }. A part named in `reveal` appears on its cue, the others with
+        /// the component; an edge appears once both its parts have. No positions, labels or tones: they come from
+        /// the shared definition, so this is the picture the chapter openers show.
+        member _.map o =
+            let o = opts o
+            let def =
+                match Map.definition () with
+                | Some d -> d
+                | None -> fail "map: this video has no map (add \"map\" to script.json)"
+            let reveal = table ()
+            for (id, spec: Spec) in entries (jsOr o.reveal (createEmpty)) do
+                if not (def.parts |> Array.exists (fun p -> p.id = id)) then
+                    let known = def.parts |> Array.map (fun p -> p.id) |> String.concat ", "
+                    fail $"map: reveal names {stringify id}, which is not a part ({known})"
+                put reveal id (T0 spec)
+            let view = Map.build (host o) def
+            let at, until = TAt o.at, TUntil o.until
+            add
+                {| el = view.el
+                   render =
+                    fun t ->
+                        view.el.style?opacity <- vis' t at until
+                        view.draw
+                            { vis =
+                                fun id ->
+                                    let r = get<Time> reveal id
+                                    if isNil r then 1.0 else clamp01 ((t - r + 0.05) / 0.4)
+                              lit = fun _ -> 1.0
+                              edgeLit = fun _ _ -> 1.0
+                              zoom = None } |}
 
         /// A code card whose lines glow as they run: { title, lines: [...], glow: [{ line, from, until, tone }] }.
         /// `font` (px, default 44) shrinks the lines so verbatim tool output keeps its real indentation.

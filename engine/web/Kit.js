@@ -14,10 +14,11 @@ import { singleton, collect, delay, toArray, iterateIndexed as iterateIndexed_1,
 import { unwrap, defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { min, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { createSvg } from "./Interop.js";
+import { State, build as build_1, definition } from "./Map.js";
 
 const noTime = defaultOf();
 
-const CSS = "\n.k-abs { position: absolute; }\n.k-title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }\n.k-big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }\n.k-text { font-size: 48px; line-height: 1.3; }\n.k-small { font-size: 44px; line-height: 1.3; }\n.k-mono { font-family: var(--mono); font-size: 46px; }\n.k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }\n.k-muted { color: var(--muted); }\n.k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }\n.k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }\n.k-lines { display: flex; flex-direction: column; }\n.k-line { font-size: 48px; line-height: 1.3; }\n.k-line .k-note { display: block; font-size: 44px; color: var(--muted); margin-top: 2px; }\n.k-line.k-mono-line { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-bullet { color: var(--accent); margin-right: 18px; font-weight: 700; }\n.k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }\n.k-rel { position: relative; display: inline-block; }\n.k-chips { display: flex; flex-wrap: wrap; gap: 18px; }\n.k-table { display: grid; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }\n.k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }\n.k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }\n.k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }\n.k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }\n.k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }\n.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%; }\n.k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }\n.k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }\n.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--card);\n  display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }\n.k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }\n.k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }\n.k-node { position: absolute; background: var(--card); border: 3px solid var(--border); border-radius: 18px; padding: 16px 26px;\n  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap; }\n.k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }\n.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }\n.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }\n.k-node .k-node-icon { margin-right: 14px; }\n.k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }\n.k-seq-label { color: var(--ink); }\n.k-seq-label.k-seq-reply { color: var(--muted); }\n.k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }\n.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }\n.k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }\n.k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }\n.k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }\n.k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }\n.k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }\n.k-board .k-br-text { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }\n.k-steps { display: flex; gap: 22px; }\n.k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }\n.k-step b { color: var(--accent); margin-right: 12px; }\n.k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }\n.k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;\n  background: var(--bg2); border: 3px solid var(--tc, var(--accent)); box-shadow: 0 12px 36px #0009;\n  white-space: nowrap; transform-origin: 100% 50%; z-index: 20; }\n.k-toast .k-toast-icon { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n  font-size: 48px; line-height: 1; background: color-mix(in srgb, var(--tc, var(--accent)) 22%, transparent); }\n.k-toast .k-toast-text { font-size: 44px; font-weight: 700; color: var(--tc, var(--accent)); }\n.k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }\n.k-toast .k-ring circle { fill: none; stroke-width: 7; }\n.k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }\n.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--card); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }\n.k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }\n.k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }\n.k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }\n";
+const CSS = "\n.k-abs { position: absolute; }\n.k-title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }\n.k-big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }\n.k-text { font-size: 48px; line-height: 1.3; }\n.k-small { font-size: 44px; line-height: 1.3; }\n.k-mono { font-family: var(--mono); font-size: 46px; }\n.k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }\n.k-muted { color: var(--muted); }\n.k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }\n.k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }\n.k-lines { display: flex; flex-direction: column; }\n.k-line { font-size: 48px; line-height: 1.3; }\n.k-line .k-note { display: block; font-size: 44px; color: var(--muted); margin-top: 2px; }\n.k-line.k-mono-line { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-bullet { color: var(--accent); margin-right: 18px; font-weight: 700; }\n.k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }\n.k-rel { position: relative; display: inline-block; }\n.k-chips { display: flex; flex-wrap: wrap; gap: 18px; }\n.k-table { display: grid; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }\n.k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }\n.k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }\n.k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }\n.k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }\n.k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }\n.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%; }\n.k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }\n.k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }\n.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--card);\n  display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }\n.k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }\n.k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }\n.k-node { position: absolute; background: var(--card); border: 3px solid var(--border); border-radius: 18px; padding: 16px 26px;\n  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap; }\n.k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }\n.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }\n.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }\n.k-node .k-node-icon { margin-right: 14px; }\n.k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }\n.k-seq-label { color: var(--ink); }\n.k-seq-label.k-seq-reply { color: var(--muted); }\n.k-map-bound { border-radius: 22px; }\n.k-map-tag { font-size: 46px; font-weight: 650; white-space: nowrap; padding: 2px 22px; border-radius: 14px; transform: translate(-50%, -50%); }\n.k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }\n.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }\n.k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }\n.k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }\n.k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }\n.k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }\n.k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }\n.k-board .k-br-text { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }\n.k-steps { display: flex; gap: 22px; }\n.k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }\n.k-step b { color: var(--accent); margin-right: 12px; }\n.k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }\n.k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;\n  background: var(--bg2); border: 3px solid var(--tc, var(--accent)); box-shadow: 0 12px 36px #0009;\n  white-space: nowrap; transform-origin: 100% 50%; z-index: 20; }\n.k-toast .k-toast-icon { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n  font-size: 48px; line-height: 1; background: color-mix(in srgb, var(--tc, var(--accent)) 22%, transparent); }\n.k-toast .k-toast-text { font-size: 44px; font-weight: 700; color: var(--tc, var(--accent)); }\n.k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }\n.k-toast .k-ring circle { fill: none; stroke-width: 7; }\n.k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }\n.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--card); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }\n.k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }\n.k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }\n.k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }\n";
 
 function injectCss() {
     if (Operators_IsNull(document.getElementById("stage-kit-css"))) {
@@ -849,7 +850,7 @@ export function kitFor(root) {
                         }
                         for (let idx_8 = 0; idx_8 <= (edges.length - 1); idx_8++) {
                             const ed_2 = item_1(idx_8, edges);
-                            const r_6 = route(box_5(ed_2.e.from), box_5(ed_2.e.to), ed_2.lane, ed_2.e.fromPos, ed_2.e.toPos, map((hd) => hd.end, ed_2.heads));
+                            const r_6 = route(box_5(ed_2.e.from), box_5(ed_2.e.to), ed_2.lane, ed_2.e.fromPos, ed_2.e.toPos, map((hd) => hd.end, ed_2.heads), undefined);
                             const arr_3 = ed_2.heads;
                             for (let idx_9 = 0; idx_9 <= (arr_3.length - 1); idx_9++) {
                                 const hd_1 = item_1(idx_9, arr_3);
@@ -1104,23 +1105,54 @@ export function kitFor(root) {
                 },
             });
         },
-        code(o_23) {
+        map(o_23) {
             const o_24 = opts(o_23);
-            const card = mk(host(o_24), "div", "k-code", defaultOf(), defaultOf());
+            let def;
+            const matchValue_49 = definition();
+            def = ((matchValue_49 == null) ? ((() => { throw new Error("map: this video has no map (add \"map\" to script.json)"); })()) : matchValue_49);
+            const reveal = {};
+            const arr_6 = Object.entries((o_24.reveal || {}));
+            for (let idx_15 = 0; idx_15 <= (arr_6.length - 1); idx_15++) {
+                let array_24;
+                const forLoopVar_1 = item_1(idx_15, arr_6);
+                const id_5 = forLoopVar_1[0];
+                if (!((array_24 = def.parts, array_24.some((p_9) => (p_9.id === id_5))))) {
+                    const known_1 = join(", ", map((p_10) => p_10.id, def.parts));
+                    (() => { throw new Error(`map: reveal names ${JSON.stringify(id_5)}, which is not a part (${known_1})`); })();
+                }
+                reveal[id_5] = T0(forLoopVar_1[1]);
+            }
+            const view = build_1(host(o_24), def);
+            const matchValue_50 = TAt(o_24.at);
+            const matchValue_51 = TUntil(o_24.until);
+            return add({
+                el: view.el,
+                render: (t_11) => {
+                    view.el.style.opacity = vis$0027(t_11, matchValue_50, matchValue_51);
+                    view.draw(new State((id_6) => {
+                        const r_7 = reveal[id_6];
+                        return ((r_7 == null)) ? 1 : clamp01(((t_11 - r_7) + 0.05) / 0.4);
+                    }, (_arg_2) => 1, (_arg_3, _arg_4) => 1, undefined));
+                },
+            });
+        },
+        code(o_25) {
+            const o_26 = opts(o_25);
+            const card = mk(host(o_26), "div", "k-code", defaultOf(), defaultOf());
             place(card, ({ ...{
                 x: 60,
                 y: 200,
-            }, ...o_24 }));
-            if (!!(o_24.title)) {
-                mk(card, "div", "k-code-title", o_24.title, defaultOf());
+            }, ...o_26 }));
+            if (!!(o_26.title)) {
+                mk(card, "div", "k-code-title", o_26.title, defaultOf());
             }
-            const lang = defaultArg(o_24.lang, "csharp");
-            const ls = map((l) => mk(card, "div", "k-cl", highlight(l, lang), defaultOf()), o_24.lines);
-            if (!!(o_24.font)) {
-                for (let idx_15 = 0; idx_15 <= (ls.length - 1); idx_15++) {
-                    const l_1 = item_1(idx_15, ls);
-                    l_1.style.fontSize = (`${o_24.font}px`);
-                    const lh = `${Math.round((o_24.font * 60) / 44)}px`;
+            const lang = defaultArg(o_26.lang, "csharp");
+            const ls = map((l) => mk(card, "div", "k-cl", highlight(l, lang), defaultOf()), o_26.lines);
+            if (!!(o_26.font)) {
+                for (let idx_16 = 0; idx_16 <= (ls.length - 1); idx_16++) {
+                    const l_1 = item_1(idx_16, ls);
+                    l_1.style.fontSize = (`${o_26.font}px`);
+                    const lh = `${Math.round((o_26.font * 60) / 44)}px`;
                     l_1.style.height = lh;
                     l_1.style.lineHeight = lh;
                 }
@@ -1129,100 +1161,100 @@ export function kitFor(root) {
                 from: T0(g_3.from),
                 g: g_3,
                 until: TUntil(g_3.until),
-            }), (o_24.glow || []));
-            const matchValue_49 = TAt(o_24.at);
-            const matchValue_50 = TUntil(o_24.until);
+            }), (o_26.glow || []));
+            const matchValue_52 = TAt(o_26.at);
+            const matchValue_53 = TUntil(o_26.until);
             return add({
                 el: card,
-                render: (t_11) => {
-                    show(card, vis$0027(t_11, matchValue_49, matchValue_50), defaultArg(o_24.slide, 20), "");
+                render: (t_12) => {
+                    show(card, vis$0027(t_12, matchValue_52, matchValue_53), defaultArg(o_26.slide, 20), "");
                     iterateIndexed((i_6, l_2) => {
-                        let p_9 = 0;
+                        let p_11 = 0;
                         let colour = "var(--accent)";
-                        for (let idx_16 = 0; idx_16 <= (glows.length - 1); idx_16++) {
-                            const gl = item_1(idx_16, glows);
+                        for (let idx_17 = 0; idx_17 <= (glows.length - 1); idx_17++) {
+                            const gl = item_1(idx_17, glows);
                             if (gl.g.line === i_6) {
-                                const q = within(t_11, gl.from, (gl.until ?? (Infinity)), 0.25);
-                                if (q > p_9) {
-                                    p_9 = q;
+                                const q = within(t_12, gl.from, (gl.until ?? (Infinity)), 0.25);
+                                if (q > p_11) {
+                                    p_11 = q;
                                     colour = ((tone(gl.g.tone) || colour));
                                 }
                             }
                         }
-                        l_2.style.background = ((p_9 > 0) ? (`color-mix(in srgb, ${colour} ${Math.round(p_9 * 22)}%, transparent)`) : "");
+                        l_2.style.background = ((p_11 > 0) ? (`color-mix(in srgb, ${colour} ${Math.round(p_11 * 22)}%, transparent)`) : "");
                     }, ls);
                 },
             });
         },
-        board(o_25) {
-            const o_26 = opts(o_25);
-            const card_1 = mk(host(o_26), "div", "k-board", defaultOf(), defaultOf());
+        board(o_27) {
+            const o_28 = opts(o_27);
+            const card_1 = mk(host(o_28), "div", "k-board", defaultOf(), defaultOf());
             place(card_1, ({ ...{
                 w: 1800,
                 x: 60,
                 y: 200,
-            }, ...o_26 }));
-            if (!!(o_26.title)) {
-                mk(card_1, "div", "k-board-title", o_26.title, defaultOf());
+            }, ...o_28 }));
+            if (!!(o_28.title)) {
+                mk(card_1, "div", "k-board-title", o_28.title, defaultOf());
             }
-            const rows_3 = map((r_7) => {
+            const rows_3 = map((r_8) => {
                 const row_2 = mk(card_1, "div", "k-br", defaultOf(), defaultOf());
-                const label_4 = mk(row_2, "div", "k-br-label", (r_7.label || ""), defaultOf());
+                const label_4 = mk(row_2, "div", "k-br-label", (r_8.label || ""), defaultOf());
                 const text_1 = mk(row_2, "div", "k-br-text", "", defaultOf());
-                const result = (!!(r_7.result)) ? mk(row_2, "div", "k-br-result", esc(r_7.result), defaultOf()) : defaultOf();
-                const at_17 = T0(r_7.at);
-                const resultAt = T0(r_7.resultAt);
+                const result = (!!(r_8.result)) ? mk(row_2, "div", "k-br-result", esc(r_8.result), defaultOf()) : defaultOf();
+                const at_18 = T0(r_8.at);
+                const resultAt = T0(r_8.resultAt);
                 return {
-                    at: at_17,
-                    dimAt: T0(r_7.dimAt),
+                    at: at_18,
+                    dimAt: T0(r_8.dimAt),
                     label: label_4,
-                    r: r_7,
+                    r: r_8,
                     result: result,
                     resultAt: resultAt,
                     row: row_2,
                     text: text_1,
                 };
-            }, o_26.rows);
-            const at_18 = T0((o_26.at ?? ((o_26.rows.length > 0) ? item_1(0, o_26.rows).at : defaultOf())));
-            const until_11 = TUntil(o_26.until);
+            }, o_28.rows);
+            const at_19 = T0((o_28.at ?? ((o_28.rows.length > 0) ? item_1(0, o_28.rows).at : defaultOf())));
+            const until_12 = TUntil(o_28.until);
             return add({
                 el: card_1,
-                render: (t_12) => {
-                    show(card_1, vis$0027(t_12, at_18, until_11), 16, "");
-                    for (let idx_17 = 0; idx_17 <= (rows_3.length - 1); idx_17++) {
-                        const r_8 = item_1(idx_17, rows_3);
-                        const p_10 = ((r_8.at == null)) ? 1 : progIO(t_12, r_8.at - 0.1, 0.3);
-                        r_8.label.style.opacity = p_10;
-                        r_8.text.textContent = typed(r_8.r.text, ((r_8.at == null)) ? 1 : prog(t_12, r_8.at, defaultArg(r_8.r.dur, 1.2), ease.linear));
-                        if (!Operators_IsNull(r_8.result)) {
-                            r_8.result.style.opacity = (((r_8.resultAt == null)) ? p_10 : progIO(t_12, r_8.resultAt - 0.1, 0.4));
+                render: (t_13) => {
+                    show(card_1, vis$0027(t_13, at_19, until_12), 16, "");
+                    for (let idx_18 = 0; idx_18 <= (rows_3.length - 1); idx_18++) {
+                        const r_9 = item_1(idx_18, rows_3);
+                        const p_12 = ((r_9.at == null)) ? 1 : progIO(t_13, r_9.at - 0.1, 0.3);
+                        r_9.label.style.opacity = p_12;
+                        r_9.text.textContent = typed(r_9.r.text, ((r_9.at == null)) ? 1 : prog(t_13, r_9.at, defaultArg(r_9.r.dur, 1.2), ease.linear));
+                        if (!Operators_IsNull(r_9.result)) {
+                            r_9.result.style.opacity = (((r_9.resultAt == null)) ? p_12 : progIO(t_13, r_9.resultAt - 0.1, 0.4));
                         }
-                        r_8.row.style.opacity = (((r_8.dimAt == null)) ? 1 : lerp(1, 0.45, progIO(t_12, r_8.dimAt, 0.4)));
+                        r_9.row.style.opacity = (((r_9.dimAt == null)) ? 1 : lerp(1, 0.45, progIO(t_13, r_9.dimAt, 0.4)));
                     }
                 },
             });
         },
-        steps(labels, o_27) {
-            const o_28 = opts(o_27);
-            const box_6 = mk(host(o_28), "div", "k-steps", defaultOf(), defaultOf());
+        steps(labels, o_29) {
+            const o_30 = opts(o_29);
+            const box_6 = mk(host(o_30), "div", "k-steps", defaultOf(), defaultOf());
             place(box_6, ({ ...{
                 x: 60,
                 y: 140,
-            }, ...o_28 }));
+            }, ...o_30 }));
             const els = mapIndexed((i_7, l_3) => mk(box_6, "div", "k-step", `<b>${i_7 + 1}</b>${String(l_3)}`, defaultOf()), labels);
-            const ats = map(T0, (o_28.ats || []));
+            const ats = map(T0, (o_30.ats || []));
             const atOf = (i_8) => item(ats, i_8);
-            const at_19 = T0((o_28.at ?? item(ats, 0)));
-            const until_12 = TUntil(o_28.until);
+            const at_20 = T0((o_30.at ?? item(ats, 0)));
+            const until_13 = TUntil(o_30.until);
             return add({
                 el: box_6,
-                render: (t_13) => {
-                    show(box_6, vis$0027(t_13, at_19, until_12), 12, "");
+                render: (t_14) => {
+                    show(box_6, vis$0027(t_14, at_20, until_13), 12, "");
                     iterateIndexed((i_9, e_3) => {
                         const ai = atOf(i_9);
-                        const reached = !((ai == null)) && (t_13 >= ai);
+                        const reached = !((ai == null)) && (t_14 >= ai);
                         const next_3 = atOf(i_9 + 1);
-                        const current_1 = reached && (((i_9 === (els.length - 1)) ? true : ((next_3 == null))) ? true : (t_13 < next_3));
+                        const current_1 = reached && (((i_9 === (els.length - 1)) ? true : ((next_3 == null))) ? true : (t_14 < next_3));
                         e_3.style.borderColor = (current_1 ? "var(--accent)" : "");
                         e_3.style.background = (current_1 ? "var(--accent-dim)" : "");
                         e_3.style.color = (reached ? "var(--ink)" : "");
@@ -1231,57 +1263,57 @@ export function kitFor(root) {
                 },
             });
         },
-        counter(o_29) {
-            const o_30 = opts(o_29);
-            const el_84 = mk(host(o_30), "div", concat("k-", (o_30.size || "counter")), defaultOf(), defaultOf());
-            place(el_84, o_30);
-            const matchValue_51 = TAt(o_30.at);
-            const matchValue_52 = TUntil(o_30.until);
-            const matchValue_53 = T0(o_30.toneAt);
-            const at_20 = matchValue_51;
-            const fmt_1 = (!!(o_30.format)) ? o_30.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
+        counter(o_31) {
+            const o_32 = opts(o_31);
+            const el_85 = mk(host(o_32), "div", concat("k-", (o_32.size || "counter")), defaultOf(), defaultOf());
+            place(el_85, o_32);
+            const matchValue_54 = TAt(o_32.at);
+            const matchValue_55 = TUntil(o_32.until);
+            const matchValue_56 = T0(o_32.toneAt);
+            const at_21 = matchValue_54;
+            const fmt_1 = (!!(o_32.format)) ? o_32.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
             return add({
-                el: el_84,
-                render: (t_14) => {
-                    show(el_84, vis$0027(t_14, at_20, matchValue_52), 10, "");
-                    el_84.textContent = fmt_1(lerp(defaultArg(o_30.from, 0), o_30.to, prog(t_14, at_20, defaultArg(o_30.dur, 1.2), ease.inOut)));
-                    el_84.style.color = (isOn(o_30.tone, matchValue_53, t_14) ? tone(o_30.tone) : "");
+                el: el_85,
+                render: (t_15) => {
+                    show(el_85, vis$0027(t_15, at_21, matchValue_55), 10, "");
+                    el_85.textContent = fmt_1(lerp(defaultArg(o_32.from, 0), o_32.to, prog(t_15, at_21, defaultArg(o_32.dur, 1.2), ease.inOut)));
+                    el_85.style.color = (isOn(o_32.tone, matchValue_56, t_15) ? tone(o_32.tone) : "");
                 },
             });
         },
-        toast(kind, o_31) {
-            const o_32 = opts(o_31);
-            const tt = toastEl(host(o_32), kind, o_32.text);
-            tt.el.style.right = (`${defaultArg(o_32.right, 60)}px`);
-            const option_9 = o_32.x;
+        toast(kind, o_33) {
+            const o_34 = opts(o_33);
+            const tt = toastEl(host(o_34), kind, o_34.text);
+            tt.el.style.right = (`${defaultArg(o_34.right, 60)}px`);
+            const option_9 = o_34.x;
             if (option_9 != null) {
                 const x_3 = option_9;
                 tt.el.style.left = (`${x_3}px`);
                 tt.el.style.right = "";
             }
-            tt.el.style.top = (`${defaultArg(o_32.y, 130)}px`);
-            const matchValue_54 = TAt(o_32.at);
-            const matchValue_55 = TUntil(o_32.until);
-            const at_21 = matchValue_54;
+            tt.el.style.top = (`${defaultArg(o_34.y, 130)}px`);
+            const matchValue_57 = TAt(o_34.at);
+            const matchValue_58 = TUntil(o_34.until);
+            const at_22 = matchValue_57;
             return add({
                 el: tt.el,
-                render: (t_15) => {
-                    tt.draw(t_15, at_21, min((matchValue_55 ?? (Infinity)), at_21 + defaultArg(o_32.dur, TOAST_DUR)));
+                render: (t_16) => {
+                    tt.draw(t_16, at_22, min((matchValue_58 ?? (Infinity)), at_22 + defaultArg(o_34.dur, TOAST_DUR)));
                 },
             });
         },
         custom(build, render) {
-            const el_90 = build(root);
+            const el_91 = build(root);
             return add({
-                el: el_90,
-                render: (t_16) => {
-                    render(t_16, el_90);
+                el: el_91,
+                render: (t_17) => {
+                    render(t_17, el_91);
                 },
             });
         },
-        render(t_17) {
+        render(t_18) {
             for (let i_10 = 0; i_10 <= (parts.length - 1); i_10++) {
-                item_1(i_10, parts).render(t_17);
+                item_1(i_10, parts).render(t_18);
             }
         },
     };

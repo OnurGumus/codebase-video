@@ -10,6 +10,7 @@
     <Compile Include="Interop.fs" />
     <Compile Include="Stage.fs" />
     <Compile Include="Draw.fs" />
+    <Compile Include="Map.fs" />
     <Compile Include="Kit.fs" />
     <Compile Include="Frame.fs" />
     <Compile Include="Main.fs" />
