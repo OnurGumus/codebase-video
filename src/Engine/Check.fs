@@ -979,6 +979,137 @@ let private reportLength (script: Json) (longVideo: bool) =
 
 // ── main ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
+// ── the shared map ───────────────────────────────────────────────────────────────────────────────────────────
+
+let private K_MAP = Py.rx @"\bK\.map\s*\("
+
+[<Emit("(typeof $0 === 'number')")>]
+let private isNumber (v: obj) : bool = jsNative
+
+[<Emit("Number.isInteger($0)")>]
+let private isInteger (v: obj) : bool = jsNative
+
+[<Emit("Object.keys($0)")>]
+let private keysOf (o: obj) : string[] = jsNative
+
+[<Emit("JSON.stringify($0)")>]
+let private jsonOf (v: obj) : string = jsNative
+
+/// The zoom into a part and back out of it (ZOOM_IN in src/Kit/Map.fs, and the quiet end a zoom out needs).
+let private VISIT_LEAD, VISIT_TAIL = 1.2, 1.5
+
+/// The shared map (script.json "map"), each chapter's "path" across it and each scene's "inside": the frame draws
+/// them (src/Kit/Map.fs, src/Kit/Frame.fs), so everything it relies on is checked here first.
+let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson: string option) : unit =
+    let scenes = Py.list script "scenes"
+    let map = Py.get script "map"
+    let text (o: Json) (k: string) = let v = Py.get o k in if Py.isStr v then Py.str v else ""
+    let number (o: Json) (k: string) (d: float) = let v = Py.get o k in if isNumber v then unbox<float> v else d
+    let pathOf (s: Json) = Py.list s "path" |> List.map Py.str
+    let hasPath (s: Json) = not (isNull (Py.get s "path"))
+    let insideOf (s: Json) = text s "inside"
+    if not (Py.truthy map) then
+        for s in scenes do
+            if hasPath s then f.err $"{idOf s}: \"path\" needs a top-level \"map\" in script.json"
+            if insideOf s <> "" then f.err $"{idOf s}: \"inside\" needs a top-level \"map\" in script.json"
+        for file in jsFiles do
+            if (Py.search K_MAP (readText file)).IsSome then
+                f.err $"{basename file}: K.map needs a top-level \"map\" in script.json"
+    else
+        let kinds = Py.get map "kinds"
+        let parts = Py.list map "parts"
+        let edges = Py.list map "edges"
+        if parts.Length < 2 || parts.Length > 7 then
+            f.err $"map: {parts.Length} parts; a map has 2 to 7 (more do not fit at a readable size)"
+        if Py.truthy kinds then
+            for k in keysOf kinds do
+                let kind = Py.get kinds k
+                if not (Py.truthy (Py.get kind "tone")) || not (Py.truthy (Py.get kind "icon")) then
+                    f.err $"map: kind {Py.reprStr k} needs a \"tone\" and an \"icon\""
+        parts
+        |> List.iteri (fun i p ->
+            let id = text p "id"
+            let name = if id = "" then $"part {i}" else $"part {Py.reprStr id}"
+            for k in [ "id"; "label"; "kind" ] do
+                if text p k = "" then f.err $"map: {name} has no \"{k}\""
+            let kind = text p "kind"
+            if kind <> "" && not (Py.truthy kinds && Py.truthy (Py.get kinds kind)) then
+                f.err $"map: {name} has kind {Py.reprStr kind}, which is not in \"kinds\""
+            for k, top in [ "col", 3; "row", 2 ] do
+                let v = Py.get p k
+                if isNull v then f.err $"map: {name} has no \"{k}\""
+                elif not (isInteger v) || unbox<float> v < 0.0 || unbox<float> v > float top then
+                    f.err $"map: {name} has \"{k}\": {jsonOf v}; the grid's {k}s are 0 to {top}"
+            let label = text p "label"
+            if Py.len label > 12 then
+                f.err $"map: the label {Py.reprStr label} of {name} is {Py.len label} characters; at most 12 fit a box")
+        let ids = parts |> List.map (fun p -> text p "id") |> List.filter ((<>) "")
+        for id, n in List.countBy id ids do
+            if n > 1 then f.err $"map: {n} parts have the id {Py.reprStr id}"
+        let cell (p: Json) = number p "col" -1.0, number p "row" -1.0
+        for (col, row), ps in parts |> List.groupBy cell do
+            if ps.Length > 1 && col >= 0.0 && row >= 0.0 then
+                let names = ps |> List.map (fun p -> text p "id") |> String.concat " and "
+                f.err $"map: {names} share the cell col {col}, row {row}"
+        let known (id: string) = List.contains id ids
+        let byId (id: string) = parts |> List.find (fun p -> text p "id" = id)
+        for e in edges do
+            let a, b = text e "from", text e "to"
+            for id in [ a; b ] do
+                if not (known id) then f.err $"map: an edge names {Py.reprStr id}, which is not a part"
+            if a <> "" && a = b then f.err $"map: an edge joins {a} to itself"
+            elif known a && known b then
+                // An arrow between two parts of one row or column is a straight line: a part in a cell between
+                // them would sit on it.
+                let (c1, r1), (c2, r2) = cell (byId a), cell (byId b)
+                for p in parts do
+                    let c, r = cell p
+                    let between x x1 x2 = x > min x1 x2 && x < max x1 x2
+                    let crossed = text p "id"
+                    if (r1 = r2 && r = r1 && between c c1 c2) || (c1 = c2 && c = c1 && between r r1 r2) then
+                        f.warn $"map: the edge {a} -> {b} would cross {crossed}; move a part, or route the edge through it"
+        let joined a b = edges |> List.exists (fun e -> (text e "from" = a && text e "to" = b) || (text e "from" = b && text e "to" = a))
+        for s in scenes do
+            let sid = idOf s
+            if hasPath s then
+                let path = pathOf s
+                if not (isWhy sid) then f.err $"{sid}: \"path\" belongs on a chapter's bridge scene (one ending in -why)"
+                if path.Length < 2 then f.err $"{sid}: a path names at least 2 parts"
+                for id in path do
+                    if not (known id) then f.err $"{sid}: the path names {Py.reprStr id}, which is not a part of the map"
+                for a, b in List.pairwise path do
+                    if known a && known b && not (joined a b) then
+                        f.err $"{sid}: the path goes from {a} to {b}, but the map has no edge between them"
+            let inside = insideOf s
+            if inside <> "" then
+                if not (known inside) then f.err $"{sid}: \"inside\": {Py.reprStr inside} is not a part of the map"
+                if isWhy sid || Py.truthy (Py.get s "recap") then
+                    f.err $"{sid}: \"inside\" cannot be on a bridge or recap scene (the frame draws those; no module is inside anything there)"
+        // A visit: consecutive scenes inside the same part. The zoom in plays in the first one's lead, the zoom out
+        // in the quiet end of the last one.
+        let arr = List.toArray scenes
+        arr
+        |> Array.iteri (fun k s ->
+            let inside = insideOf s
+            if inside <> "" then
+                let first = k = 0 || insideOf arr.[k - 1] <> inside
+                let last = k = arr.Length - 1 || insideOf arr.[k + 1] <> inside
+                let lead = number s "lead" 0.4
+                let tail = number s "pad" 0.9 + number s "hold" 0.0
+                if first && lead < VISIT_LEAD then
+                    f.warn $"{idOf s}: the zoom into {inside} takes {VISIT_LEAD} s; give this scene \"lead\": {VISIT_LEAD} or more (it has {lead})"
+                if last && k < arr.Length - 1 && tail < VISIT_TAIL then
+                    f.warn $"{idOf s}: the zoom out of {inside} needs \"pad\" plus \"hold\" of {VISIT_TAIL} s or more (it has {tail})")
+        if not (scenes |> List.exists hasPath) then
+            f.warn "map: no bridge scene has a \"path\", so the map never opens a chapter"
+        lesson
+        |> Option.iter (fun doc ->
+            let doc = lower doc
+            for p in parts do
+                let label = text p "label"
+                if label <> "" && not (doc.Contains(lower label)) then
+                    f.warn $"map: the label {Py.reprStr label} does not appear in the document")
+
 let run (ws: string) (args: string list) : int =
     let clip = ws
     let lesson =
@@ -1006,6 +1137,7 @@ let run (ws: string) (args: string list) : int =
     let longVideo = checkLong f clip script
     checkCues f timing jsFiles
     lesson |> Option.iter (fun p -> checkLesson f script jsFiles (readText p))
+    checkMap f script jsFiles (lesson |> Option.map readText)
     reportLength script longVideo
     reportDuration f clip timing
     reportBreathing f timing longVideo

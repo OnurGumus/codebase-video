@@ -989,7 +989,9 @@ let run (ws: string) : JS.Promise<unit> =
                     passthrough "chapter" // a long video's chapter title, on its "-why" bridge scene
                     @ passthrough "toasts" // pop-up badges ("kind", "at" phrase), drawn by the frame
                     @ (if sceneBreaks.Count > 0 then [ "breaks", Py.List [ for b in sceneBreaks -> breakJson b ] ] else []) // [pause]/[think] silences; the frame counts down a think
-                    @ passthrough "recap" } // a chapter's closing "So far" lines
+                    @ passthrough "recap" // a chapter's closing "So far" lines
+                    @ passthrough "path" // the parts of the shared map a chapter's flow touches, on its bridge scene
+                    @ passthrough "inside" } // the part of the shared map this scene goes inside
 
         do! release ()
         let duration = float frame.Value / float FPS
@@ -1028,6 +1030,10 @@ let run (ws: string) : JS.Promise<unit> =
                        let total = int (System.Math.Round duration)
                        let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
                        [ "card", Py.ofJs (withThumbnail marked?card (if on then box label else box false)) ]
+                   | _ -> [])
+                // long videos: the shared map (parts on a grid, edges, kinds), drawn by the frame and by K.map
+                @ (match get script "map" with
+                   | Some m when Py.truthy m -> [ "map", Py.ofJs m ]
                    | _ -> [])
             )
         writeText (join [ build; "timing.json" ]) (Py.dumpsIndented 2 timing)

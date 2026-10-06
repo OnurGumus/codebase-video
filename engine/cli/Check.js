@@ -1,21 +1,22 @@
 
 import { readDir, resolve, readText, basename, mtime, exists, readJson, join as join_1, fs } from "./Node.js";
 import { concat, split, trimStart, trimEnd, padLeft, replicate, padRight, replace, indexOf, substring, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { stringHash, equals, defaultOf, int32ToString, comparePrimitives, disposeSafe, getEnumerator, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { max as max_1, min as min_1, compare, arrayHash, equalArrays, stringHash, equals, defaultOf, int32ToString, comparePrimitives, disposeSafe, getEnumerator, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { StringBuilder_$ctor_Z721C83C5, StringBuilder__Append_244C7CD6, StringBuilder__Append_Z721C83C5, StringBuilder_$ctor } from "./fable_modules/fable-library-js.5.19.0/System.Text.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 import { Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { class_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { pairwise as pairwise_1, sumBy as sumBy_1, pick, tryPick, iterateIndexed as iterateIndexed_1, last as last_1, setItem, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { item as item_1, tryFindIndex, sum, tryFind, collect, truncate, concat as concat_1, singleton, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_2, sortWith, tail, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { truncate as truncate_1, filter as filter_1, delay, toList as toList_1, findIndex, map as map_1 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { pairwise as pairwise_1, sumBy as sumBy_1, pick, tryPick, iterateIndexed as iterateIndexed_1, last as last_1, setItem, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { item as item_1, tryFindIndex, find, sum, tryFind, collect, truncate, concat as concat_1, singleton, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { truncate as truncate_1, filter as filter_1, delay, toList as toList_1, findIndex, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { max, parse as parse_1, isInfinity, isNegativeInfinity, isPositiveInfinity, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
-import { List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
+import { List_groupBy, List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 import { toList, FSharpSet__Contains, ofSeq as ofSeq_1 } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { addToSet } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
+import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 
 /**
  * Writes all of s to a file descriptor, waiting while a non-blocking pipe is full (EAGAIN).
@@ -176,7 +177,7 @@ export function Py_M__G_Z524259A4(m, n) {
 }
 
 function Py_toM(m) {
-    const groups = map((g) => {
+    const groups = map_1((g) => {
         if (g == null) {
             return undefined;
         }
@@ -189,7 +190,7 @@ function Py_toM(m) {
 }
 
 export function Py_finditer(r, s) {
-    return ofArray(map(Py_toM, Array.from(s.matchAll(new RegExp(r.Src, (r.Flags + "g"))))));
+    return ofArray(map_1(Py_toM, Array.from(s.matchAll(new RegExp(r.Src, (r.Flags + "g"))))));
 }
 
 export function Py_search(r, s) {
@@ -251,7 +252,7 @@ export function Py_split(r, s) {
  * re.escape for a literal inside a pattern.
  */
 export function Py_escape(s) {
-    return join("", map_1((c) => {
+    return join("", map_2((c) => {
         if ((Py_syntaxChars.indexOf(c) >= 0) ? true : (c === "-")) {
             return "\\" + c;
         }
@@ -295,7 +296,7 @@ export function Py_splitlines(s) {
     if (!isEmpty(matchValue)) {
         if (head(matchValue) === "") {
             matchResult = 0;
-            rest = tail(matchValue);
+            rest = tail_1(matchValue);
         }
         else {
             matchResult = 1;
@@ -624,10 +625,10 @@ export function Py_repr(v) {
                 }
             default:
                 if (Array.isArray(v)) {
-                    return ("[" + join(", ", map(Py_repr, v))) + "]";
+                    return ("[" + join(", ", map_1(Py_repr, v))) + "]";
                 }
                 else {
-                    return ("{" + join(", ", map((k) => ((Py_reprStr(k) + ": ") + Py_repr(v[k])), Object.keys(v)))) + "}";
+                    return ("{" + join(", ", map_1((k) => ((Py_reprStr(k) + ": ") + Py_repr(v[k])), Object.keys(v)))) + "}";
                 }
         }
     }
@@ -746,7 +747,7 @@ const openingBreaks = Py_rx("(?:\\[(?:pause|think)(?:\\s+[\\d.]+)?\\]\\s*)+");
 export function sentences(say_1) {
     const shielded = [];
     const out = [];
-    const enumerator = getEnumerator(map_2((arg) => Py_strip(Py_sub(restoreRx, (m_1) => item(parse(Py_M__G_Z524259A4(m_1, 1), 511, false, 32), shielded), arg)), filter((p) => (Py_strip(p) !== ""), Py_split(splitter, Py_sub(FOREIGN, (m) => {
+    const enumerator = getEnumerator(map_3((arg) => Py_strip(Py_sub(restoreRx, (m_1) => item(parse(Py_M__G_Z524259A4(m_1, 1), 511, false, 32), shielded), arg)), filter((p) => (Py_strip(p) !== ""), Py_split(splitter, Py_sub(FOREIGN, (m) => {
         void (shielded.push(Py_M__get_Value(m)));
         const e = Py_found(shieldEnd, Py_M__G_Z524259A4(m, 2)) ? "\u0001" : "\u0000";
         return ("\u0000" + int32ToString(shielded.length - 1)) + e;
@@ -790,7 +791,7 @@ export function sentences(say_1) {
  * The silences a sentence asks for after it: [("pause", 1.5), ("think", 4.0)].
  */
 export function breaks(s) {
-    return map_2((m) => {
+    return map_3((m) => {
         let matchValue;
         const kind = Py_M__G_Z524259A4(m, 1);
         return [kind, (matchValue = Py_M__Group_Z524259A4(m, 2), (matchValue == null) ? breakDefault(kind) : parse_1(matchValue))];
@@ -879,7 +880,7 @@ const smallNumber = Py_rx("\\d{1,2}");
 
 function checkScript(f, script) {
     const scenes = Py_list(script, "scenes");
-    const ids = map_2(idOf, scenes);
+    const ids = map_3(idOf, scenes);
     const enumerator = getEnumerator(filter((x_1) => (length_1(filter((y_1) => (x_1 === y_1), ids)) > 1), List_distinct(ids, {
         Equals: (x, y) => (x === y),
         GetHashCode: (x) => (stringHash(x) | 0),
@@ -987,7 +988,7 @@ function checkLong(f, clip, script) {
         finally {
             disposeSafe(enumerator);
         }
-        const prefixes = map_2((arg_1) => prefix(idOf(arg_1)), scenes);
+        const prefixes = map_3((arg_1) => prefix(idOf(arg_1)), scenes);
         const card = Py_get(script, "card");
         const cardHas = (k) => {
             if (Py_truthy(card)) {
@@ -1018,7 +1019,7 @@ function checkLong(f, clip, script) {
                 Findings__err_Z721C83C5(f, concat(idOf(s_3), ": chapter has no content scenes"));
             }
         }, arr);
-        const enumerator_1 = getEnumerator(List_distinct(map_2((tuple) => tuple[0], filter((tupledArg) => {
+        const enumerator_1 = getEnumerator(List_distinct(map_3((tuple) => tuple[0], filter((tupledArg) => {
             const s_4 = tupledArg[1];
             if (!isWhy(idOf(s_4)) && (idOf(s_4) !== "title")) {
                 return !Py_truthy(Py_get(s_4, "recap"));
@@ -1096,7 +1097,7 @@ function checkCuesWith(f, timing, jsFiles) {
     }
     const nSentences = (sid) => (length_1(sentencesOf(byId.get(sid))) | 0);
     const hasPhrase = (sid_1, phrase, nth) => {
-        const units = map_2((se) => [lower(spokenOf(se)), lower(textOf(se))], sentencesOf(byId.get(sid_1)));
+        const units = map_3((se) => [lower(spokenOf(se)), lower(textOf(se))], sentencesOf(byId.get(sid_1)));
         const want = lower(phrase);
         return exists_1((field) => (sumBy((u) => (Py_count(field(u), want) | 0), units, {
             GetZero: () => 0,
@@ -1319,7 +1320,7 @@ function checkCuesWith(f, timing, jsFiles) {
         disposeSafe(enumerator_8);
     }
     if (!isEmpty(seen_1)) {
-        Py_print(`toasts: ${join(", ", map_2((tupledArg_5) => (`${tupledArg_5[0]} ${tupledArg_5[1]}`), sortWith((tupledArg_3, tupledArg_4) => (comparePrimitives(tupledArg_4[1], tupledArg_3[1]) | 0), List_countBy((x_1) => x_1, map_2((tupledArg_2) => Py_str(tupledArg_2[1]), seen_1), {
+        Py_print(`toasts: ${join(", ", map_3((tupledArg_5) => (`${tupledArg_5[0]} ${tupledArg_5[1]}`), sortWith((tupledArg_3, tupledArg_4) => (comparePrimitives(tupledArg_4[1], tupledArg_3[1]) | 0), List_countBy((x_1) => x_1, map_3((tupledArg_2) => Py_str(tupledArg_2[1]), seen_1), {
             Equals: (x_2, y_1) => (x_2 === y_1),
             GetHashCode: (x_2) => (stringHash(x_2) | 0),
         }))))} (${length_1(seen_1)} total)`);
@@ -1448,7 +1449,7 @@ function checkLesson(f, script, jsFiles, lessonText) {
     finally {
         disposeSafe(enumerator_4);
     }
-    const small = ofSeq_1(append(toList_1(delay(() => map_1(int32ToString, rangeDouble(0, 1, 12)))), singleton("100")), {
+    const small = ofSeq_1(append(toList_1(delay(() => map_2(int32ToString, rangeDouble(0, 1, 12)))), singleton("100")), {
         Compare: (x_1, y) => (comparePrimitives(x_1, y) | 0),
     });
     const enumerator_7 = getEnumerator(Py_sortWith((tupledArg_1, tupledArg_2) => (Py_cmpStr(tupledArg_1[1], tupledArg_2[1]) | 0), ofSeq(filter_1((tupledArg) => {
@@ -1473,7 +1474,7 @@ function checkLesson(f, script, jsFiles, lessonText) {
 
 const CONNECTIVES = ofArray(["so", "therefore", "hence", "that\'s why", "which is why", "this is why", "because", "as a result", "that means", "this means", "which means", "in other words", "but", "however", "on the other hand", "instead", "even so", "whereas", "unlike", "remember", "recall", "as we saw", "earlier", "back in", "you saw", "now", "next", "first", "then", "finally", "in short", "here\'s", "here is", "the tricky part", "the catch", "the key point", "the key idea", "the question is", "notice", "watch", "careful", "surprisingly", "it turns out", "the trap", "a common mistake", "easy to miss", "perhaps", "similarly", "likewise", "after all", "in fact", "as you know", "for example", "for instance", "you might", "imagine", "suppose", "what if"]);
 
-const CONN_RE = Py_rxI(("\\b(" + join("|", map_2(Py_escape, sortWith((a, b) => (comparePrimitives(b.length, a.length) | 0), CONNECTIVES)))) + ")\\b");
+const CONN_RE = Py_rxI(("\\b(" + join("|", map_3(Py_escape, sortWith((a, b) => (comparePrimitives(b.length, a.length) | 0), CONNECTIVES)))) + ")\\b");
 
 const FLOW_MIN = 0.4;
 
@@ -1506,11 +1507,11 @@ function chapters(scenes, each) {
 
 function reportFlow(f, script, longVideo) {
     const used = new Map();
-    const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_2((tupledArg) => {
+    const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_3((tupledArg) => {
         const l = concat_1(tupledArg[1]);
         return [tupledArg[0], length_1(l), length_1(filter((x) => x, l))];
-    }, chapters(Py_list(script, "scenes"), (s) => map_2((sent) => {
-        const words = map_2((m) => lower(Py_M__G_Z524259A4(m, 1)), Py_finditer(CONN_RE, shown(sent)));
+    }, chapters(Py_list(script, "scenes"), (s) => map_3((sent) => {
+        const words = map_3((m) => lower(Py_M__G_Z524259A4(m, 1)), Py_finditer(CONN_RE, shown(sent)));
         const enumerator = getEnumerator(words);
         try {
             while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
@@ -1566,7 +1567,7 @@ function reportFlow(f, script, longVideo) {
         finally {
             disposeSafe(enumerator_2);
         }
-        Py_print("  most used: " + join(", ", map_2((tupledArg_6) => (`${tupledArg_6[0]} ${tupledArg_6[1]}`), truncate(8, top))));
+        Py_print("  most used: " + join(", ", map_3((tupledArg_6) => (`${tupledArg_6[0]} ${tupledArg_6[1]}`), truncate(8, top))));
     }
 }
 
@@ -1702,7 +1703,7 @@ function reportDuration(f, clip, timing) {
 }
 
 function reportLength(script, longVideo) {
-    const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_2((tupledArg) => [tupledArg[0], sum(tupledArg[1], {
+    const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_3((tupledArg) => [tupledArg[0], sum(tupledArg[1], {
         GetZero: () => 0,
         Add: (x, y) => ((x + y) | 0),
     })], chapters(Py_list(script, "scenes"), (s) => (length_1(Py_words(shown(say(s)))) | 0))));
@@ -1726,7 +1727,330 @@ function reportLength(script, longVideo) {
     }
 }
 
+const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
+
+export const patternInput$0040999 = [1.2, 1.5];
+
+export const VISIT_TAIL = patternInput$0040999[1];
+
+const VISIT_LEAD = patternInput$0040999[0];
+
+function checkMap(f, script, jsFiles, lesson) {
+    const scenes = Py_list(script, "scenes");
+    const map = Py_get(script, "map");
+    const text = (o, k) => {
+        const v = Py_get(o, k);
+        if (Py_isStr(v)) {
+            return Py_str(v);
+        }
+        else {
+            return "";
+        }
+    };
+    const number = (o_1, k_1, d) => {
+        const v_1 = Py_get(o_1, k_1);
+        if ((typeof v_1 === 'number')) {
+            return v_1;
+        }
+        else {
+            return d;
+        }
+    };
+    const hasPath = (s_1) => !Operators_IsNull(Py_get(s_1, "path"));
+    const insideOf = (s_2) => text(s_2, "inside");
+    if (!Py_truthy(map)) {
+        const enumerator = getEnumerator(scenes);
+        try {
+            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                const s_3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                if (hasPath(s_3)) {
+                    Findings__err_Z721C83C5(f, concat(idOf(s_3), ": \"path\" needs a top-level \"map\" in script.json"));
+                }
+                if (insideOf(s_3) !== "") {
+                    Findings__err_Z721C83C5(f, concat(idOf(s_3), ": \"inside\" needs a top-level \"map\" in script.json"));
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator);
+        }
+        const enumerator_1 = getEnumerator(jsFiles);
+        try {
+            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
+                const file = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                if (Py_search(K_MAP, readText(file)) != null) {
+                    Findings__err_Z721C83C5(f, concat(basename(file), ": K.map needs a top-level \"map\" in script.json"));
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator_1);
+        }
+    }
+    else {
+        const kinds = Py_get(map, "kinds");
+        const parts = Py_list(map, "parts");
+        const edges = Py_list(map, "edges");
+        if ((length_1(parts) < 2) ? true : (length_1(parts) > 7)) {
+            Findings__err_Z721C83C5(f, `map: ${length_1(parts)} parts; a map has 2 to 7 (more do not fit at a readable size)`);
+        }
+        if (Py_truthy(kinds)) {
+            const arr = Object.keys(kinds);
+            for (let idx = 0; idx <= (arr.length - 1); idx++) {
+                const k_2 = item(idx, arr);
+                const kind = Py_get(kinds, k_2);
+                if (!Py_truthy(Py_get(kind, "tone")) ? true : !Py_truthy(Py_get(kind, "icon"))) {
+                    Findings__err_Z721C83C5(f, concat("map: kind ", Py_reprStr(k_2), " needs a \"tone\" and an \"icon\""));
+                }
+            }
+        }
+        iterateIndexed((i, p) => {
+            const id = text(p, "id");
+            const name = (id === "") ? (`part ${i}`) : concat("part ", Py_reprStr(id));
+            const enumerator_2 = getEnumerator(["id", "label", "kind"]);
+            try {
+                while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
+                    const k_3 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    if (text(p, k_3) === "") {
+                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_3}"`);
+                    }
+                }
+            }
+            finally {
+                disposeSafe(enumerator_2);
+            }
+            const kind_1 = text(p, "kind");
+            if ((kind_1 !== "") && !(Py_truthy(kinds) && Py_truthy(Py_get(kinds, kind_1)))) {
+                Findings__err_Z721C83C5(f, `map: ${name} has kind ${Py_reprStr(kind_1)}, which is not in "kinds"`);
+            }
+            const enumerator_3 = getEnumerator([["col", 3], ["row", 2]]);
+            try {
+                while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
+                    const forLoopVar = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    const top = forLoopVar[1] | 0;
+                    const k_4 = forLoopVar[0];
+                    const v_3 = Py_get(p, k_4);
+                    if (Operators_IsNull(v_3)) {
+                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_4}"`);
+                    }
+                    else if ((!(Number.isInteger(v_3)) ? true : (v_3 < 0)) ? true : (v_3 > top)) {
+                        Findings__err_Z721C83C5(f, `map: ${name} has "${k_4}": ${JSON.stringify(v_3)}; the grid's ${k_4}s are 0 to ${top}`);
+                    }
+                }
+            }
+            finally {
+                disposeSafe(enumerator_3);
+            }
+            const label = text(p, "label");
+            if (Py_len(label) > 12) {
+                Findings__err_Z721C83C5(f, `map: the label ${Py_reprStr(label)} of ${name} is ${Py_len(label)} characters; at most 12 fit a box`);
+            }
+        }, parts);
+        const ids = filter((y) => ("" !== y), map_3((p_1) => text(p_1, "id"), parts));
+        const enumerator_4 = getEnumerator(List_countBy((x_1) => x_1, ids, {
+            Equals: (x_2, y_1) => (x_2 === y_1),
+            GetHashCode: (x_2) => (stringHash(x_2) | 0),
+        }));
+        try {
+            while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
+                const forLoopVar_1 = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const n = forLoopVar_1[1] | 0;
+                if (n > 1) {
+                    Findings__err_Z721C83C5(f, `map: ${n} parts have the id ${Py_reprStr(forLoopVar_1[0])}`);
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator_4);
+        }
+        const cell = (p_2) => [number(p_2, "col", -1), number(p_2, "row", -1)];
+        const enumerator_5 = getEnumerator(List_groupBy(cell, parts, {
+            Equals: equalArrays,
+            GetHashCode: (x_3) => (arrayHash(x_3) | 0),
+        }));
+        try {
+            while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
+                const forLoopVar_2 = enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const row = forLoopVar_2[0][1];
+                const ps = forLoopVar_2[1];
+                const col = forLoopVar_2[0][0];
+                if (((length_1(ps) > 1) && (col >= 0)) && (row >= 0)) {
+                    Findings__err_Z721C83C5(f, `map: ${join(" and ", map_3((p_3) => text(p_3, "id"), ps))} share the cell col ${col}, row ${row}`);
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator_5);
+        }
+        const known = (id_2) => contains(id_2, ids, {
+            Equals: (x_4, y_3) => (x_4 === y_3),
+            GetHashCode: (x_4) => (stringHash(x_4) | 0),
+        });
+        const byId = (id_3) => find((p_4) => (text(p_4, "id") === id_3), parts);
+        const enumerator_6 = getEnumerator(edges);
+        try {
+            while (enumerator_6["System.Collections.IEnumerator.MoveNext"]()) {
+                const e = enumerator_6["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const matchValue = text(e, "from");
+                const b = text(e, "to");
+                const a = matchValue;
+                const enumerator_7 = getEnumerator([a, b]);
+                try {
+                    while (enumerator_7["System.Collections.IEnumerator.MoveNext"]()) {
+                        const id_4 = enumerator_7["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                        if (!known(id_4)) {
+                            Findings__err_Z721C83C5(f, concat("map: an edge names ", Py_reprStr(id_4), ", which is not a part"));
+                        }
+                    }
+                }
+                finally {
+                    disposeSafe(enumerator_7);
+                }
+                if ((a !== "") && (a === b)) {
+                    Findings__err_Z721C83C5(f, concat("map: an edge joins ", a, " to itself"));
+                }
+                else if (known(a) && known(b)) {
+                    const matchValue_2 = cell(byId(a));
+                    const matchValue_3 = cell(byId(b));
+                    const r2 = matchValue_3[1];
+                    const r1 = matchValue_2[1];
+                    const c2 = matchValue_3[0];
+                    const c1 = matchValue_2[0];
+                    const enumerator_8 = getEnumerator(parts);
+                    try {
+                        while (enumerator_8["System.Collections.IEnumerator.MoveNext"]()) {
+                            const p_5 = enumerator_8["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                            const patternInput_2 = cell(p_5);
+                            const r = patternInput_2[1];
+                            const c = patternInput_2[0];
+                            const between = (x_5, x1, x2) => {
+                                if (compare(x_5, min_1((x_6, y_4) => (compare(x_6, y_4) | 0), x1, x2)) > 0) {
+                                    return compare(x_5, max_1((x_7, y_5) => (compare(x_7, y_5) | 0), x1, x2)) < 0;
+                                }
+                                else {
+                                    return false;
+                                }
+                            };
+                            const crossed = text(p_5, "id");
+                            if ((((r1 === r2) && (r === r1)) && between(c, c1, c2)) ? true : (((c1 === c2) && (c === c1)) && between(r, r1, r2))) {
+                                Findings__warn_Z721C83C5(f, `map: the edge ${a} -> ${b} would cross ${crossed}; move a part, or route the edge through it`);
+                            }
+                        }
+                    }
+                    finally {
+                        disposeSafe(enumerator_8);
+                    }
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator_6);
+        }
+        const enumerator_9 = getEnumerator(scenes);
+        try {
+            while (enumerator_9["System.Collections.IEnumerator.MoveNext"]()) {
+                const s_4 = enumerator_9["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const sid = idOf(s_4);
+                if (hasPath(s_4)) {
+                    const path = map_3(Py_str, Py_list(s_4, "path"));
+                    if (!isWhy(sid)) {
+                        Findings__err_Z721C83C5(f, concat(sid, ": \"path\" belongs on a chapter\'s bridge scene (one ending in -why)"));
+                    }
+                    if (length_1(path) < 2) {
+                        Findings__err_Z721C83C5(f, concat(sid, ": a path names at least 2 parts"));
+                    }
+                    const enumerator_10 = getEnumerator(path);
+                    try {
+                        while (enumerator_10["System.Collections.IEnumerator.MoveNext"]()) {
+                            const id_5 = enumerator_10["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                            if (!known(id_5)) {
+                                Findings__err_Z721C83C5(f, concat(sid, ": the path names ", Py_reprStr(id_5), ", which is not a part of the map"));
+                            }
+                        }
+                    }
+                    finally {
+                        disposeSafe(enumerator_10);
+                    }
+                    const enumerator_11 = getEnumerator(pairwise(path));
+                    try {
+                        while (enumerator_11["System.Collections.IEnumerator.MoveNext"]()) {
+                            let a_1, b_1;
+                            const forLoopVar_3 = enumerator_11["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                            const b_2 = forLoopVar_3[1];
+                            const a_2 = forLoopVar_3[0];
+                            if ((known(a_2) && known(b_2)) && !((a_1 = a_2, (b_1 = b_2, exists_1((e_1) => {
+                                if ((text(e_1, "from") === a_1) && (text(e_1, "to") === b_1)) {
+                                    return true;
+                                }
+                                else if (text(e_1, "from") === b_1) {
+                                    return text(e_1, "to") === a_1;
+                                }
+                                else {
+                                    return false;
+                                }
+                            }, edges))))) {
+                                Findings__err_Z721C83C5(f, `${sid}: the path goes from ${a_2} to ${b_2}, but the map has no edge between them`);
+                            }
+                        }
+                    }
+                    finally {
+                        disposeSafe(enumerator_11);
+                    }
+                }
+                const inside = insideOf(s_4);
+                if (inside !== "") {
+                    if (!known(inside)) {
+                        Findings__err_Z721C83C5(f, concat(sid, ": \"inside\": ", Py_reprStr(inside), " is not a part of the map"));
+                    }
+                    if (isWhy(sid) ? true : Py_truthy(Py_get(s_4, "recap"))) {
+                        Findings__err_Z721C83C5(f, concat(sid, ": \"inside\" cannot be on a bridge or recap scene (the frame draws those; no module is inside anything there)"));
+                    }
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator_9);
+        }
+        const arr_1 = toArray(scenes);
+        iterateIndexed_1((k_5, s_5) => {
+            const inside_1 = insideOf(s_5);
+            if (inside_1 !== "") {
+                const first = (k_5 === 0) ? true : (insideOf(item(k_5 - 1, arr_1)) !== inside_1);
+                const last = (k_5 === (arr_1.length - 1)) ? true : (insideOf(item(k_5 + 1, arr_1)) !== inside_1);
+                const lead = number(s_5, "lead", 0.4);
+                const tail = number(s_5, "pad", 0.9) + number(s_5, "hold", 0);
+                if (first && (lead < VISIT_LEAD)) {
+                    Findings__warn_Z721C83C5(f, `${idOf(s_5)}: the zoom into ${inside_1} takes ${VISIT_LEAD} s; give this scene "lead": ${VISIT_LEAD} or more (it has ${lead})`);
+                }
+                if ((last && (k_5 < (arr_1.length - 1))) && (tail < VISIT_TAIL)) {
+                    Findings__warn_Z721C83C5(f, `${idOf(s_5)}: the zoom out of ${inside_1} needs "pad" plus "hold" of ${VISIT_TAIL} s or more (it has ${tail})`);
+                }
+            }
+        }, arr_1);
+        if (!exists_1(hasPath, scenes)) {
+            Findings__warn_Z721C83C5(f, "map: no bridge scene has a \"path\", so the map never opens a chapter");
+        }
+        const option_1 = lesson;
+        if (option_1 != null) {
+            const doc_1 = lower(option_1);
+            const enumerator_12 = getEnumerator(parts);
+            try {
+                while (enumerator_12["System.Collections.IEnumerator.MoveNext"]()) {
+                    const label_1 = text(enumerator_12["System.Collections.Generic.IEnumerator`1.get_Current"](), "label");
+                    if ((label_1 !== "") && !(doc_1.indexOf(lower(label_1)) >= 0)) {
+                        Findings__warn_Z721C83C5(f, concat("map: the label ", Py_reprStr(label_1), " does not appear in the document"));
+                    }
+                }
+            }
+            finally {
+                disposeSafe(enumerator_12);
+            }
+        }
+    }
+}
+
 export function run(ws, args) {
+    let option_3;
     const clip = ws;
     let lesson;
     const matchValue = tryFindIndex((y) => ("--lesson" === y), args);
@@ -1735,9 +2059,9 @@ export function run(ws, args) {
     const patternInput = load(f, clip);
     const timing = patternInput[1];
     const script = patternInput[0];
-    const jsFiles = map_2((n_1) => join_1(ofArray([clip, n_1])), Py_sortWith((a, b) => (Py_cmpStr(a, b) | 0), filter((n) => n.endsWith(".js"), readDir(clip))));
+    const jsFiles = map_3((n_1) => join_1(ofArray([clip, n_1])), Py_sortWith((a, b) => (Py_cmpStr(a, b) | 0), filter((n) => n.endsWith(".js"), readDir(clip))));
     checkScript(f, script);
-    const ok = ofSeq_1(map_2(Py_str, Py_list(script, "readsFine")), {
+    const ok = ofSeq_1(map_3(Py_str, Py_list(script, "readsFine")), {
         Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
     });
     const enumerator = getEnumerator(f.Read.entries());
@@ -1760,6 +2084,7 @@ export function run(ws, args) {
     if (option_1 != null) {
         checkLesson(f, script, jsFiles, readText(option_1));
     }
+    checkMap(f, script, jsFiles, (option_3 = lesson, (option_3 != null) ? readText(option_3) : undefined));
     reportLength(script, longVideo);
     reportDuration(f, clip, timing);
     reportBreathing(f, timing, longVideo);
