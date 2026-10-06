@@ -477,6 +477,10 @@ function breakDefault(kind) {
     }
 }
 
+const REST = new RegExp("\\s*\\[rest(?:\\s+(\\d+(?:\\.\\d+)?))?\\]", "g");
+
+const REST_DEFAULT = 0.35;
+
 const NAME_PATTERN = "\\A[A-Za-z0-9][A-Za-z0-9_-]*\\Z";
 
 const NAME = new RegExp("^[A-Za-z0-9][A-Za-z0-9_-]*$", "");
@@ -526,13 +530,31 @@ export function breaks(s) {
     }, Array.from(s.matchAll(BREAK)))));
 }
 
+/**
+ * A sentence as the stretches between its [rest] marks, each with the silence that follows it (0 after the last).
+ */
+export function rests(s) {
+    const out = [];
+    let pos = 0;
+    const arr = Array.from(s.matchAll(REST));
+    for (let idx = 0; idx <= (arr.length - 1); idx++) {
+        let matchValue;
+        const m = item(idx, arr);
+        const i = matchIndex(m) | 0;
+        void (out.push([substring(s, pos, i - pos), (matchValue = group(m, 1), (matchValue == null) ? REST_DEFAULT : parse(matchValue))]));
+        pos = ((i + group0(m).length) | 0);
+    }
+    void (out.push([substring(s, pos), 0]));
+    return ofSeq_1(out);
+}
+
 export function shown(s) {
-    const s_1 = ((s.replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_8(group(m, 1)))(a))).replace(FOREIGN, (...a) => ((m_1) => value_8(group(m_1, 2)))(a));
+    const s_1 = (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_8(group(m, 1)))(a))).replace(FOREIGN, (...a) => ((m_1) => value_8(group(m_1, 2)))(a));
     return s_1.trim();
 }
 
 export function spoken(s) {
-    return ((s.replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_8(group(m, 2)))(a))).trim();
+    return (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_8(group(m, 2)))(a))).trim();
 }
 
 /**
@@ -1343,13 +1365,19 @@ export function run(ws) {
                         const parts = [];
                         const after = breaks(s);
                         const s_1 = (s.replace(BREAK, '')).trim();
-                        return PromiseBuilder__For_1565554B(promise, indexed(pieces(s_1)), (_arg_5) => {
-                            const text_2 = _arg_5[1][1];
-                            const code_3 = _arg_5[1][0];
-                            return ((_arg_5[0] > 0) ? ((silence(PART_GAP), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                        const voicedPieces = toList(delay(() => collect((matchValue_3) => {
+                            const ps = pieces(matchValue_3[0]);
+                            return collect((matchValue_4) => singleton([matchValue_4[1][0], matchValue_4[1][1], (matchValue_4[0] === (length(ps) - 1)) ? matchValue_3[1] : 0]), indexed(ps));
+                        }, rests(s_1))));
+                        let gap = 0;
+                        return PromiseBuilder__For_1565554B(promise, indexed(voicedPieces), (_arg_5) => {
+                            const text_3 = _arg_5[1][1];
+                            const code_4 = _arg_5[1][0];
+                            return ((_arg_5[0] > 0) ? ((silence(max(gap, PART_GAP)), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
                                 let code_2, text, where;
+                                gap = _arg_5[1][2];
                                 const partStart = now();
-                                return ((voiceName != null) ? (((code_2 = code_3, (text = spoken(text_2), (where = (`${Py_str(id)}[${i}]`), PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                                return ((voiceName != null) ? (((code_2 = code_4, (text = spoken(text_3), (where = (`${Py_str(id)}[${i}]`), PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
                                     let c, p_3;
                                     let patternInput;
                                     const code = code_2;
@@ -1393,8 +1421,8 @@ export function run(ws) {
                                     void (audio.push(new Audio(/* Speech */ 1, [samples_1])));
                                     pos.contents = ((pos.contents + samples_1.length) | 0);
                                     return Promise.resolve();
-                                })) : ((silence(readingTime(shown(text_2))), Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                                    void (parts.push(new Part(shown(text_2), heard(text_2), (code_3 == null) ? Py_ofJs(lang) : (new Py_Json(/* Str */ 4, [code_3])), partStart, now())));
+                                })) : ((silence(readingTime(shown(text_3))), Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                                    void (parts.push(new Part(shown(text_3), heard(text_3), (code_4 == null) ? Py_ofJs(lang) : (new Py_Json(/* Str */ 4, [code_4])), partStart, now())));
                                     return Promise.resolve();
                                 }));
                             }));
@@ -1415,12 +1443,12 @@ export function run(ws) {
                         frame.contents = (~~(pos.contents / FRAME) | 0);
                         const msc = item(si, markedScenes);
                         const passthrough = (key_1) => {
-                            const matchValue_3 = get$(sc, key_1);
+                            const matchValue_5 = get$(sc, key_1);
                             let matchResult_1, v_5;
-                            if (matchValue_3 != null) {
-                                if (Py_truthy(value_8(matchValue_3))) {
+                            if (matchValue_5 != null) {
+                                if (Py_truthy(value_8(matchValue_5))) {
                                     matchResult_1 = 0;
-                                    v_5 = value_8(matchValue_3);
+                                    v_5 = value_8(matchValue_5);
                                 }
                                 else {
                                     matchResult_1 = 1;
@@ -1445,17 +1473,17 @@ export function run(ws) {
                 }));
             }));
         }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (release().then(() => {
-            let ps_1, ps_2, matchValue_6, matchValue_7, matchValue_8, c_3, asked, on, total, label, matchValue_9, m_1;
+            let ps_2, ps_3, matchValue_8, matchValue_9, matchValue_10, c_3, asked, on, total, label, matchValue_11, m_1;
             const duration = frame.contents / 30;
             write(join_1(ofArray([build, "narration.wav"])), soundtrack(ofSeq_1(audio)));
             const scenes_1 = ofSeq_1(scenes);
             let posterId;
-            const matchValue_4 = get$(script, "poster");
+            const matchValue_6 = get$(script, "poster");
             let matchResult_2, p_6;
-            if (matchValue_4 != null) {
-                if (Py_truthy(value_8(matchValue_4))) {
+            if (matchValue_6 != null) {
+                if (Py_truthy(value_8(matchValue_6))) {
                     matchResult_2 = 0;
-                    p_6 = value_8(matchValue_4);
+                    p_6 = value_8(matchValue_6);
                 }
                 else {
                     matchResult_2 = 1;
@@ -1473,9 +1501,9 @@ export function run(ws) {
                     posterId = ((length(scenes_1) > 1) ? item_1(1, scenes_1) : item_1(0, scenes_1)).id;
             }
             let poster;
-            const matchValue_5 = tryFind((s_2) => (toJson(s_2.id) === toJson(posterId)), scenes_1);
-            poster = ((matchValue_5 != null) ? (isEmpty(matchValue_5.sentences) ? ((ps_1 = matchValue_5, ps_1.finish - 0.1)) : ((ps_2 = matchValue_5, last_1(ps_2.sentences).finish))) : fail(concat("poster scene ", Py_repr(posterId), " not found")));
-            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_6 = get$(script, "title"), (matchValue_6 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_6)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_7 = get$(script, "captions"), (matchValue_7 == null) ? false : Py_truthy(value_8(matchValue_7)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), append((matchValue_8 = get$(script, "card"), (matchValue_8 != null) ? (Py_truthy(value_8(matchValue_8)) ? ((c_3 = value_8(matchValue_8), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton_1(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty_1()) : empty_1()), (matchValue_9 = get$(script, "map"), (matchValue_9 != null) ? (Py_truthy(value_8(matchValue_9)) ? ((m_1 = value_8(matchValue_9), singleton_1(["map", Py_ofJs(m_1)]))) : empty_1()) : empty_1())))]);
+            const matchValue_7 = tryFind((s_2) => (toJson(s_2.id) === toJson(posterId)), scenes_1);
+            poster = ((matchValue_7 != null) ? (isEmpty(matchValue_7.sentences) ? ((ps_2 = matchValue_7, ps_2.finish - 0.1)) : ((ps_3 = matchValue_7, last_1(ps_3.sentences).finish))) : fail(concat("poster scene ", Py_repr(posterId), " not found")));
+            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_8 = get$(script, "title"), (matchValue_8 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_8)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_9 = get$(script, "captions"), (matchValue_9 == null) ? false : Py_truthy(value_8(matchValue_9)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), append((matchValue_10 = get$(script, "card"), (matchValue_10 != null) ? (Py_truthy(value_8(matchValue_10)) ? ((c_3 = value_8(matchValue_10), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton_1(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty_1()) : empty_1()), (matchValue_11 = get$(script, "map"), (matchValue_11 != null) ? (Py_truthy(value_8(matchValue_11)) ? ((m_1 = value_8(matchValue_11), singleton_1(["map", Py_ofJs(m_1)]))) : empty_1()) : empty_1())))]);
             writeText(join_1(ofArray([build, "timing.json"])), Py_dumpsIndented(2, timing));
             writeText(join_1(ofArray([build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
             const cues = toList(delay(() => append_1(singleton("WEBVTT"), delay(() => append_1(singleton(""), delay(() => collect((s_4) => collect((c_4) => append_1(singleton(concat(vttTime(c_4.start), " --> ", vttTime(c_4.finish))), delay(() => append_1(singleton(c_4.text), delay(() => singleton(""))))), s_4.sentences), scenes_1)))))));

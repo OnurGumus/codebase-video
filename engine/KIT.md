@@ -100,7 +100,8 @@ shrinks back to the box at the end of the last. The module draws its content exa
 boundary of its own.
 
 - The first scene of a visit needs `"lead": 1.4` (1.2 at least): nothing of the module is shown during the zoom.
-- The last scene needs `pad` plus `hold` of 1.5 s or more, for the zoom out.
+- The last scene needs `"pad": 1.8` (`pad` plus `hold` of 1.5 s at least), for the way back out: the content fades,
+  the boundary shrinks to the box, and the whole map is held for a moment before the next scene.
 - In an `inside` scene keep the heading under about 60 characters, so the row's right end is free for the tag.
 - Not on a bridge or recap scene. A think scene may be inside.
 
@@ -213,6 +214,11 @@ A dense video tires the viewer, so give it rests. The first long videos talked 9
 nearly two minutes at a stretch and no real pause.
 
 - `[pause]` / `[pause 2]` after a sentence in `say`: silence (1.5 s by default) so a key point lands.
+- `[rest]` / `[rest 0.5]` INSIDE a sentence, between the items of a spoken list: a short silence (0.35 s by default,
+  0.15 to 1) so the items do not run together: `"a client, [rest] a service, [rest] and a database."` Keep each
+  comma before its rest. The sentence stays one caption. Each stretch between rests is voiced on its own, so a cue
+  phrase must lie inside one stretch (`"s|a service"`, not `"s|a client, a service"`); `check` says so. Use it in
+  every list of three or more things, above all when each item makes something appear.
 - `[think]` / `[think 10]` after a question: silence (8 s by default) with a "Pause and think" countdown
   in the top band. The answer follows in the next sentence. About one per chapter.
 - A **recap scene** closes each chapter: id `<key>-recap`, `"recap": ["line", "line", "line"]` (2-3

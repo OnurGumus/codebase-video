@@ -52,8 +52,10 @@ type View = { el: HTMLElement; draw: State -> unit }
 /// The boundary a part's box grows into: just outside the module area, so module layouts need not change.
 let BOUND: Box = { x = 36.0; y = 218.0; w = 1848.0; h = 804.0 }
 
-/// How long the zoom into a part takes, and the zoom back out (seconds).
-let ZOOM_IN, ZOOM_OUT = 1.2, 1.0
+/// How long the zoom into a part takes, and how much of a visit's quiet end the way back out takes (seconds): the
+/// content fades (0.3), the boundary shrinks to the box (0.7), the whole map is held for a moment (0.2) so the
+/// viewer sees where they came out, then it leaves (0.3).
+let ZOOM_IN, ZOOM_OUT = 1.2, 1.5
 
 let private X0, Y0, CELL_W, CELL_H, BOX_H = 60.0, 240.0, 450.0, 253.0, 96.0
 let private DIM = 0.35

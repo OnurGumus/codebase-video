@@ -450,7 +450,7 @@ export function run() {
                 }
                 else {
                     const v_8 = visit;
-                    m_5.view.draw(new State((_arg_4) => 1, lit, uncurry2(edge), [v_8.part, (v = v_8, (t_2 = t_6, ease.inOut(clamp01((t_2 - v.start) / ZOOM_IN)) * (1 - (v.last ? 0 : ease.inOut(clamp01((t_2 - (v.end - 0.7)) / 0.7))))))]));
+                    m_5.view.draw(new State((_arg_4) => 1, lit, uncurry2(edge), [v_8.part, (v = v_8, (t_2 = t_6, ease.inOut(clamp01((t_2 - v.start) / ZOOM_IN)) * (1 - (v.last ? 0 : ease.inOut(clamp01((t_2 - ((v.end - ZOOM_OUT) + 0.3)) / 0.7))))))]));
                 }
             }
             let content;

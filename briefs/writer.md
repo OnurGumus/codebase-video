@@ -32,7 +32,7 @@ set it}, and `scenes`.
   right along one row. `kinds` gives each kind the tone and icon of this video's colour table: {{COLOURS}}.
   On the bridge scene of each chapter that follows a flow, add `"path"`: the parts that flow touches, in the order it
   reaches them. On each content scene that is about the inside of one part, add `"inside": "<part id>"`; give the
-  first scene of such a run `"lead": 1.4` and the last one `"pad": 1.6`. Leave `inside` off scenes that are about how
+  first scene of such a run `"lead": 1.4` and the last one `"pad": 1.8`. Leave `inside` off scenes that are about how
   parts talk to each other.
 - Target {{MINUTES}}: {{WORDS}}. File paths, identifiers and flags cost several spoken words each. Plan the cut before
   you write: follow one flow end to end rather than skimming all of them, and say in `intro-path` what is left for later.
@@ -54,7 +54,9 @@ set it}, and `scenes`.
 - Give the viewer room. People cannot take in facts that arrive back to back, so space them: a `[pause]` after every
   key point, after each new term and after each number that matters; a `[pause 2]` where the subject changes inside
   a scene; never three new facts in a row without a pause, and no stretch of talk over about 30 s without one. One
-  idea per sentence. The `check` breathe line should show 72-78% talk; it warns over 82%, and over 45 s without a
+  idea per sentence. When a sentence lists three or more things, put a `[rest]` after each comma of the list
+  ("the endpoint, [rest] the saga, [rest] and the journal"): each item then gets its own beat, and a builder can
+  show each one on its word. The `check` breathe line should show 72-78% talk; it warns over 82%, and over 45 s without a
   pause. If the video runs long, cut a fact, not a pause.
 - About one light humour line every two minutes, each adding NO claim and bending none.
 - `[shown](spoken)` for anything the voice would mangle or that should appear as code in the caption, e.g.

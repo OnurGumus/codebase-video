@@ -99,7 +99,7 @@
       "id": "tx-demo",
       "lead": 0.6,
       "pad": 1.0,
-      "say": "A heading sits at the top. Lines arrive with the words: first this one, then a second with a note, and a third that gets struck out. Chips appear one by one: accent, good, bad, and warn."
+      "say": "A heading sits at the top. Lines arrive with the words: first this one, [rest] then a second with a note, [rest] and a third that gets struck out. Chips appear one by one: accent, [rest] good, [rest] bad, [rest] and warn."
     },
     {
       "id": "k2-why",
@@ -112,7 +112,7 @@
       "id": "tb-demo",
       "lead": 0.6,
       "pad": 0.8,
-      "say": "A table fills row by row: the cache, the load balancer, and the queue."
+      "say": "A table fills row by row: the cache, [rest] the load balancer, [rest] and the queue."
     },
     {
       "id": "br-demo",
@@ -136,7 +136,7 @@
       "id": "tl-demo",
       "lead": 0.6,
       "pad": 0.8,
-      "say": "A timeline stacks its segments: thirty for the lookup, ninety for the handshake, eight for the work, and [308](three hundred and eight) in all."
+      "say": "A timeline stacks its segments: thirty for the lookup, [rest] ninety for the handshake, [rest] eight for the work, [rest] and [308](three hundred and eight) in all."
     },
     {
       "id": "fl-demo",
@@ -166,7 +166,7 @@
       "id": "cd-demo",
       "lead": 0.6,
       "pad": 0.8,
-      "say": "Code lines glow as they run: read, then handle, then commit."
+      "say": "Code lines glow as they run: read, [rest] then handle, [rest] then commit."
     },
     {
       "id": "wb-demo",
@@ -176,7 +176,7 @@
     {
       "id": "st-demo",
       "pad": 1.0,
-      "say": "Steps light up in turn: find, then move, then price. And a counter counts up to three million."
+      "say": "Steps light up in turn: find, [rest] then move, [rest] then price. And a counter counts up to three million."
     },
     {
       "id": "k5-why",
@@ -251,7 +251,7 @@
       "id": "mp-map",
       "lead": 0.6,
       "pad": 1.0,
-      "say": "A module can draw the same map, part by part: a client, a service, a cache, and a database."
+      "say": "A module can draw the same map, part by part: a client, [rest] a service, [rest] a cache, [rest] and a database."
     },
     {
       "id": "mp-inside",
@@ -264,7 +264,7 @@
       "id": "mp-inside2",
       "inside": "service",
       "lead": 0.6,
-      "pad": 1.6,
+      "pad": 1.8,
       "say": "The boundary stays while the scenes stay inside, and shrinks back to the box when they leave."
     },
     {

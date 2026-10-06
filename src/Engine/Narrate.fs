@@ -304,6 +304,10 @@ let private PRONOUNCE = regex """\[([^\]]+)\]\(([^)]+)\)""" "g"
 let private FOREIGN = regex """\{([a-z]{2,3}):([^{}]+)\}""" "g"
 let private BREAK = regex """\s*\[(pause|think)(?:\s+(\d+(?:\.\d+)?))?\]""" "g"
 let private breakDefault kind = if kind = "pause" then 1.5 else 8.0
+// A rest: a short silence INSIDE a sentence, between the items of a spoken list ("a client, [rest] a service,
+// [rest] and a database"), so they do not run together. Unlike a pause it does not end the caption.
+let private REST = regex """\s*\[rest(?:\s+(\d+(?:\.\d+)?))?\]""" "g"
+let private REST_DEFAULT = 0.35
 let private NAME_PATTERN = """\A[A-Za-z0-9][A-Za-z0-9_-]*\Z"""
 let private NAME = regex "^[A-Za-z0-9][A-Za-z0-9_-]*$" ""
 
@@ -342,12 +346,23 @@ let breaks (s: string) : (string * float) list =
           let kind = (group m 1).Value
           kind, (match group m 2 with Some secs -> float secs | None -> breakDefault kind) ]
 
+/// A sentence as the stretches between its [rest] marks, each with the silence that follows it (0 after the last).
+let rests (s: string) : (string * float) list =
+    let out = ResizeArray<string * float>()
+    let mutable pos = 0
+    for m in matchAll s REST do
+        let i = matchIndex m
+        out.Add(s.Substring(pos, i - pos), (match group m 1 with Some secs -> float secs | None -> REST_DEFAULT))
+        pos <- i + (group0 m).Length
+    out.Add(s.Substring pos, 0.0)
+    List.ofSeq out
+
 let shown (s: string) : string =
-    subWith (subWith (subEmpty s BREAK) PRONOUNCE (fun m -> (group m 1).Value)) FOREIGN (fun m -> (group m 2).Value)
+    subWith (subWith (subEmpty (subEmpty s REST) BREAK) PRONOUNCE (fun m -> (group m 1).Value)) FOREIGN (fun m -> (group m 2).Value)
     |> fun s -> s.Trim()
 
 let spoken (s: string) : string =
-    (subWith (subEmpty s BREAK) PRONOUNCE (fun m -> (group m 2).Value)).Trim()
+    (subWith (subEmpty (subEmpty s REST) BREAK) PRONOUNCE (fun m -> (group m 2).Value)).Trim()
 
 /// What the listener hears, as plain text: spoken forms, and {code:...} phrases without their braces.
 /// Stage (src/Kit/Stage.fs) times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
@@ -940,8 +955,15 @@ let run (ws: string) : JS.Promise<unit> =
                 let parts = ResizeArray<Part>()
                 let after = breaks s
                 let s = (subEmpty s BREAK).Trim()
-                for k, (code, text) in List.indexed (pieces s) do
-                    if k > 0 then silence PART_GAP
+                // Each stretch between two [rest] marks is voiced on its own, with the rest's silence after it.
+                let voicedPieces =
+                    [ for stretch, rest in rests s do
+                          let ps = pieces stretch
+                          for n, (code, text) in List.indexed ps -> code, text, (if n = ps.Length - 1 then rest else 0.0) ]
+                let mutable gap = 0.0
+                for k, (code, text, rest) in List.indexed voicedPieces do
+                    if k > 0 then silence (max gap PART_GAP)
+                    gap <- rest
                     let partStart = now ()
                     if voiceName.IsSome then
                         let! samples = synth code (spoken text) $"{Py.str id}[{i}]"

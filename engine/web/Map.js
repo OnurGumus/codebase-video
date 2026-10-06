@@ -41,23 +41,23 @@ export function View_$reflection() {
 
 export const BOUND = new Box(36, 218, 1848, 804);
 
-export const patternInput$004056 = [1.2, 1];
+export const patternInput$004058 = [1.2, 1.5];
 
-export const ZOOM_OUT = patternInput$004056[1];
+export const ZOOM_OUT = patternInput$004058[1];
 
-export const ZOOM_IN = patternInput$004056[0];
+export const ZOOM_IN = patternInput$004058[0];
 
-export const patternInput$004058$002D1 = [60, 240, 450, 253, 96];
+export const patternInput$004060$002D1 = [60, 240, 450, 253, 96];
 
-export const Y0 = patternInput$004058$002D1[1];
+export const Y0 = patternInput$004060$002D1[1];
 
-const X0 = patternInput$004058$002D1[0];
+const X0 = patternInput$004060$002D1[0];
 
-export const CELL_W = patternInput$004058$002D1[2];
+export const CELL_W = patternInput$004060$002D1[2];
 
-export const CELL_H = patternInput$004058$002D1[3];
+export const CELL_H = patternInput$004060$002D1[3];
 
-export const BOX_H = patternInput$004058$002D1[4];
+export const BOX_H = patternInput$004060$002D1[4];
 
 const DIM = 0.35;
 

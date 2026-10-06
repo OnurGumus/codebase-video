@@ -202,11 +202,12 @@ let run () =
                           last = T.scenes.[j].``end`` >= T.duration - 0.05 }
                     k <- j + 1
             found.ToArray()
-    /// How far the zoom into a visit's part has gone at t: in over its first ZOOM_IN seconds, back out over the last
-    /// 0.7 s (the module's content has faded by then), never out when the video ends there.
+    /// How far the zoom into a visit's part has gone at t: in over its first ZOOM_IN seconds; back out over 0.7 s
+    /// once the module's content has faded, done 0.5 s before the visit ends so the map is seen whole before the
+    /// next scene; never out when the video ends there.
     let zoomOf (v: Visit) (t: float) : float =
         let zin = ease.inOut (clamp01 ((t - v.start) / Map.ZOOM_IN))
-        let zout = if v.last then 0.0 else ease.inOut (clamp01 ((t - (v.``end`` - 0.7)) / 0.7))
+        let zout = if v.last then 0.0 else ease.inOut (clamp01 ((t - (v.``end`` - Map.ZOOM_OUT + 0.3)) / 0.7))
         zin * (1.0 - zout)
     /// How visible the map layer is during a visit: at once when the map is already up, else a short fade each way.
     let visitShown (v: Visit) (t: float) : float =

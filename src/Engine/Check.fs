@@ -483,6 +483,9 @@ let BREAK = Py.rx @"\s*\[(pause|think)(?:\s+(\d+(?:\.\d+)?))?\]"
 let private breakDefault = function
     | "pause" -> 1.5
     | _ -> 8.0
+/// A rest: a short silence inside a sentence, between the items of a spoken list (Narrate voices each stretch on
+/// its own). Default 0.35 s.
+let REST = Py.rx @"\s*\[rest(?:\s+(\d+(?:\.\d+)?))?\]"
 
 let private shieldEnd = Py.rx @"[.!?]\s*$"
 let private splitter = Py.rx @"(?<=[.!?\x01])\s+(?=[""'“A-Z0-9\[\x00])"
@@ -523,6 +526,7 @@ let breaks (s: string) : (string * float) list =
 
 let shown (s: string) : string =
     s
+    |> Py.sub REST (fun _ -> "")
     |> Py.sub BREAK (fun _ -> "")
     |> Py.sub PRONOUNCE (fun m -> m.G 1)
     |> Py.sub FOREIGN (fun m -> m.G 2)
@@ -564,8 +568,9 @@ let private load (f: Findings) (clip: string) : Json * Json option =
 let private sceneIdRx = Py.rx @"[a-z0-9]+(-[a-z0-9]+)*"
 let private endsSentence = Py.rx @"[.!?]$"
 let private nextStarts = Py.rx @"\s+[A-Z\""'“\[0-9]"
-let private breakLike = Py.rx @"\[(?:pause|think)[^\]]*\]"
-let private breakForm = Py.rx @"\[(pause|think)(\s+\d+(\.\d+)?)?\]"
+let private breakLike = Py.rx @"\[(?:pause|think|rest)[^\]]*\](?!\()"
+let private breakForm = Py.rx @"\[(pause|think|rest)(\s+\d+(\.\d+)?)?\]"
+let private restEdge = Py.rx @"^\s*\[rest[^\]]*\]|\[rest[^\]]*\]\s*(?:\[(?:pause|think)[^\]]*\]\s*)*$"
 let private foreignAny = Py.rx @"\{[a-z]{2,3}:[^{}]+\}"
 let private readToken =
     Py.rx @"\d[\d,.]*\s*(?:%|×|x\b|ms\b|µs\b|ns\b|GB|TB|PB|MB|KB|Gbps|Mbps|k\b|M\b|B\b)?|[×÷≈→%/]|\b[A-Z]{2,}\b"
@@ -590,7 +595,14 @@ let private checkScript (f: Findings) (script: Json) =
         |> List.iteri (fun i sent ->
             for m in Py.finditer breakLike sent do
                 if not (Py.fullmatch breakForm m.Value) then
-                    f.err $"{sid}[{i}]: {Py.reprStr m.Value} is not a break marker ([pause], [pause 2], [think], [think 4]); the voice would read it"
+                    f.err $"{sid}[{i}]: {Py.reprStr m.Value} is not a break marker ([pause], [pause 2], [think], [think 4], [rest], [rest 0.5]); the voice would read it"
+            for m in Py.finditer REST sent do
+                match m.Group 1 with
+                | Some secs when not (0.15 <= float secs && float secs <= 1.0) ->
+                    f.warn $"{sid}[{i}]: [rest {secs}] - a rest is 0.15 to 1 s; for a longer silence end the sentence and use [pause]"
+                | _ -> ()
+            if Py.found restEdge sent then
+                f.warn $"{sid}[{i}]: a [rest] goes between two items inside a sentence, not at its start or end"
             for kind, secs in breaks sent do
                 if not (0.5 <= secs && secs <= 12.0) then
                     f.warn $"{sid}[{i}]: [{kind} {Py.g secs}] - keep breaks between 0.5 and 12 s"
@@ -598,7 +610,7 @@ let private checkScript (f: Findings) (script: Json) =
             if words > 32 then
                 f.warn $"{sid}[{i}]: {words} words in one sentence (one caption); split it"
             // what the voice reads as written
-            let plain = sent |> Py.sub PRONOUNCE (fun _ -> "") |> Py.sub foreignAny (fun _ -> "")
+            let plain = sent |> Py.sub REST (fun _ -> "") |> Py.sub PRONOUNCE (fun _ -> "") |> Py.sub foreignAny (fun _ -> "")
             for m in Py.finditer readToken plain do
                 let tok = Py.strip m.Value
                 // small plain numbers read fine
@@ -667,7 +679,15 @@ let private checkCuesWith (f: Findings) (timing: Json) (jsFiles: string list) =
     let nSentences sid = (sentencesOf (byId.get sid)).Length
 
     let hasPhrase (sid: string) (phrase: string) (nth: int) =
-        let units = sentencesOf (byId.get sid) |> List.map (fun se -> lower (spokenOf se), lower (textOf se))
+        // As the kit matches (Stage.word): inside one voiced piece of a sentence, when it has several (a foreign
+        // phrase, or the stretches between [rest] marks), so a phrase that spans two pieces is not found.
+        let units =
+            sentencesOf (byId.get sid)
+            |> List.collect (fun se ->
+                match Py.list se "parts" with
+                | parts when parts.Length > 1 -> parts
+                | _ -> [ se ])
+            |> List.map (fun u -> lower (spokenOf u), lower (textOf u))
         let want = lower phrase
         [ fst; snd ] |> List.exists (fun field -> (units |> List.sumBy (fun u -> Py.count (field u) want)) >= nth)
 

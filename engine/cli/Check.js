@@ -8,7 +8,7 @@ import { Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.
 import { class_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { pairwise as pairwise_1, sumBy as sumBy_1, pick, tryPick, iterateIndexed as iterateIndexed_1, last as last_1, setItem, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { item as item_1, tryFindIndex, find, sum, tryFind, collect, truncate, concat as concat_1, singleton, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { item as item_1, tryFindIndex, find, sum, tryFind, truncate, concat as concat_1, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, singleton, collect, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { truncate as truncate_1, filter as filter_1, delay, toList as toList_1, findIndex, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { max, parse as parse_1, isInfinity, isNegativeInfinity, isPositiveInfinity, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
@@ -730,6 +730,8 @@ function breakDefault(_arg) {
     }
 }
 
+export const REST = Py_rx("\\s*\\[rest(?:\\s+(\\d+(?:\\.\\d+)?))?\\]");
+
 const shieldEnd = Py_rx("[.!?]\\s*$");
 
 const splitter = Py_rx("(?<=[.!?\\x01])\\s+(?=[\"\'“A-Z0-9\\[\\x00])");
@@ -799,7 +801,7 @@ export function breaks(s) {
 }
 
 export function shown(s) {
-    return Py_strip(Py_sub(FOREIGN, (m_1) => Py_M__G_Z524259A4(m_1, 2), Py_sub(PRONOUNCE, (m) => Py_M__G_Z524259A4(m, 1), Py_sub(BREAK, (_arg) => "", s))));
+    return Py_strip(Py_sub(FOREIGN, (m_1) => Py_M__G_Z524259A4(m_1, 2), Py_sub(PRONOUNCE, (m) => Py_M__G_Z524259A4(m, 1), Py_sub(BREAK, (_arg_1) => "", Py_sub(REST, (_arg) => "", s)))));
 }
 
 const WPS = 2.4;
@@ -868,9 +870,11 @@ const endsSentence = Py_rx("[.!?]$");
 
 const nextStarts = Py_rx("\\s+[A-Z\\\"\'“\\[0-9]");
 
-const breakLike = Py_rx("\\[(?:pause|think)[^\\]]*\\]");
+const breakLike = Py_rx("\\[(?:pause|think|rest)[^\\]]*\\](?!\\()");
 
-const breakForm = Py_rx("\\[(pause|think)(\\s+\\d+(\\.\\d+)?)?\\]");
+const breakForm = Py_rx("\\[(pause|think|rest)(\\s+\\d+(\\.\\d+)?)?\\]");
+
+const restEdge = Py_rx("^\\s*\\[rest[^\\]]*\\]|\\[rest[^\\]]*\\]\\s*(?:\\[(?:pause|think)[^\\]]*\\]\\s*)*$");
 
 const foreignAny = Py_rx("\\{[a-z]{2,3}:[^{}]+\\}");
 
@@ -922,34 +926,66 @@ function checkScript(f, script) {
                     while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
                         const m_1 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
                         if (!Py_fullmatch(breakForm, Py_M__get_Value(m_1))) {
-                            Findings__err_Z721C83C5(f, `${sid}[${i_1}]: ${Py_reprStr(Py_M__get_Value(m_1))} is not a break marker ([pause], [pause 2], [think], [think 4]); the voice would read it`);
+                            Findings__err_Z721C83C5(f, `${sid}[${i_1}]: ${Py_reprStr(Py_M__get_Value(m_1))} is not a break marker ([pause], [pause 2], [think], [think 4], [rest], [rest 0.5]); the voice would read it`);
                         }
                     }
                 }
                 finally {
                     disposeSafe(enumerator_3);
                 }
-                const enumerator_4 = getEnumerator(breaks(sent));
+                const enumerator_4 = getEnumerator(Py_finditer(REST, sent));
                 try {
                     while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
-                        const forLoopVar = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                        const secs = forLoopVar[1];
-                        if (!((0.5 <= secs) && (secs <= 12))) {
-                            Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: [${forLoopVar[0]} ${Py_g(secs)}] - keep breaks between 0.5 and 12 s`);
+                        let secs;
+                        const matchValue_2 = Py_M__Group_Z524259A4(enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"](), 1);
+                        let matchResult, secs_1;
+                        if (matchValue_2 != null) {
+                            if ((secs = matchValue_2, !((0.15 <= parse_1(secs)) && (parse_1(secs) <= 1)))) {
+                                matchResult = 0;
+                                secs_1 = matchValue_2;
+                            }
+                            else {
+                                matchResult = 1;
+                            }
+                        }
+                        else {
+                            matchResult = 1;
+                        }
+                        switch (matchResult) {
+                            case 0: {
+                                Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: [rest ${secs_1}] - a rest is 0.15 to 1 s; for a longer silence end the sentence and use [pause]`);
+                                break;
+                            }
                         }
                     }
                 }
                 finally {
                     disposeSafe(enumerator_4);
                 }
+                if (Py_found(restEdge, sent)) {
+                    Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: a [rest] goes between two items inside a sentence, not at its start or end`);
+                }
+                const enumerator_5 = getEnumerator(breaks(sent));
+                try {
+                    while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
+                        const forLoopVar = enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                        const secs_2 = forLoopVar[1];
+                        if (!((0.5 <= secs_2) && (secs_2 <= 12))) {
+                            Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: [${forLoopVar[0]} ${Py_g(secs_2)}] - keep breaks between 0.5 and 12 s`);
+                        }
+                    }
+                }
+                finally {
+                    disposeSafe(enumerator_5);
+                }
                 const words = length_1(Py_words(shown(sent))) | 0;
                 if (words > 32) {
                     Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: ${words} words in one sentence (one caption); split it`);
                 }
-                const enumerator_5 = getEnumerator(Py_finditer(readToken, Py_sub(foreignAny, (_arg_1) => "", Py_sub(PRONOUNCE, (_arg) => "", sent))));
+                const enumerator_6 = getEnumerator(Py_finditer(readToken, Py_sub(foreignAny, (_arg_2) => "", Py_sub(PRONOUNCE, (_arg_1) => "", Py_sub(REST, (_arg) => "", sent)))));
                 try {
-                    while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
-                        const tok = Py_strip(Py_M__get_Value(enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]()));
+                    while (enumerator_6["System.Collections.IEnumerator.MoveNext"]()) {
+                        const tok = Py_strip(Py_M__get_Value(enumerator_6["System.Collections.Generic.IEnumerator`1.get_Current"]()));
                         if ((tok !== "") && !Py_fullmatch(smallNumber, tok)) {
                             if (!f.Read.has(tok)) {
                                 f.Read.set(tok, []);
@@ -959,7 +995,7 @@ function checkScript(f, script) {
                     }
                 }
                 finally {
-                    disposeSafe(enumerator_5);
+                    disposeSafe(enumerator_6);
                 }
             }, sentences(say_1));
         }
@@ -1097,9 +1133,17 @@ function checkCuesWith(f, timing, jsFiles) {
     }
     const nSentences = (sid) => (length_1(sentencesOf(byId.get(sid))) | 0);
     const hasPhrase = (sid_1, phrase, nth) => {
-        const units = map_3((se) => [lower(spokenOf(se)), lower(textOf(se))], sentencesOf(byId.get(sid_1)));
+        const units = map_3((u) => [lower(spokenOf(u)), lower(textOf(u))], collect((se) => {
+            const matchValue = Py_list(se, "parts");
+            if (length_1(matchValue) > 1) {
+                return matchValue;
+            }
+            else {
+                return singleton(se);
+            }
+        }, sentencesOf(byId.get(sid_1))));
         const want = lower(phrase);
-        return exists_1((field) => (sumBy((u) => (Py_count(field(u), want) | 0), units, {
+        return exists_1((field) => (sumBy((u_1) => (Py_count(field(u_1), want) | 0), units, {
             GetZero: () => 0,
             Add: (x, y) => ((x + y) | 0),
         }) >= nth), ofArray([(tuple) => tuple[0], (tuple_1) => tuple_1[1]]));
@@ -1143,15 +1187,15 @@ function checkCuesWith(f, timing, jsFiles) {
                                     Findings__err_Z721C83C5(f, `${name}:${ln}: no scene ${Py_reprStr(sid_2)}`);
                                 }
                                 else {
-                                    const matchValue = Py_M__Group_Z524259A4(m_1, 2);
-                                    const matchValue_1 = Py_M__Group_Z524259A4(m_1, 4);
-                                    const matchValue_2 = Py_M__Group_Z524259A4(m_1, 5);
+                                    const matchValue_1 = Py_M__Group_Z524259A4(m_1, 2);
+                                    const matchValue_2 = Py_M__Group_Z524259A4(m_1, 4);
+                                    const matchValue_3 = Py_M__Group_Z524259A4(m_1, 5);
                                     let matchResult, nth_2, phrase_2, sent_1;
-                                    if (matchValue == null) {
-                                        if (matchValue_2 != null) {
-                                            if (parse(matchValue_2, 511, false, 32) >= nSentences(sid_2)) {
+                                    if (matchValue_1 == null) {
+                                        if (matchValue_3 != null) {
+                                            if (parse(matchValue_3, 511, false, 32) >= nSentences(sid_2)) {
                                                 matchResult = 2;
-                                                sent_1 = matchValue_2;
+                                                sent_1 = matchValue_3;
                                             }
                                             else {
                                                 matchResult = 3;
@@ -1161,10 +1205,10 @@ function checkCuesWith(f, timing, jsFiles) {
                                             matchResult = 3;
                                         }
                                     }
-                                    else if ((nth_1 = matchValue_1, !hasPhrase(sid_2, matchValue, (nth_1 == null) ? 1 : parse(nth_1, 511, false, 32)))) {
+                                    else if ((nth_1 = matchValue_2, !hasPhrase(sid_2, matchValue_1, (nth_1 == null) ? 1 : parse(nth_1, 511, false, 32)))) {
                                         matchResult = 0;
-                                        nth_2 = matchValue_1;
-                                        phrase_2 = matchValue;
+                                        nth_2 = matchValue_2;
+                                        phrase_2 = matchValue_1;
                                     }
                                     else {
                                         matchResult = 1;
@@ -1214,12 +1258,12 @@ function checkCuesWith(f, timing, jsFiles) {
                                 Findings__err_Z721C83C5(f, `${name}:${ln}: no scene ${Py_reprStr(sid_4)}`);
                             }
                             else {
-                                const matchValue_6 = Py_M__Group_Z524259A4(m_3, 2);
+                                const matchValue_7 = Py_M__Group_Z524259A4(m_3, 2);
                                 let matchResult_1, i_2;
-                                if (matchValue_6 != null) {
-                                    if ((i_1 = matchValue_6, (parse(i_1, 511, false, 32) >= nSentences(sid_4)) ? true : (op_UnaryNegation_Int32(parse(i_1, 511, false, 32)) > nSentences(sid_4)))) {
+                                if (matchValue_7 != null) {
+                                    if ((i_1 = matchValue_7, (parse(i_1, 511, false, 32) >= nSentences(sid_4)) ? true : (op_UnaryNegation_Int32(parse(i_1, 511, false, 32)) > nSentences(sid_4)))) {
                                         matchResult_1 = 0;
-                                        i_2 = matchValue_6;
+                                        i_2 = matchValue_7;
                                     }
                                     else {
                                         matchResult_1 = 1;
@@ -1729,11 +1773,11 @@ function reportLength(script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401002 = [1.2, 1.5];
+export const patternInput$00401022 = [1.2, 1.5];
 
-export const VISIT_TAIL = patternInput$00401002[1];
+export const VISIT_TAIL = patternInput$00401022[1];
 
-const VISIT_LEAD = patternInput$00401002[0];
+const VISIT_LEAD = patternInput$00401022[0];
 
 function checkMap(f, script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
