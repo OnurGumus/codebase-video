@@ -1,11 +1,12 @@
 
 import { comparePrimitives, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { split, concat, join, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { append, mapIndexed, iterateIndexed, map, item as item_1 } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { find, append, mapIndexed, iterateIndexed, map, item as item_1 } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { play, timing, typed, clamp01, clamp, progIO, api, scene, time, show, ease, lerp, prog, within } from "./Stage.js";
 import { FSharpRef, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { array_type, string_type, record_type, lambda_type, unit_type, float64_type, class_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { replace, split, concat, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { HEAD_W, HEAD_L, Point, along, centre, route, Box, tone, esc, mk } from "./Draw.js";
 import { FSharpSet__Contains, ofList, ofArray } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { FSharpMap__get_Item, tryFind, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { ofArray as ofArray_1 } from "./fable_modules/fable-library-js.5.19.0/List.js";
@@ -25,47 +26,6 @@ function injectCss() {
         st.textContent = CSS;
         document.head.append(st);
     }
-}
-
-const TONE = {
-    accent: "var(--accent)",
-    good: "var(--good)",
-    bad: "var(--bad)",
-    warn: "var(--warn)",
-    violet: "var(--violet)",
-    pink: "var(--pink)",
-    cyan: "var(--cyan)",
-    muted: "var(--muted)",
-    ink: "var(--ink)",
-    faint: "var(--faint)",
-};
-
-function tone(name) {
-    if (!!(name)) {
-        return ((TONE[name]) || name);
-    }
-    else {
-        return "";
-    }
-}
-
-function esc(s) {
-    return replace(replace(replace(String(s), "&", "&amp;"), "<", "&lt;"), ">", "&gt;");
-}
-
-function mk(parent, tag, cls, html, style) {
-    const d = document.createElement((tag || "div"));
-    if (!!(cls)) {
-        d.className = cls;
-    }
-    if (!((html == null))) {
-        d.innerHTML = html;
-    }
-    if (!!(style)) {
-        d.style.cssText = style;
-    }
-    parent.append(d);
-    return d;
 }
 
 function opts(o) {
@@ -328,32 +288,6 @@ class EdgeState extends Record {
 
 function EdgeState_$reflection() {
     return record_type("Kit.EdgeState", [], EdgeState, () => [["e", class_type("Kit.FlowEdge")], ["path", class_type("Browser.Types.Element", undefined)], ["label", class_type("Browser.Types.HTMLElement", undefined)], ["heads", array_type(Head_$reflection())], ["at", float64_type], ["toneAt", float64_type], ["until", float64_type], ["lane", float64_type], ["len", float64_type]]);
-}
-
-class Box extends Record {
-    constructor(x, y, w, h) {
-        super();
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-    }
-}
-
-function Box_$reflection() {
-    return record_type("Kit.Box", [], Box, () => [["x", float64_type], ["y", float64_type], ["w", float64_type], ["h", float64_type]]);
-}
-
-class Point extends Record {
-    constructor(x, y) {
-        super();
-        this.x = x;
-        this.y = y;
-    }
-}
-
-function Point_$reflection() {
-    return record_type("Kit.Point", [], Point, () => [["x", float64_type], ["y", float64_type]]);
 }
 
 export function kitFor(root) {
@@ -815,7 +749,7 @@ export function kitFor(root) {
             svg.setAttribute("width", "1920");
             svg.setAttribute("height", "1080");
             layer.append(svg);
-            const matchValue_26 = TAt(o_20.at);
+            const matchValue_23 = TAt(o_20.at);
             const layerUntil = TUntil(o_20.until);
             const partUntil = (spec_4) => {
                 let c_7;
@@ -823,12 +757,12 @@ export function kitFor(root) {
                     return T0(spec_4);
                 }
                 else {
-                    const matchValue_28 = sceneCtx.contents;
+                    const matchValue_25 = sceneCtx.contents;
                     let matchResult, c_8;
-                    if (matchValue_28 != null) {
-                        if ((c_7 = matchValue_28, ((layerUntil == null)) ? true : (layerUntil > c_7.until))) {
+                    if (matchValue_25 != null) {
+                        if ((c_7 = matchValue_25, ((layerUntil == null)) ? true : (layerUntil > c_7.until))) {
                             matchResult = 0;
-                            c_8 = matchValue_28;
+                            c_8 = matchValue_25;
                         }
                         else {
                             matchResult = 1;
@@ -843,14 +777,6 @@ export function kitFor(root) {
                         default:
                             return noTime;
                     }
-                }
-            };
-            const along = (start, size, centre, pos) => {
-                if (pos == null) {
-                    return centre;
-                }
-                else {
-                    return start + (size * clamp01(pos));
                 }
             };
             const nodes = {};
@@ -880,16 +806,15 @@ export function kitFor(root) {
                 const e_1 = (nodes[id_3]).el;
                 return new Box(e_1.offsetLeft, e_1.offsetTop, e_1.offsetWidth, e_1.offsetHeight);
             };
-            const centre_1 = (b) => (new Point(b.x + (b.w / 2), b.y + (b.h / 2)));
             const edges = map((e_2) => {
-                let matchValue_29;
+                let matchValue_26;
                 const path = createSvg("path");
                 svg.append(path);
                 return new EdgeState(e_2, path, (!!(e_2.label)) ? mk(layer, "div", "k-edge-label", e_2.label, defaultOf()) : defaultOf(), map((en) => {
                     const el_48 = createSvg("polygon");
                     svg.append(el_48);
                     return new Head(en, el_48);
-                }, (matchValue_29 = defaultArg(e_2.arrow, "end"), (matchValue_29 === "both") ? ["start", "end"] : ((matchValue_29 === "end") ? ["end"] : []))), T0(e_2.at), T0(e_2.toneAt), partUntil(e_2.until), 0, 0);
+                }, (matchValue_26 = defaultArg(e_2.arrow, "end"), (matchValue_26 === "both") ? ["start", "end"] : ((matchValue_26 === "end") ? ["end"] : []))), T0(e_2.at), T0(e_2.toneAt), partUntil(e_2.until), 0, 0);
             }, (o_20.edges || []));
             const packets = map((p_4) => {
                 const el_49 = mk(layer, "div", concat("chip ", (p_4.tone || "accent"), " k-packet"), esc((p_4.label || "")), defaultOf());
@@ -924,47 +849,13 @@ export function kitFor(root) {
                         }
                         for (let idx_8 = 0; idx_8 <= (edges.length - 1); idx_8++) {
                             const ed_2 = item_1(idx_8, edges);
-                            const matchValue_30 = box_5(ed_2.e.from);
-                            const b_1 = box_5(ed_2.e.to);
-                            const a = matchValue_30;
-                            const matchValue_32 = centre_1(a);
-                            const cb = centre_1(b_1);
-                            const ca = matchValue_32;
-                            const dy = cb.y - ca.y;
-                            const dx = cb.x - ca.x;
-                            const horiz = (Math.abs(dx) * a.h) > (Math.abs(dy) * a.w);
-                            const patternInput_13 = horiz ? [new Point((dx > 0) ? (a.x + a.w) : a.x, along(a.y, a.h, ca.y, ed_2.e.fromPos) + ed_2.lane), new Point((dx > 0) ? b_1.x : (b_1.x + b_1.w), along(b_1.y, b_1.h, cb.y, ed_2.e.toPos) + ed_2.lane)] : [new Point(along(a.x, a.w, ca.x, ed_2.e.fromPos) + ed_2.lane, (dy > 0) ? (a.y + a.h) : a.y), new Point(along(b_1.x, b_1.w, cb.x, ed_2.e.toPos) + ed_2.lane, (dy > 0) ? b_1.y : (b_1.y + b_1.h))];
-                            const p2 = patternInput_13[1];
-                            const p1 = patternInput_13[0];
-                            const curved = horiz;
-                            const len = ((Math.hypot((p2.x - p1.x), (p2.y - p1.y))) || 1);
-                            const dirEnd = curved ? (new Point(Math.sign(p2.x - p1.x), 0)) : (new Point((p2.x - p1.x) / len, (p2.y - p1.y) / len));
-                            const dirStart = new Point(-dirEnd.x, -dirEnd.y);
-                            let q2 = p2;
-                            let q1 = p1;
+                            const r_6 = route(box_5(ed_2.e.from), box_5(ed_2.e.to), ed_2.lane, ed_2.e.fromPos, ed_2.e.toPos, map((hd) => hd.end, ed_2.heads));
                             const arr_3 = ed_2.heads;
                             for (let idx_9 = 0; idx_9 <= (arr_3.length - 1); idx_9++) {
-                                const hd = item_1(idx_9, arr_3);
-                                const isEnd = hd.end === "end";
-                                const matchValue_36 = isEnd ? p2 : p1;
-                                const u = isEnd ? dirEnd : dirStart;
-                                const tip = matchValue_36;
-                                const q = new Point(tip.x - (u.x * 28), tip.y - (u.y * 28));
-                                if (isEnd) {
-                                    q2 = q;
-                                }
-                                else {
-                                    q1 = q;
-                                }
-                                const ny = (u.x * 26) / 2;
-                                const nx = (-u.y * 26) / 2;
-                                const by = tip.y - (u.y * 28);
-                                const bx = tip.x - (u.x * 28);
-                                hd.el.setAttribute("points", `${tip.x},${tip.y} ${bx + nx},${by + ny} ${bx - nx},${by - ny}`);
+                                const hd_1 = item_1(idx_9, arr_3);
+                                hd_1.el.setAttribute("points", find((tupledArg) => (tupledArg[0] === hd_1.end), r_6.heads)[1]);
                             }
-                            const mx = (q1.x + q2.x) / 2;
-                            const d_4 = curved ? (`M${q1.x},${q1.y} C${mx},${q1.y} ${mx},${q2.y} ${q2.x},${q2.y}`) : (`M${q1.x},${q1.y} L${q2.x},${q2.y}`);
-                            ed_2.path.setAttribute("d", d_4);
+                            ed_2.path.setAttribute("d", r_6.d);
                             ed_2.path.style.fill = "none";
                             ed_2.path.style.strokeWidth = "5";
                             ed_2.path.style.strokeLinecap = "round";
@@ -972,15 +863,15 @@ export function kitFor(root) {
                                 ed_2.path.style.strokeDasharray = "14 12";
                             }
                             if (!Operators_IsNull(ed_2.label)) {
-                                ed_2.label.style.left = (`${(p1.x + p2.x) / 2}px`);
-                                ed_2.label.style.top = (`${(p1.y + p2.y) / 2}px`);
-                                ed_2.label.style.transform = (horiz ? ((ed_2.lane > 0) ? "translate(-50%, 25%)" : "translate(-50%, -125%)") : ((ed_2.lane < 0) ? "translate(calc(-100% - 18px), -50%)" : "translate(18px, -50%)"));
+                                ed_2.label.style.left = (`${r_6.label.x}px`);
+                                ed_2.label.style.top = (`${r_6.label.y}px`);
+                                ed_2.label.style.transform = r_6.labelTransform;
                             }
                             ed_2.len = (ed_2.path.getTotalLength());
                         }
                         laidOut = true;
                     }
-                    layer.style.opacity = vis$0027(t_9, matchValue_26, layerUntil);
+                    layer.style.opacity = vis$0027(t_9, matchValue_23, layerUntil);
                     const arr_4 = Object.values(nodes);
                     for (let idx_10 = 0; idx_10 <= (arr_4.length - 1); idx_10++) {
                         const nd_1 = item_1(idx_10, arr_4);
@@ -1007,9 +898,9 @@ export function kitFor(root) {
                         ed_3.path.style.stroke = (on_3 ? tone(ed_3.e.tone) : "var(--faint)");
                         const arr_5 = ed_3.heads;
                         for (let idx_12 = 0; idx_12 <= (arr_5.length - 1); idx_12++) {
-                            const hd_1 = item_1(idx_12, arr_5);
-                            hd_1.el.style.fill = ed_3.path.style.stroke;
-                            hd_1.el.style.opacity = (p_6 * ((hd_1.end === "start") ? clamp01(drawn * 8) : clamp01((drawn - 0.85) / 0.15)));
+                            const hd_2 = item_1(idx_12, arr_5);
+                            hd_2.el.style.fill = ed_3.path.style.stroke;
+                            hd_2.el.style.opacity = (p_6 * ((hd_2.end === "start") ? clamp01(drawn * 8) : clamp01((drawn - 0.85) / 0.15)));
                         }
                         if (!Operators_IsNull(ed_3.label)) {
                             ed_3.label.style.opacity = p_6;
@@ -1018,44 +909,44 @@ export function kitFor(root) {
                     }
                     for (let idx_13 = 0; idx_13 <= (packets.length - 1); idx_13++) {
                         const pk = item_1(idx_13, packets);
-                        const matchValue_42 = box_5(pk.p.from);
+                        const matchValue_27 = box_5(pk.p.from);
                         const B = box_5(pk.p.to);
-                        const A = matchValue_42;
-                        const matchValue_44 = centre_1(A);
-                        const cb_1 = centre_1(B);
-                        const ca_1 = matchValue_44;
+                        const A = matchValue_27;
+                        const matchValue_29 = centre(A);
+                        const cb = centre(B);
+                        const ca = matchValue_29;
                         const w_5 = pk.el.offsetWidth;
                         const h_1 = pk.el.offsetHeight;
-                        let patternInput_20;
-                        if ((Math.abs(cb_1.x - ca_1.x) * (A.h + B.h)) >= (Math.abs(cb_1.y - ca_1.y) * (A.w + B.w))) {
-                            const right = cb_1.x >= ca_1.x;
-                            patternInput_20 = [new Point(right ? (((A.x + A.w) + 14) + (w_5 / 2)) : ((A.x - 14) - (w_5 / 2)), along(A.y, A.h, ca_1.y, pk.p.fromPos)), new Point(right ? ((B.x - 14) - (w_5 / 2)) : (((B.x + B.w) + 14) + (w_5 / 2)), along(B.y, B.h, cb_1.y, pk.p.toPos))];
+                        let patternInput_12;
+                        if ((Math.abs(cb.x - ca.x) * (A.h + B.h)) >= (Math.abs(cb.y - ca.y) * (A.w + B.w))) {
+                            const right = cb.x >= ca.x;
+                            patternInput_12 = [new Point(right ? (((A.x + A.w) + 14) + (w_5 / 2)) : ((A.x - 14) - (w_5 / 2)), along(A.y, A.h, ca.y, pk.p.fromPos)), new Point(right ? ((B.x - 14) - (w_5 / 2)) : (((B.x + B.w) + 14) + (w_5 / 2)), along(B.y, B.h, cb.y, pk.p.toPos))];
                         }
                         else {
-                            const down = cb_1.y >= ca_1.y;
-                            patternInput_20 = [new Point(along(A.x, A.w, ca_1.x, pk.p.fromPos), down ? (((A.y + A.h) + 14) + (h_1 / 2)) : ((A.y - 14) - (h_1 / 2))), new Point(along(B.x, B.w, cb_1.x, pk.p.toPos), down ? ((B.y - 14) - (h_1 / 2)) : (((B.y + B.h) + 14) + (h_1 / 2)))];
+                            const down = cb.y >= ca.y;
+                            patternInput_12 = [new Point(along(A.x, A.w, ca.x, pk.p.fromPos), down ? (((A.y + A.h) + 14) + (h_1 / 2)) : ((A.y - 14) - (h_1 / 2))), new Point(along(B.x, B.w, cb.x, pk.p.toPos), down ? ((B.y - 14) - (h_1 / 2)) : (((B.y + B.h) + 14) + (h_1 / 2)))];
                         }
-                        const b_2 = patternInput_20[1];
-                        const a_1 = patternInput_20[0];
-                        const f_2 = prog(t_9, pk.at, pk.dur, ease.inOut);
+                        const b = patternInput_12[1];
+                        const a = patternInput_12[0];
+                        const f_1 = prog(t_9, pk.at, pk.dur, ease.inOut);
                         const moving = ((!((pk.at == null)) && (t_9 >= pk.at)) && (t_9 < ((pk.at + pk.dur) + 0.05))) && (((pk.until == null)) ? true : (t_9 < pk.until));
                         const fadeAt = defaultArg(pk.p.fadeAt, 1);
-                        const fade = (f_2 > fadeAt) ? (1 - clamp01((f_2 - fadeAt) / ((1 - fadeAt) + 1E-06))) : 1;
-                        show(pk.el, moving ? fade : 0, 0, `translate(${lerp(a_1.x, b_2.x, f_2) - (w_5 / 2)}px, ${(lerp(a_1.y, b_2.y, f_2) - (h_1 / 2)) + defaultArg(pk.p.lift, 0)}px)`);
+                        const fade = (f_1 > fadeAt) ? (1 - clamp01((f_1 - fadeAt) / ((1 - fadeAt) + 1E-06))) : 1;
+                        show(pk.el, moving ? fade : 0, 0, `translate(${lerp(a.x, b.x, f_1) - (w_5 / 2)}px, ${(lerp(a.y, b.y, f_1) - (h_1 / 2)) + defaultArg(pk.p.lift, 0)}px)`);
                     }
                 },
             });
         },
         sequence(o_21) {
             const o_22 = opts(o_21);
-            const matchValue_56 = defaultArg(o_22.x, 60);
-            const matchValue_57 = defaultArg(o_22.y, 240);
-            const matchValue_58 = defaultArg(o_22.w, 1800);
-            const y0 = matchValue_57;
+            const matchValue_39 = defaultArg(o_22.x, 60);
+            const matchValue_40 = defaultArg(o_22.y, 240);
+            const matchValue_41 = defaultArg(o_22.w, 1800);
+            const y0 = matchValue_40;
             const gap_1 = defaultArg(o_22.gap, 112);
-            const matchValue_60 = (o_22.actors || []);
-            const matchValue_61 = (o_22.messages || []);
-            const actorOpts = matchValue_60;
+            const matchValue_43 = (o_22.actors || []);
+            const matchValue_44 = (o_22.messages || []);
+            const actorOpts = matchValue_43;
             if (actorOpts.length === 0) {
                 (() => { throw new Error("sequence: no actors"); })();
             }
@@ -1065,16 +956,16 @@ export function kitFor(root) {
             svg_1.setAttribute("width", "1920");
             svg_1.setAttribute("height", "1080");
             layer_1.append(svg_1);
-            const matchValue_62 = TAt(o_22.at);
-            const matchValue_63 = TUntil(o_22.until);
+            const matchValue_45 = TAt(o_22.at);
+            const matchValue_46 = TUntil(o_22.until);
             const columns = {};
-            iterateIndexed((i_3, a_2) => {
-                columns[a_2.id] = (matchValue_56 + ((matchValue_58 * (i_3 + 0.5)) / actorOpts.length));
+            iterateIndexed((i_3, a_1) => {
+                columns[a_1.id] = (matchValue_39 + ((matchValue_41 * (i_3 + 0.5)) / actorOpts.length));
             }, actorOpts);
             const column = (id_4) => {
                 const cx = columns[id_4];
                 if ((cx == null)) {
-                    const known = join(", ", map((a_3) => a_3.id, actorOpts));
+                    const known = join(", ", map((a_2) => a_2.id, actorOpts));
                     (() => { throw new Error(concat("sequence: a message names actor ", JSON.stringify(id_4), ", which is not one of: ", known)); })();
                 }
                 return cx;
@@ -1083,9 +974,9 @@ export function kitFor(root) {
             let cursor = (y0 + 96) + 10;
             let latest = noTime;
             const messages = mapIndexed((i_4, m) => {
-                const matchValue_64 = column(m.from);
-                const b_3 = column(m.to);
-                const a_4 = matchValue_64;
+                const matchValue_47 = column(m.from);
+                const b_1 = column(m.to);
+                const a_3 = matchValue_47;
                 const self = m.from === m.to;
                 const bottom = cursor + 70;
                 const y_1 = self ? (bottom - 56) : bottom;
@@ -1110,43 +1001,43 @@ export function kitFor(root) {
                 svg_1.append(head);
                 const label_3 = (!!(m.label)) ? mk(layer_1, "div", (!!(m.reply)) ? "k-edge-label k-seq-label k-seq-reply" : "k-edge-label k-seq-label", m.label, defaultOf()) : defaultOf();
                 const side = ((self && (m.from === lastActor)) && (actorOpts.length > 1)) ? -1 : 1;
-                const len_1 = ((90 + 56) + 90) - 28;
+                const len = ((90 + 56) + 90) - HEAD_L;
                 if (self) {
-                    path_1.setAttribute("d", `M${a_4},${y_1} H${a_4 + (side * 90)} V${bottom} H${a_4 + (side * 28)}`);
-                    head.setAttribute("points", `${a_4},${bottom} ${a_4 + (side * 28)},${bottom - (26 / 2)} ${a_4 + (side * 28)},${bottom + (26 / 2)}`);
+                    path_1.setAttribute("d", `M${a_3},${y_1} H${a_3 + (side * 90)} V${bottom} H${a_3 + (side * HEAD_L)}`);
+                    head.setAttribute("points", `${a_3},${bottom} ${a_3 + (side * HEAD_L)},${bottom - (HEAD_W / 2)} ${a_3 + (side * HEAD_L)},${bottom + (HEAD_W / 2)}`);
                 }
                 if (!Operators_IsNull(label_3)) {
                     if (self) {
-                        label_3.style.left = (`${a_4 + (side * (90 + 18))}px`);
+                        label_3.style.left = (`${a_3 + (side * (90 + 18))}px`);
                         label_3.style.top = (`${(y_1 + bottom) / 2}px`);
                         label_3.style.transform = ((side > 0) ? "translate(0, -50%)" : "translate(-100%, -50%)");
                     }
                     else {
-                        label_3.style.left = (`${(a_4 + b_3) / 2}px`);
+                        label_3.style.left = (`${(a_3 + b_1) / 2}px`);
                         label_3.style.top = (`${y_1}px`);
                         label_3.style.transform = "translate(-50%, calc(-100% - 10px))";
                     }
                 }
                 return {
-                    a: a_4,
+                    a: a_3,
                     at: at_15,
-                    b: b_3,
+                    b: b_1,
                     head: head,
                     label: label_3,
-                    len: len_1,
+                    len: len,
                     m: m,
                     path: path_1,
                     self: self,
                     toneAt: T0(m.toneAt),
                     y: y_1,
                 };
-            }, matchValue_61);
+            }, matchValue_44);
             const lifeEnd = (messages.length > 0) ? ((cursor - (gap_1 - 70)) + 24) : ((y0 + 96) + 160);
             if (lifeEnd > 1000) {
                 (() => { throw new Error(`sequence: ${messages.length} messages end at y ${Math.round(lifeEnd)}, below the safe area (${1000}): split the exchange across two scenes (about 6 messages fit), or pass a smaller y or gap`); })();
             }
-            const actors = map((a_5) => {
-                const cx_1 = column(a_5.id);
+            const actors = map((a_4) => {
+                const cx_1 = column(a_4.id);
                 const line_1 = createSvg("line");
                 svg_1.append(line_1);
                 line_1.setAttribute("x1", `${cx_1}`);
@@ -1156,19 +1047,19 @@ export function kitFor(root) {
                 line_1.style.stroke = "var(--border)";
                 line_1.style.strokeWidth = "4";
                 line_1.style.strokeDasharray = "4 14";
-                const el_66 = mk(layer_1, "div", "k-node k-actor", concat((!!(a_5.icon)) ? concat("<span class=\"k-node-icon\">", a_5.icon, "</span>") : "", a_5.label), `left:${cx_1}px;top:${y0}px`);
+                const el_66 = mk(layer_1, "div", "k-node k-actor", concat((!!(a_4.icon)) ? concat("<span class=\"k-node-icon\">", a_4.icon, "</span>") : "", a_4.label), `left:${cx_1}px;top:${y0}px`);
                 return {
-                    a: a_5,
-                    at: T0(a_5.at),
+                    a: a_4,
+                    at: T0(a_4.at),
                     el: el_66,
                     line: line_1,
-                    toneAt: T0(a_5.toneAt),
+                    toneAt: T0(a_4.toneAt),
                 };
             }, actorOpts);
             return add({
                 el: layer_1,
                 render: (t_10) => {
-                    layer_1.style.opacity = vis$0027(t_10, matchValue_62, matchValue_63);
+                    layer_1.style.opacity = vis$0027(t_10, matchValue_45, matchValue_46);
                     for (let idx_14 = 0; idx_14 <= (actors.length - 1); idx_14++) {
                         const ac = item_1(idx_14, actors);
                         const p_7 = vis$0027(t_10, ac.at, noTime);
@@ -1198,11 +1089,11 @@ export function kitFor(root) {
                         }
                         else {
                             const dir = Math.sign(ms.b - ms.a);
-                            const tip_1 = lerp(ms.a, ms.b, drawn_1);
-                            const back = tip_1 - (dir * 28);
+                            const tip = lerp(ms.a, ms.b, drawn_1);
+                            const back = tip - (dir * HEAD_L);
                             const lineEnd = (dir > 0) ? max(ms.a, back) : min(ms.a, back);
                             ms.path.setAttribute("d", `M${ms.a},${ms.y} L${lineEnd},${ms.y}`);
-                            ms.head.setAttribute("points", `${tip_1},${ms.y} ${back},${ms.y - (26 / 2)} ${back},${ms.y + (26 / 2)}`);
+                            ms.head.setAttribute("points", `${tip},${ms.y} ${back},${ms.y - (HEAD_W / 2)} ${back},${ms.y + (HEAD_W / 2)}`);
                             ms.head.style.opacity = (p_8 * clamp01(drawn_1 * 8));
                         }
                         if (!Operators_IsNull(ms.label)) {
@@ -1239,21 +1130,21 @@ export function kitFor(root) {
                 g: g_3,
                 until: TUntil(g_3.until),
             }), (o_24.glow || []));
-            const matchValue_66 = TAt(o_24.at);
-            const matchValue_67 = TUntil(o_24.until);
+            const matchValue_49 = TAt(o_24.at);
+            const matchValue_50 = TUntil(o_24.until);
             return add({
                 el: card,
                 render: (t_11) => {
-                    show(card, vis$0027(t_11, matchValue_66, matchValue_67), defaultArg(o_24.slide, 20), "");
+                    show(card, vis$0027(t_11, matchValue_49, matchValue_50), defaultArg(o_24.slide, 20), "");
                     iterateIndexed((i_6, l_2) => {
                         let p_9 = 0;
                         let colour = "var(--accent)";
                         for (let idx_16 = 0; idx_16 <= (glows.length - 1); idx_16++) {
                             const gl = item_1(idx_16, glows);
                             if (gl.g.line === i_6) {
-                                const q_1 = within(t_11, gl.from, (gl.until ?? (Infinity)), 0.25);
-                                if (q_1 > p_9) {
-                                    p_9 = q_1;
+                                const q = within(t_11, gl.from, (gl.until ?? (Infinity)), 0.25);
+                                if (q > p_9) {
+                                    p_9 = q;
                                     colour = ((tone(gl.g.tone) || colour));
                                 }
                             }
@@ -1274,18 +1165,18 @@ export function kitFor(root) {
             if (!!(o_26.title)) {
                 mk(card_1, "div", "k-board-title", o_26.title, defaultOf());
             }
-            const rows_3 = map((r_6) => {
+            const rows_3 = map((r_7) => {
                 const row_2 = mk(card_1, "div", "k-br", defaultOf(), defaultOf());
-                const label_4 = mk(row_2, "div", "k-br-label", (r_6.label || ""), defaultOf());
+                const label_4 = mk(row_2, "div", "k-br-label", (r_7.label || ""), defaultOf());
                 const text_1 = mk(row_2, "div", "k-br-text", "", defaultOf());
-                const result = (!!(r_6.result)) ? mk(row_2, "div", "k-br-result", esc(r_6.result), defaultOf()) : defaultOf();
-                const at_17 = T0(r_6.at);
-                const resultAt = T0(r_6.resultAt);
+                const result = (!!(r_7.result)) ? mk(row_2, "div", "k-br-result", esc(r_7.result), defaultOf()) : defaultOf();
+                const at_17 = T0(r_7.at);
+                const resultAt = T0(r_7.resultAt);
                 return {
                     at: at_17,
-                    dimAt: T0(r_6.dimAt),
+                    dimAt: T0(r_7.dimAt),
                     label: label_4,
-                    r: r_6,
+                    r: r_7,
                     result: result,
                     resultAt: resultAt,
                     row: row_2,
@@ -1299,14 +1190,14 @@ export function kitFor(root) {
                 render: (t_12) => {
                     show(card_1, vis$0027(t_12, at_18, until_11), 16, "");
                     for (let idx_17 = 0; idx_17 <= (rows_3.length - 1); idx_17++) {
-                        const r_7 = item_1(idx_17, rows_3);
-                        const p_10 = ((r_7.at == null)) ? 1 : progIO(t_12, r_7.at - 0.1, 0.3);
-                        r_7.label.style.opacity = p_10;
-                        r_7.text.textContent = typed(r_7.r.text, ((r_7.at == null)) ? 1 : prog(t_12, r_7.at, defaultArg(r_7.r.dur, 1.2), ease.linear));
-                        if (!Operators_IsNull(r_7.result)) {
-                            r_7.result.style.opacity = (((r_7.resultAt == null)) ? p_10 : progIO(t_12, r_7.resultAt - 0.1, 0.4));
+                        const r_8 = item_1(idx_17, rows_3);
+                        const p_10 = ((r_8.at == null)) ? 1 : progIO(t_12, r_8.at - 0.1, 0.3);
+                        r_8.label.style.opacity = p_10;
+                        r_8.text.textContent = typed(r_8.r.text, ((r_8.at == null)) ? 1 : prog(t_12, r_8.at, defaultArg(r_8.r.dur, 1.2), ease.linear));
+                        if (!Operators_IsNull(r_8.result)) {
+                            r_8.result.style.opacity = (((r_8.resultAt == null)) ? p_10 : progIO(t_12, r_8.resultAt - 0.1, 0.4));
                         }
-                        r_7.row.style.opacity = (((r_7.dimAt == null)) ? 1 : lerp(1, 0.45, progIO(t_12, r_7.dimAt, 0.4)));
+                        r_8.row.style.opacity = (((r_8.dimAt == null)) ? 1 : lerp(1, 0.45, progIO(t_12, r_8.dimAt, 0.4)));
                     }
                 },
             });
@@ -1344,17 +1235,17 @@ export function kitFor(root) {
             const o_30 = opts(o_29);
             const el_84 = mk(host(o_30), "div", concat("k-", (o_30.size || "counter")), defaultOf(), defaultOf());
             place(el_84, o_30);
-            const matchValue_68 = TAt(o_30.at);
-            const matchValue_69 = TUntil(o_30.until);
-            const matchValue_70 = T0(o_30.toneAt);
-            const at_20 = matchValue_68;
+            const matchValue_51 = TAt(o_30.at);
+            const matchValue_52 = TUntil(o_30.until);
+            const matchValue_53 = T0(o_30.toneAt);
+            const at_20 = matchValue_51;
             const fmt_1 = (!!(o_30.format)) ? o_30.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
             return add({
                 el: el_84,
                 render: (t_14) => {
-                    show(el_84, vis$0027(t_14, at_20, matchValue_69), 10, "");
+                    show(el_84, vis$0027(t_14, at_20, matchValue_52), 10, "");
                     el_84.textContent = fmt_1(lerp(defaultArg(o_30.from, 0), o_30.to, prog(t_14, at_20, defaultArg(o_30.dur, 1.2), ease.inOut)));
-                    el_84.style.color = (isOn(o_30.tone, matchValue_70, t_14) ? tone(o_30.tone) : "");
+                    el_84.style.color = (isOn(o_30.tone, matchValue_53, t_14) ? tone(o_30.tone) : "");
                 },
             });
         },
@@ -1369,13 +1260,13 @@ export function kitFor(root) {
                 tt.el.style.right = "";
             }
             tt.el.style.top = (`${defaultArg(o_32.y, 130)}px`);
-            const matchValue_71 = TAt(o_32.at);
-            const matchValue_72 = TUntil(o_32.until);
-            const at_21 = matchValue_71;
+            const matchValue_54 = TAt(o_32.at);
+            const matchValue_55 = TUntil(o_32.until);
+            const at_21 = matchValue_54;
             return add({
                 el: tt.el,
                 render: (t_15) => {
-                    tt.draw(t_15, at_21, min((matchValue_72 ?? (Infinity)), at_21 + defaultArg(o_32.dur, TOAST_DUR)));
+                    tt.draw(t_15, at_21, min((matchValue_55 ?? (Infinity)), at_21 + defaultArg(o_32.dur, TOAST_DUR)));
                 },
             });
         },

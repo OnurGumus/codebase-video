@@ -31,6 +31,7 @@ open Browser.Types
 open Browser
 open Interop
 open Stage
+open Draw
 
 // ── Option objects (the JS API) ──────────────────────────────────────────────────────────────────────────
 
@@ -409,31 +410,6 @@ let private injectCss () =
 
 // ── Small helpers ────────────────────────────────────────────────────────────────────────────────────────
 
-let private TONE =
-    createObj
-        [ "accent" ==> "var(--accent)"
-          "good" ==> "var(--good)"
-          "bad" ==> "var(--bad)"
-          "warn" ==> "var(--warn)"
-          "violet" ==> "var(--violet)"
-          "pink" ==> "var(--pink)"
-          "cyan" ==> "var(--cyan)"
-          "muted" ==> "var(--muted)"
-          "ink" ==> "var(--ink)"
-          "faint" ==> "var(--faint)" ]
-
-let private tone (name: string) : string = if truthy name then jsOr (get<string> TONE name) name else ""
-
-let private esc (s: obj) = (jsStr s).Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
-
-let private mk (parent: HTMLElement) (tag: string) (cls: string) (html: obj) (style: string) : HTMLElement =
-    let d = document.createElement (jsOr tag "div")
-    if truthy cls then d.className <- cls
-    if not (isNil html) then d?innerHTML <- html
-    if truthy style then d.style.cssText <- style
-    parent?append (d)
-    d
-
 /// `{ ...defaults, ...o }`: o's own fields win, even when they hold undefined.
 [<Emit("({ ...$0, ...$1 })")>]
 let private withDefaults (_defaults: obj) (_o: 'T) : 'T = jsNative
@@ -617,10 +593,6 @@ type private EdgeState =
       until: Time
       mutable lane: float
       mutable len: float }
-
-type private Box = { x: float; y: float; w: float; h: float }
-
-type private Point = { x: float; y: float }
 
 let kitFor (root: HTMLElement) : IKit =
     let parts = ResizeArray<Comp>()
@@ -943,7 +915,7 @@ let kitFor (root: HTMLElement) : IKit =
         /// bottom side, top to bottom on a left or right side; left out = 0.5, the side's centre.
         member _.flow o =
             let o = opts o
-            let HEAD_L, HEAD_W, LANE = 28.0, 26.0, 40.0
+            let LANE = 40.0
             let layer = mk (host o) "div" "k-abs" null "left:0;top:0;width:1920px;height:1080px"
             let svg = createSvg "svg"
             svg.setAttribute ("class", "layer")
@@ -961,12 +933,6 @@ let kitFor (root: HTMLElement) : IKit =
                     match sceneCtx.Value with
                     | Some c when isNil layerUntil || layerUntil > c.until -> c.until
                     | _ -> noTime
-            // Where an end meets a box side that starts at `start` and is `size` long: `pos` 0..1 along it, or the
-            // centre as before when the edge does not say.
-            let along (start: float) (size: float) (centre: float) (pos: float option) : float =
-                match pos with
-                | Some f -> start + size * clamp01 f
-                | None -> centre
             let nodes = table ()
             for (id, n: FlowNode) in entries (jsOr o.nodes (createEmpty)) do
                 let icon = if truthy n.icon then $"""<span class="k-node-icon">{n.icon}</span>""" else ""
@@ -980,7 +946,6 @@ let kitFor (root: HTMLElement) : IKit =
             let box (id: string) : Box =
                 let e: HTMLElement = (get<obj> nodes id)?el
                 { x = e.offsetLeft; y = e.offsetTop; w = e.offsetWidth; h = e.offsetHeight }
-            let centre (b: Box) : Point = { x = b.x + b.w / 2.0; y = b.y + b.h / 2.0 }
             let edges =
                 jsOr o.edges [||]
                 |> Array.map (fun e ->
@@ -1021,49 +986,18 @@ let kitFor (root: HTMLElement) : IKit =
                 for group: ResizeArray<EdgeState> in values pairs do
                     group |> Seq.iteri (fun k ed -> ed.lane <- (float k - float (group.Count - 1) / 2.0) * LANE)
                 for ed in edges do
-                    let a, b = box ed.e.from, box ed.e.``to``
-                    let ca, cb = centre a, centre b
-                    let dx, dy = cb.x - ca.x, cb.y - ca.y
-                    let horiz = abs dx * a.h > abs dy * a.w
-                    let p1, p2 =
-                        if horiz then
-                            { x = (if dx > 0.0 then a.x + a.w else a.x); y = along a.y a.h ca.y ed.e.fromPos + ed.lane },
-                            { x = (if dx > 0.0 then b.x else b.x + b.w); y = along b.y b.h cb.y ed.e.toPos + ed.lane }
-                        else
-                            { x = along a.x a.w ca.x ed.e.fromPos + ed.lane; y = (if dy > 0.0 then a.y + a.h else a.y) },
-                            { x = along b.x b.w cb.x ed.e.toPos + ed.lane; y = (if dy > 0.0 then b.y else b.y + b.h) }
-                    let curved = horiz
-                    // Direction of travel where the line meets each box: along x for the curve, along the line otherwise.
-                    let len = jsOr (hypot (p2.x - p1.x) (p2.y - p1.y)) 1.0
-                    let dirEnd =
-                        if curved then { x = sign (p2.x - p1.x); y = 0.0 }
-                        else { x = (p2.x - p1.x) / len; y = (p2.y - p1.y) / len }
-                    let dirStart = { x = -dirEnd.x; y = -dirEnd.y }
-                    // Pull the line back from each arrowed end so the head's tip, not the line's cap, touches the box.
-                    let mutable q1, q2 = p1, p2
+                    let r = route (box ed.e.from) (box ed.e.``to``) ed.lane ed.e.fromPos ed.e.toPos (ed.heads |> Array.map (fun hd -> hd.``end``))
                     for hd in ed.heads do
-                        let isEnd = hd.``end`` = "end"
-                        let tip, u = (if isEnd then p2 else p1), (if isEnd then dirEnd else dirStart)
-                        let q = { x = tip.x - u.x * HEAD_L; y = tip.y - u.y * HEAD_L }
-                        if isEnd then q2 <- q else q1 <- q
-                        let bx, by, nx, ny = tip.x - u.x * HEAD_L, tip.y - u.y * HEAD_L, -u.y * HEAD_W / 2.0, u.x * HEAD_W / 2.0
-                        hd.el.setAttribute ("points", $"{tip.x},{tip.y} {bx + nx},{by + ny} {bx - nx},{by - ny}")
-                    let mx = (q1.x + q2.x) / 2.0
-                    let d =
-                        if curved then $"M{q1.x},{q1.y} C{mx},{q1.y} {mx},{q2.y} {q2.x},{q2.y}"
-                        else $"M{q1.x},{q1.y} L{q2.x},{q2.y}"
-                    ed.path.setAttribute ("d", d)
+                        hd.el.setAttribute ("points", r.heads |> Array.find (fun (en, _) -> en = hd.``end``) |> snd)
+                    ed.path.setAttribute ("d", r.d)
                     ed.path?style?fill <- "none"
                     ed.path?style?strokeWidth <- "5"
                     ed.path?style?strokeLinecap <- "round"
                     if truthy ed.e.dashed then ed.path?style?strokeDasharray <- "14 12"
                     if not (isNull ed.label) then
-                        ed.label.style.left <- $"{(p1.x + p2.x) / 2.0}px"
-                        ed.label.style.top <- $"{(p1.y + p2.y) / 2.0}px"
-                        // The label sits on the outside of its lane: above/left of the upper/left lane, below/right of the other.
-                        ed.label.style.transform <-
-                            if horiz then (if ed.lane > 0.0 then "translate(-50%, 25%)" else "translate(-50%, -125%)")
-                            else (if ed.lane < 0.0 then "translate(calc(-100% - 18px), -50%)" else "translate(18px, -50%)")
+                        ed.label.style.left <- $"{r.label.x}px"
+                        ed.label.style.top <- $"{r.label.y}px"
+                        ed.label.style.transform <- r.labelTransform
                     ed.len <- ed.path?getTotalLength ()
                 laidOut <- true
             add
@@ -1136,7 +1070,7 @@ let kitFor (root: HTMLElement) : IKit =
         /// fail the module's build.
         member _.sequence o =
             let o = opts o
-            let HEAD_L, HEAD_W, BOX_H, LABEL_ROOM, LOOP_W, LOOP_H, SAFE_BOTTOM = 28.0, 26.0, 96.0, 70.0, 90.0, 56.0, 1000.0
+            let BOX_H, LABEL_ROOM, LOOP_W, LOOP_H, SAFE_BOTTOM = 96.0, 70.0, 90.0, 56.0, 1000.0
             let x0, y0, w, gap = defaultArg o.x 60.0, defaultArg o.y 240.0, defaultArg o.w 1800.0, defaultArg o.gap 112.0
             let actorOpts, messageOpts = jsOr o.actors [||], jsOr o.messages [||]
             if actorOpts.Length = 0 then fail "sequence: no actors"
