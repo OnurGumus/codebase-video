@@ -9,7 +9,10 @@
 /// phrase; [think] silences and "recap" scenes are drawn by Kit.frameBreaks.
 /// A video with a shared map (script.json "map", drawn by Map.fs) opens each chapter whose bridge scene has a "path"
 /// on the map instead of the plain card: the chapter's number and title at the top, the map dim, and the parts and
-/// edges of the path lighting up in order while the bridge line is spoken.
+/// edges of the path lighting up in order while the bridge line is spoken. A scene with "inside": "<part>" is drawn
+/// inside that part: over the scene's lead the map returns and the part's box grows into a boundary around the
+/// module's content, which holds for every consecutive scene inside the same part (a visit) and shrinks back to the
+/// box at the visit's end.
 module Frame
 
 open Fable.Core
@@ -30,6 +33,18 @@ type Chapter =
       mutable talk: float }
 
 type Run = { start: float; mutable ``end``: float }
+
+/// Consecutive scenes inside the same part of the shared map.
+type Visit =
+    { part: string
+      start: float
+      ``end``: float
+      /// the scene before it was a visit too, or the bridge of a chapter that opens on the map: the map is already up
+      fromMap: bool
+      /// the scene after it is a visit to another part: the map stays up
+      toMap: bool
+      /// it runs to the video's last frame: no zoom out, the video ends inside the part
+      last: bool }
 
 type Module =
     { key: string
@@ -147,6 +162,53 @@ let run () =
         match hop with
         | Some i -> clamp01 ((t - litAt c (i * 2 + 1)) / 0.4)
         | None -> 0.0
+
+    // Visits: maximal runs of consecutive scenes with the same "inside".
+    let insideOf (s: Scene) : string = if truthy (s?inside) then s?inside else ""
+    let VISITS =
+        if MAP.IsNone then [||]
+        else
+            let found = ResizeArray<Visit>()
+            let n = T.scenes.Length
+            let mutable k = 0
+            while k < n do
+                let part = insideOf T.scenes.[k]
+                if part = "" then k <- k + 1
+                else
+                    let mutable j = k
+                    while j + 1 < n && insideOf T.scenes.[j + 1] = part do
+                        j <- j + 1
+                    let before = if k > 0 then Some T.scenes.[k - 1] else None
+                    let opened =
+                        match before with
+                        | Some b -> insideOf b <> "" || (b.id.EndsWith "-why" && isArray (b?path))
+                        | None -> false
+                    found.Add
+                        { part = part
+                          start = T.scenes.[k].start
+                          ``end`` = T.scenes.[j].``end``
+                          fromMap = opened
+                          toMap = j + 1 < n && insideOf T.scenes.[j + 1] <> ""
+                          last = T.scenes.[j].``end`` >= T.duration - 0.05 }
+                    k <- j + 1
+            found.ToArray()
+    /// How far the zoom into a visit's part has gone at t: in over its first ZOOM_IN seconds, back out over the last
+    /// 0.7 s (the module's content has faded by then), never out when the video ends there.
+    let zoomOf (v: Visit) (t: float) : float =
+        let zin = ease.inOut (clamp01 ((t - v.start) / Map.ZOOM_IN))
+        let zout = if v.last then 0.0 else ease.inOut (clamp01 ((t - (v.``end`` - 0.7)) / 0.7))
+        zin * (1.0 - zout)
+    /// How visible the map layer is during a visit: at once when the map is already up, else a short fade each way.
+    let visitShown (v: Visit) (t: float) : float =
+        let up = if v.fromMap then 1.0 else clamp01 ((t - v.start) / 0.3)
+        let down = if v.last || v.toMap then 1.0 else 1.0 - clamp01 ((t - (v.``end`` - 0.3)) / 0.3)
+        System.Math.Min(up, down)
+    /// What a module's content is multiplied by during a visit: it waits for the zoom in, and leaves before the
+    /// zoom out.
+    let contentShown (v: Visit) (t: float) : float =
+        let up = clamp01 ((t - (v.start + Map.ZOOM_IN - 0.2)) / 0.4)
+        let down = if v.last then 1.0 else 1.0 - clamp01 ((t - (v.``end`` - Map.ZOOM_OUT)) / 0.3)
+        System.Math.Min(up, down)
 
     for m in modules do
         let d = document.createElement "div"
@@ -266,18 +328,31 @@ let run () =
             | None -> 0.0
         let onMap = match current with Some c -> opensOnMap c | None -> false
         let card = if onMap then 0.0 else opening
+        let visit = VISITS |> Array.tryFind (fun v -> t >= v.start - 0.001 && (t < v.``end`` - 0.001 || v.last))
         MAP
         |> Option.iter (fun m ->
-            let shown = if onMap then opening else 0.0
-            show m.layer shown 0.0 ""
+            let opener = if onMap then opening else 0.0
+            let visiting = match visit with Some v -> visitShown v t | None -> 0.0
+            show m.layer (System.Math.Max(opener, visiting)) 0.0 ""
+            // The chapter's number and title belong to the opener: they leave as a zoom begins.
+            let titled = match visit with Some v -> opener * (1.0 - clamp01 ((t - v.start) / 0.3)) | None -> opener
+            show m.title titled 0.0 ""
             match current with
-            | Some c when shown > 0.001 ->
+            | Some c when titled > 0.001 ->
                 let html = $"<b style=\"color:var(--accent);margin-right:22px\">{c.n} / {CHAPTERS.Count}</b>{Draw.esc c.title}"
                 if m.title?dataset?html <> html then
                     m.title?dataset?html <- html
                     m.title.innerHTML <- html
-                m.view.draw { vis = (fun _ -> 1.0); lit = partLit c t; edgeLit = edgeLit c t; zoom = None }
-            | _ -> ())
+            | _ -> ()
+            let lit, edge =
+                match current with
+                | Some c -> partLit c t, edgeLit c t
+                | None -> (fun _ -> 0.0), (fun _ _ -> 0.0)
+            match visit with
+            | Some v -> m.view.draw { vis = (fun _ -> 1.0); lit = lit; edgeLit = edge; zoom = Some(v.part, zoomOf v t) }
+            | None when opener > 0.001 -> m.view.draw { vis = (fun _ -> 1.0); lit = lit; edgeLit = edge; zoom = None }
+            | None -> ())
+        let content = match visit with Some v -> contentShown v t | None -> 1.0
         show (query "#card") card 0.0 $"scale({lerp 0.96 1.0 card})"
         current
         |> Option.iter (fun c ->
@@ -289,6 +364,7 @@ let run () =
             for i in 0 .. m.runs.Count - 1 do
                 let r = m.runs.[i]
                 p <- System.Math.Max(p, within t r.start (if r.``end`` >= T.duration - 0.05 then infinity else r.``end`` - 0.05) 0.4)
+            let p = p * content
             m.root.style?opacity <- p
             m.root.style.visibility <- if p <= 0.001 then "hidden" else "visible"
             if p > 0.001 && truthy (hooks m.key) then

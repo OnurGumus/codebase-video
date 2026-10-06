@@ -377,6 +377,7 @@ let private CSS =
 .k-seq-label { color: var(--ink); }
 .k-seq-label.k-seq-reply { color: var(--muted); }
 .k-map-bound { border-radius: 22px; }
+.k-map-tag .k-node-icon { margin-right: 14px; }
 .k-map-tag { font-size: 46px; font-weight: 650; white-space: nowrap; padding: 2px 22px; border-radius: 14px; transform: translate(-50%, -50%); }
 .k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }
 .k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }
