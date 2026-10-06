@@ -1,19 +1,22 @@
 
 import { toString, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { record_type, float64_type, int32_type, array_type, class_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { fold, tryFind as tryFind_1, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { record_type, float64_type, int32_type, class_type, array_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { pairwise, tryFindIndex, fold, tryFind as tryFind_1, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { concat, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { clamp01, progIO, lerp, show, within, play, query, timing } from "./Stage.js";
+import { clamp01, progIO, show, within, play, lerp, query, timing } from "./Stage.js";
 import { tryFind, iterateIndexed } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
+import { uncurry2, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { min, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
+import { State, build as build_1, definition } from "./Map.js";
+import { value as value_1, ofNullable } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { frameBreaks, frameToasts } from "./Kit.js";
-import { value } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { esc } from "./Draw.js";
 
 export class Chapter extends Record {
-    constructor(title, scenes, n, start, end, talk) {
+    constructor(title, path, scenes, n, start, end, talk) {
         super();
         this.title = title;
+        this.path = path;
         this.scenes = scenes;
         this.n = (n | 0);
         this.start = start;
@@ -23,7 +26,7 @@ export class Chapter extends Record {
 }
 
 export function Chapter_$reflection() {
-    return record_type("Frame.Chapter", [], Chapter, () => [["title", string_type], ["scenes", array_type(class_type("Stage.Scene"))], ["n", int32_type], ["start", float64_type], ["end", float64_type], ["talk", float64_type]]);
+    return record_type("Frame.Chapter", [], Chapter, () => [["title", string_type], ["path", array_type(string_type)], ["scenes", array_type(class_type("Stage.Scene"))], ["n", int32_type], ["start", float64_type], ["end", float64_type], ["talk", float64_type]]);
 }
 
 export class Run extends Record {
@@ -76,7 +79,7 @@ export function run() {
     for (let idx = 0; idx <= (arr.length - 1); idx++) {
         const s = item(idx, arr);
         if (s.id.endsWith("-why")) {
-            void (CHAPTERS.push(new Chapter((s.chapter || s.id), [s], 0, 0, 0, 0)));
+            void (CHAPTERS.push(new Chapter((s.chapter || s.id), (Array.isArray(s.path)) ? s.path : [], [s], 0, 0, 0, 0)));
         }
         else if (((CHAPTERS.length > 0) && (s.id !== "outro")) && (prefix(s.id) !== "outro")) {
             void (item(CHAPTERS.length - 1, CHAPTERS).scenes.push(s));
@@ -114,6 +117,47 @@ export function run() {
         }
     }
     const modules = Object.values(MODULES);
+    let MAP;
+    const matchValue_1 = definition();
+    if (matchValue_1 != null) {
+        const def = matchValue_1;
+        try {
+            const layer = document.createElement("div");
+            layer.className = "layer";
+            layer.id = "map";
+            query("#modules").append(layer);
+            const title = document.createElement("div");
+            title.className = "k-heading k-abs";
+            title.style.cssText = "left:60px;top:130px";
+            layer.append(title);
+            MAP = {
+                layer: layer,
+                title: title,
+                view: build_1(layer, def),
+            };
+        }
+        catch (e) {
+            const msg = message(e);
+            console.log(msg.startsWith("map:") ? msg : concat("map: ", msg));
+            const option_1 = ofNullable(document.getElementById("map"));
+            if (option_1 != null) {
+                const el = option_1;
+                el.remove();
+            }
+            MAP = undefined;
+        }
+    }
+    else {
+        MAP = undefined;
+    }
+    const litAt = (c_3, step) => {
+        let patternInput;
+        const c_2 = c_3;
+        const sentences = item(0, c_2.scenes).sentences;
+        const t0 = (sentences.length > 0) ? item(0, sentences).start : c_2.start;
+        patternInput = [t0, max(t0, min(max(((sentences.length > 0) ? item(sentences.length - 1, sentences).end : c_2.talk) - 0.3, t0 + 0.8), c_2.talk - 1))];
+        return lerp(patternInput[0], patternInput[1], step / ((c_3.path.length * 2) - 2));
+    };
     for (let idx_2 = 0; idx_2 <= (modules.length - 1); idx_2++) {
         const m_1 = item(idx_2, modules);
         const d = document.createElement("div");
@@ -148,35 +192,35 @@ export function run() {
         THUMB = undefined;
     }
     else {
-        const el = document.createElement("div");
-        el.id = "thumb";
-        el.style.cssText = "position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:50;display:none;pointer-events:none";
-        el.innerHTML = "<div style=\"position:absolute;left:0;top:0;right:0;bottom:0;border:18px solid #e5383b;box-sizing:border-box\"></div><div style=\"position:absolute;left:855px;top:560px;width:210px;height:210px;border-radius:50%;background:#e5383b;box-shadow:0 18px 60px #000a\"><div style=\"position:absolute;left:78px;top:55px;border-style:solid;border-width:50px 0 50px 82px;border-color:transparent transparent transparent #fff\"></div></div><div id=\"thumbLen\" style=\"position:absolute;right:70px;bottom:60px;font-size:40px;font-weight:650;color:#fff;background:#000a;padding:8px 20px;border-radius:10px\"></div>";
-        query("#titleCard").parentElement.append(el);
-        el.querySelector("#thumbLen").textContent = thumbLabel;
-        THUMB = el;
+        const el_1 = document.createElement("div");
+        el_1.id = "thumb";
+        el_1.style.cssText = "position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:50;display:none;pointer-events:none";
+        el_1.innerHTML = "<div style=\"position:absolute;left:0;top:0;right:0;bottom:0;border:18px solid #e5383b;box-sizing:border-box\"></div><div style=\"position:absolute;left:855px;top:560px;width:210px;height:210px;border-radius:50%;background:#e5383b;box-shadow:0 18px 60px #000a\"><div style=\"position:absolute;left:78px;top:55px;border-style:solid;border-width:50px 0 50px 82px;border-color:transparent transparent transparent #fff\"></div></div><div id=\"thumbLen\" style=\"position:absolute;right:70px;bottom:60px;font-size:40px;font-weight:650;color:#fff;background:#000a;padding:8px 20px;border-radius:10px\"></div>";
+        query("#titleCard").parentElement.append(el_1);
+        el_1.querySelector("#thumbLen").textContent = thumbLabel;
+        THUMB = el_1;
     }
     let TOASTS;
     try {
         TOASTS = frameToasts(query("#toasts"));
     }
-    catch (e) {
-        console.log(concat("toasts: ", message(e)));
+    catch (e_1) {
+        console.log(concat("toasts: ", message(e_1)));
         TOASTS = undefined;
     }
     let BREAKS;
     try {
         BREAKS = frameBreaks(query("#toasts"));
     }
-    catch (e_1) {
-        console.log(concat("breaks: ", message(e_1)));
+    catch (e_2) {
+        console.log(concat("breaks: ", message(e_2)));
         BREAKS = undefined;
     }
     let loaded;
     const pr_4 = fold((p, m_4) => (p.then(() => {
         const m_2 = m_4;
-        const failed = (e_2) => {
-            console.log(concat("module file ", m_2.key, ".js failed to load: ", message(e_2)));
+        const failed = (e_3) => {
+            console.log(concat("module file ", m_2.key, ".js failed to load: ", message(e_3)));
         };
         try {
             let pr_2;
@@ -195,8 +239,8 @@ export function run() {
             }));
             return pr_2.catch(failed);
         }
-        catch (e_3) {
-            failed(e_3);
+        catch (e_4) {
+            failed(e_4);
             return Promise.resolve(undefined);
         }
     })), Promise.resolve(undefined), modules);
@@ -210,98 +254,155 @@ export function run() {
                         h.build(m_3.root);
                     }
                 }
-                catch (e_4) {
-                    console.log(concat("module ", m_3.key, " build failed: ", message(e_4)));
+                catch (e_5) {
+                    console.log(concat("module ", m_3.key, " build failed: ", message(e_5)));
                     ch()[m_3.key] = defaultOf();
                 }
             }
         }
     }));
     window["ready"] = (loaded.then(() => {
-        play((t) => {
-            let c_4, o;
+        play((t_2) => {
+            let c_4, c_5, c_12, o;
             const withTitle = (TITLE != null) && (!!(timing.card));
-            const tc = withTitle ? within(t, -1, value(TITLE).end - 0.1, 0.4) : 0;
-            const thumbOn = (THUMB != null) && (t < 0.02);
-            const option_1 = THUMB;
-            if (option_1 != null) {
-                const el_1 = option_1;
-                el_1.style.display = (thumbOn ? "block" : "none");
+            const tc = withTitle ? within(t_2, -1, value_1(TITLE).end - 0.1, 0.4) : 0;
+            const thumbOn = (THUMB != null) && (t_2 < 0.02);
+            const option_3 = THUMB;
+            if (option_3 != null) {
+                const el_2 = option_3;
+                el_2.style.display = (thumbOn ? "block" : "none");
             }
             const titleCard = query("#titleCard");
             titleCard.style.justifyContent = (thumbOn ? "flex-start" : "");
             titleCard.style.paddingTop = (thumbOn ? "110px" : "");
             titleCard.style.boxSizing = (thumbOn ? "border-box" : "");
-            show(titleCard, tc, 0, thumbOn ? "" : (`scale(${lerp(0.97, 1, progIO(t, 0, 0.8))})`));
-            const lastSentence = withTitle ? (value(TITLE).sentences.at(-1)) : defaultOf();
-            show(query("#tcSub"), withTitle ? (progIO(t, lastSentence.start - 0.2, 0.5) * tc) : 0, 10, "");
+            show(titleCard, tc, 0, thumbOn ? "" : (`scale(${lerp(0.97, 1, progIO(t_2, 0, 0.8))})`));
+            const lastSentence = withTitle ? (value_1(TITLE).sentences.at(-1)) : defaultOf();
+            show(query("#tcSub"), withTitle ? (progIO(t_2, lastSentence.start - 0.2, 0.5) * tc) : 0, 10, "");
             let current = undefined;
-            for (let i_1 = 0; i_1 <= (CHAPTERS.length - 1); i_1++) {
-                const c_1 = item(i_1, CHAPTERS);
-                if ((t >= (c_1.start - 0.001)) && (t < (c_1.end + 0.001))) {
-                    current = c_1;
+            for (let i_3 = 0; i_3 <= (CHAPTERS.length - 1); i_3++) {
+                const c_6 = item(i_3, CHAPTERS);
+                if ((t_2 >= (c_6.start - 0.001)) && (t_2 < (c_6.end + 0.001))) {
+                    current = c_6;
                 }
             }
-            let card;
+            let opening;
             if (current == null) {
-                card = 0;
+                opening = 0;
             }
             else {
-                const c_2 = current;
-                card = within(t, c_2.start, c_2.talk - 0.25, 0.35);
+                const c_7 = current;
+                opening = within(t_2, c_7.start, c_7.talk - 0.25, 0.35);
+            }
+            let onMap;
+            if (current == null) {
+                onMap = false;
+            }
+            else {
+                const c_1 = current;
+                onMap = ((MAP != null) && (c_1.path.length >= 2));
+            }
+            const card = onMap ? 0 : opening;
+            const option_5 = MAP;
+            if (option_5 != null) {
+                const m_5 = option_5;
+                const shown = onMap ? opening : 0;
+                show(m_5.layer, shown, 0, "");
+                let matchResult, c_10;
+                if (current != null) {
+                    if (shown > 0.001) {
+                        matchResult = 0;
+                        c_10 = current;
+                    }
+                    else {
+                        matchResult = 1;
+                    }
+                }
+                else {
+                    matchResult = 1;
+                }
+                switch (matchResult) {
+                    case 0: {
+                        const html = `<b style="color:var(--accent);margin-right:22px">${c_10.n} / ${CHAPTERS.length}</b>${esc(c_10.title)}`;
+                        if (m_5.title.dataset.html !== html) {
+                            m_5.title.dataset.html = html;
+                            m_5.title.innerHTML = html;
+                        }
+                        m_5.view.draw(new State((_arg_1) => 1, (c_4 = c_10, (id) => {
+                            const matchValue_2 = tryFindIndex((y) => (id === y), c_4.path);
+                            return (matchValue_2 == null) ? 0 : clamp01((t_2 - litAt(c_4, matchValue_2 * 2)) / 0.4);
+                        }), uncurry2((c_5 = c_10, (a) => ((b) => {
+                            const hop = tryFindIndex((tupledArg) => {
+                                const x = tupledArg[0];
+                                const y_1 = tupledArg[1];
+                                if ((x === a) && (y_1 === b)) {
+                                    return true;
+                                }
+                                else if (x === b) {
+                                    return y_1 === a;
+                                }
+                                else {
+                                    return false;
+                                }
+                            }, pairwise(c_5.path));
+                            return (hop == null) ? 0 : clamp01((t_2 - litAt(c_5, (hop * 2) + 1)) / 0.4);
+                        }))), undefined));
+                        break;
+                    }
+                }
             }
             show(query("#card"), card, 0, `scale(${lerp(0.96, 1, card)})`);
-            const option_3 = current;
-            if (option_3 != null) {
-                const c_3 = option_3;
-                query("#cardNum").textContent = (`${c_3.n} / ${CHAPTERS.length}`);
-                query("#cardTitle").textContent = c_3.title;
+            const option_7 = current;
+            if (option_7 != null) {
+                const c_11 = option_7;
+                query("#cardNum").textContent = (`${c_11.n} / ${CHAPTERS.length}`);
+                query("#cardTitle").textContent = c_11.title;
             }
             for (let idx_4 = 0; idx_4 <= (modules.length - 1); idx_4++) {
-                let el_2, el_3;
-                const m_5 = item(idx_4, modules);
+                let el_3, el_4;
+                const m_6 = item(idx_4, modules);
                 let p_1 = 0;
-                for (let i_2 = 0; i_2 <= (m_5.runs.length - 1); i_2++) {
-                    const r = item(i_2, m_5.runs);
-                    p_1 = max(p_1, within(t, r.start, (r.end >= (timing.duration - 0.05)) ? (Infinity) : (r.end - 0.05), 0.4));
+                for (let i_4 = 0; i_4 <= (m_6.runs.length - 1); i_4++) {
+                    const r = item(i_4, m_6.runs);
+                    p_1 = max(p_1, within(t_2, r.start, (r.end >= (timing.duration - 0.05)) ? (Infinity) : (r.end - 0.05), 0.4));
                 }
-                ((el_2 = m_5.root, el_2.style)).opacity = p_1;
-                ((el_3 = m_5.root, el_3.style)).visibility = ((p_1 <= 0.001) ? "hidden" : "visible");
-                if ((p_1 > 0.001) && (!!(hooks(m_5.key)))) {
+                ((el_3 = m_6.root, el_3.style)).opacity = p_1;
+                ((el_4 = m_6.root, el_4.style)).visibility = ((p_1 <= 0.001) ? "hidden" : "visible");
+                if ((p_1 > 0.001) && (!!(hooks(m_6.key)))) {
                     try {
-                        hooks(m_5.key).render(t);
+                        hooks(m_6.key).render(t_2);
                     }
-                    catch (e_5) {
-                        console.log(`module ${m_5.key} render(${t.toFixed(2)}) failed: ${message(e_5)}`);
+                    catch (e_6) {
+                        console.log(`module ${m_6.key} render(${t_2.toFixed(2)}) failed: ${message(e_6)}`);
                     }
                 }
             }
             const lab = query("#label");
-            show(lab, (current == null) ? 0 : ((c_4 = current, within(t, c_4.talk - 0.3, c_4.end - 0.1, 0.35))), 0, "");
-            let html;
+            show(lab, (current == null) ? 0 : ((c_12 = current, within(t_2, c_12.talk - 0.3, c_12.end - 0.1, 0.35))), 0, "");
+            let html_1;
             if (current == null) {
-                html = "";
+                html_1 = "";
             }
             else {
-                const c_5 = current;
-                html = (`<b>${c_5.n} / ${CHAPTERS.length}</b>${c_5.title}`);
+                const c_13 = current;
+                html_1 = (`<b>${c_13.n} / ${CHAPTERS.length}</b>${c_13.title}`);
             }
-            if (lab.dataset.html !== html) {
-                lab.dataset.html = html;
-                lab.innerHTML = html;
+            if (lab.dataset.html !== html_1) {
+                lab.dataset.html = html_1;
+                lab.innerHTML = html_1;
             }
-            iterateIndexed((i_3, c_6) => {
-                let el_4;
-                ((el_4 = item(i_3, SEG), el_4.style)).transform = (`scaleX(${clamp01((t - c_6.start) / (c_6.end - c_6.start))})`);
+            iterateIndexed((i_5, c_14) => {
+                let el_5;
+                ((el_5 = item(i_5, SEG), el_5.style)).transform = (`scaleX(${clamp01((t_2 - c_14.start) / (c_14.end - c_14.start))})`);
             }, CHAPTERS);
-            bar.style.opacity = ((CHAPTERS.length > 0) ? within(t, item(0, CHAPTERS).start - 0.3, (OUTRO == null) ? (Infinity) : ((o = OUTRO, o.start + 0.2)), 0.4) : 0);
-            const option_5 = TOASTS;
-            if (option_5 != null) {
-                option_5.render(t);
+            bar.style.opacity = ((CHAPTERS.length > 0) ? within(t_2, item(0, CHAPTERS).start - 0.3, (OUTRO == null) ? (Infinity) : ((o = OUTRO, o.start + 0.2)), 0.4) : 0);
+            const option_9 = TOASTS;
+            if (option_9 != null) {
+                option_9.render(t_2);
             }
-            const option_7 = BREAKS;
-            if (option_7 != null) {
-                option_7.render(t);
+            const option_11 = BREAKS;
+            if (option_11 != null) {
+                option_11.render(t_2);
             }
         });
         return window["ready"];

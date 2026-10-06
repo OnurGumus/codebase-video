@@ -11,7 +11,7 @@ import { List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 import { getItemFromDict } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
 import { min, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { toArray, tryFind, map as map_2, sort as sort_1, empty, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { defaultArg, value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { some, toNullable, defaultArg, value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 
 /**
@@ -32,7 +32,7 @@ export function Segment_$reflection() {
     return record_type("Segments.Segment", [], Segment, () => [["Id", string_type], ["Key", string_type], ["First", int32_type], ["End", int32_type], ["Input", string_type]]);
 }
 
-const VERSION = 1;
+const VERSION = 2;
 
 function names(text, id) {
     const quotes = ofArray(["\"", "\'", "`"]);
@@ -84,9 +84,10 @@ function prefix(id) {
 }
 
 class Chapter extends Record {
-    constructor(Title, Start, End, Talk) {
+    constructor(Title, Path, Start, End, Talk) {
         super();
         this.Title = Title;
+        this.Path = Path;
         this.Start = Start;
         this.End = End;
         this.Talk = Talk;
@@ -94,7 +95,7 @@ class Chapter extends Record {
 }
 
 function Chapter_$reflection() {
-    return record_type("Segments.Chapter", [], Chapter, () => [["Title", obj_type], ["Start", float64_type], ["End", float64_type], ["Talk", option_type(float64_type)]]);
+    return record_type("Segments.Chapter", [], Chapter, () => [["Title", obj_type], ["Path", obj_type], ["Start", float64_type], ["End", float64_type], ["Talk", option_type(float64_type)]]);
 }
 
 class Run extends Record {
@@ -286,11 +287,12 @@ export function plan(ws, fps, size, browser, encoder) {
     chapters = toList(delay(() => map_2((g) => {
         let matchValue_1, content, sentences_1;
         const finish = endOf(item(g.length - 1, g));
-        return new Chapter((!!item(0, g).chapter) ? item(0, g).chapter : item(0, g).id, startOf(item(0, g)), finish, (matchValue_1 = tryFind((s_5) => !idOf(s_5).endsWith("-why"), g), (matchValue_1 == null) ? finish : ((content = value_1(matchValue_1), (sentences_1 = content.sentences, (sentences_1.length > 0) ? item(0, sentences_1).start : undefined)))));
+        return new Chapter((!!item(0, g).chapter) ? item(0, g).chapter : item(0, g).id, (!!item(0, g).path) ? item(0, g).path : defaultOf(), startOf(item(0, g)), finish, (matchValue_1 = tryFind((s_5) => !idOf(s_5).endsWith("-why"), g), (matchValue_1 == null) ? finish : ((content = value_1(matchValue_1), (sentences_1 = content.sentences, (sentences_1.length > 0) ? item(0, sentences_1).start : undefined)))));
     }, groups)));
     const titleScene = tryFind_1((s_6) => (idOf(s_6) === "title"), scenes);
     const outro = tryFind_1((s_7) => (prefix(idOf(s_7)) === "outro"), scenes);
     return toList(delay(() => collect((k_3) => {
+        let option_1;
         const s_9 = item(k_3, scenes);
         const id_2 = idOf(s_9);
         const matchValue_2 = startOf(s_9);
@@ -357,18 +359,56 @@ export function plan(ws, fps, size, browser, encoder) {
             return singleton_1((aligned && (c.End <= s0)) ? "done" : ((aligned && (c.Start >= s1)) ? "todo" : {
                 n: matchValue_4[0] + 1,
                 title: c.Title,
+                path: c.Path,
                 start: rel(c.Start),
                 end: rel(c.End),
                 talk: (matchValue_5 = c.Talk, (matchValue_5 == null) ? defaultOf() : rel(matchValue_5)),
             }));
         }, indexed(chapters))));
+        const marked = (j_4) => {
+            if ((j_4 >= 0) && (j_4 < scenes.length)) {
+                if (!!item(j_4, scenes).path) {
+                    return true;
+                }
+                else {
+                    return !!item(j_4, scenes).inside;
+                }
+            }
+            else {
+                return false;
+            }
+        };
+        let showsMap;
+        if (!!timing.map) {
+            if (marked(k_3) ? true : marked(k_3 - 1)) {
+                showsMap = true;
+            }
+            else if (text_2 == null) {
+                showsMap = false;
+            }
+            else {
+                const t_3 = text_2;
+                showsMap = (t_3.indexOf(".map(") >= 0);
+            }
+        }
+        else {
+            showsMap = false;
+        }
+        const chapterPath = toNullable((option_1 = tryFind_2((c_1) => {
+            if (c_1.Start <= s0) {
+                return s0 < c_1.End;
+            }
+            else {
+                return false;
+            }
+        }, chapters), (option_1 != null) ? some(option_1.Path) : undefined));
         let title;
         if (titleScene != null) {
-            const t_3 = value_1(titleScene);
-            const gone = aligned && (endOf(t_3) < (s0 - 3));
+            const t_4 = value_1(titleScene);
+            const gone = aligned && (endOf(t_4) < (s0 - 3));
             title = {
-                end: far(endOf(t_3)),
-                scene: gone ? defaultOf() : shifted(rel, t_3),
+                end: far(endOf(t_4)),
+                scene: gone ? defaultOf() : shifted(rel, t_4),
             };
         }
         else {
@@ -411,6 +451,8 @@ export function plan(ws, fps, size, browser, encoder) {
             moduleScenes: referenced,
             runs: moduleRuns,
             chapters: chapterList,
+            map: showsMap ? timing.map : defaultOf(),
+            chapterPath: showsMap ? chapterPath : defaultOf(),
             zero: far(0),
             title: title,
             firstChapter: isEmpty(chapters) ? defaultOf() : far(head(chapters).Start),

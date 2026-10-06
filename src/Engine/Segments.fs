@@ -16,6 +16,9 @@
 ///     module is on screen (its runs, as src/Kit/Frame.fs computes them);
 ///   - the chapters as the frame draws them: how many, which are finished, which are still to come, and the title
 ///     and times of the ones that touch the scene (the progress bar, the chapter card and the label);
+///   - the shared map (timing "map"), when the scene can show it: its own "path" or "inside", those of the scene
+///     before it (the opener fades out over the lead of the scene after its bridge), or a module that draws it
+///     with K.map; and the "path" of the scene's chapter, which is what is lit;
 ///   - the title card, and the few times the frame uses from elsewhere in the video (time 0, the end of the title,
 ///     the first chapter's start, the outro's start, the total duration). Each of those only matters within half a
 ///     second of itself, so when it is more than 3 s outside the scene it is recorded as "before" or "after".
@@ -45,7 +48,7 @@ type Segment =
       Input: string }
 
 /// Bump when the key's meaning changes, so segments cached by an older engine are not reused.
-let private VERSION = 1
+let private VERSION = 2
 
 [<Emit("typeof $0")>]
 let private jsTypeof (o: obj) : string = jsNative
@@ -106,7 +109,7 @@ let rec private shifted (rel: float -> obj) (v: obj) : obj =
 let private prefix (id: string) = id.Split('-').[0]
 
 /// A chapter as src/Kit/Frame.fs computes it.
-type private Chapter = { Title: obj; Start: float; End: float; Talk: float option }
+type private Chapter = { Title: obj; Path: obj; Start: float; End: float; Talk: float option }
 
 /// What the frame's module layer does with one module: on screen from Start to End, or to the last frame.
 type private Run = { Start: float; mutable End: float }
@@ -210,6 +213,7 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
         [ for g in groups ->
               let finish = endOf g[g.Count - 1]
               { Title = (if truthy g[0]?chapter then g[0]?chapter else g[0]?id)
+                Path = (if truthy g[0]?path then g[0]?path else null)
                 Start = startOf g[0]
                 End = finish
                 Talk =
@@ -280,9 +284,18 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
                          createObj
                              [ "n" ==> i + 1
                                "title" ==> c.Title
+                               "path" ==> c.Path
                                "start" ==> rel c.Start
                                "end" ==> rel c.End
                                "talk" ==> (match c.Talk with Some t -> rel t | None -> null) ] |]
+          // The shared map is drawn in a scene with a "path" or an "inside", in the scene after one (the opener fades
+          // out over the next scene's lead), and wherever a module draws it itself.
+          let marked (j: int) = j >= 0 && j < scenes.Length && (truthy scenes[j]?path || truthy scenes[j]?inside)
+          let showsMap =
+              truthy timing?map
+              && (marked k || marked (k - 1) || (match text with Some t -> t.Contains ".map(" | None -> false))
+          let chapterPath =
+              chapters |> List.tryFind (fun c -> c.Start <= s0 && s0 < c.End) |> Option.map (fun c -> c.Path) |> Option.toObj
           let title =
               match titleScene with
               | None -> null
@@ -325,6 +338,8 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
                         "moduleScenes" ==> referenced
                         "runs" ==> moduleRuns
                         "chapters" ==> chapterList
+                        "map" ==> (if showsMap then timing?map else null)
+                        "chapterPath" ==> (if showsMap then chapterPath else null)
                         "zero" ==> far 0.0
                         "title" ==> title
                         "firstChapter" ==> (match chapters with c :: _ -> far c.Start | [] -> null)

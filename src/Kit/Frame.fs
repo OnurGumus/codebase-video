@@ -7,6 +7,9 @@
 /// "outro" are modules too. The opening scene "title" has no module: the frame shows the course and lesson
 /// from script.json's "card". A scene's "toasts" pop up in the band above the content, top right, on their
 /// phrase; [think] silences and "recap" scenes are drawn by Kit.frameBreaks.
+/// A video with a shared map (script.json "map", drawn by Map.fs) opens each chapter whose bridge scene has a "path"
+/// on the map instead of the plain card: the chapter's number and title at the top, the map dim, and the parts and
+/// edges of the path lighting up in order while the bridge line is spoken.
 module Frame
 
 open Fable.Core
@@ -18,6 +21,8 @@ open Stage
 
 type Chapter =
     { title: string
+      /// the parts of the shared map this chapter's flow touches, in order (its bridge scene's "path"), or none
+      path: string[]
       scenes: ResizeArray<Scene>
       mutable n: int
       mutable start: float
@@ -62,6 +67,7 @@ let run () =
         if s.id.EndsWith "-why" then
             CHAPTERS.Add
                 { title = jsOr s.chapter s.id
+                  path = (if isArray (s?path) then s?path else [||])
                   scenes = ResizeArray [ s ]
                   n = 0
                   start = 0.0
@@ -94,6 +100,54 @@ let run () =
             else m.runs.Add { start = System.Math.Max(s.start, first - 0.45); ``end`` = s.``end`` }
             prev <- k
     let modules: Module[] = values MODULES
+
+    // The shared map: a layer under the modules, inside #modules so that it is scaled with them when captions are
+    // drawn into the picture. A definition the map cannot draw is reported and the plain chapter cards are shown.
+    let MAP =
+        match Map.definition () with
+        | None -> None
+        | Some def ->
+            try
+                let layer = document.createElement "div"
+                layer.className <- "layer"
+                layer.id <- "map"
+                (query "#modules")?append (layer)
+                let title = document.createElement "div"
+                title.className <- "k-heading k-abs"
+                title?style?cssText <- "left:60px;top:130px"
+                layer?append (title)
+                Some {| layer = layer; title = title; view = Map.build layer def |}
+            with e ->
+                let msg = message e
+                log (if msg.StartsWith "map:" then msg else $"map: {msg}")
+                (document.getElementById "map") |> Option.ofObj |> Option.iter (fun el -> el?remove ())
+                None
+    /// Does this chapter open on the map?
+    let opensOnMap (c: Chapter) = MAP.IsSome && c.path.Length >= 2
+    /// When each part and edge of a chapter's path lights up: part, edge, part, ... spread from the start of the
+    /// bridge line to just before its end, and always done before the opener starts to fade.
+    let pathTimes (c: Chapter) : float * float =
+        let sentences = c.scenes.[0].sentences
+        let t0 = if sentences.Length > 0 then sentences.[0].start else c.start
+        let spoken = if sentences.Length > 0 then sentences.[sentences.Length - 1].``end`` else c.talk
+        t0, System.Math.Max(t0, System.Math.Min(System.Math.Max(spoken - 0.3, t0 + 0.8), c.talk - 1.0))
+    let litAt (c: Chapter) (step: int) : float =
+        let t0, t1 = pathTimes c
+        lerp t0 t1 (float step / float (c.path.Length * 2 - 2))
+    /// How lit a part is at t in chapter c: the path's parts light in order, the rest stay dim.
+    let partLit (c: Chapter) (t: float) (id: string) : float =
+        match c.path |> Array.tryFindIndex ((=) id) with
+        | Some i -> clamp01 ((t - litAt c (i * 2)) / 0.4)
+        | None -> 0.0
+    let edgeLit (c: Chapter) (t: float) (a: string) (b: string) : float =
+        let hop =
+            c.path
+            |> Array.pairwise
+            |> Array.tryFindIndex (fun (x, y) -> (x = a && y = b) || (x = b && y = a))
+        match hop with
+        | Some i -> clamp01 ((t - litAt c (i * 2 + 1)) / 0.4)
+        | None -> 0.0
+
     for m in modules do
         let d = document.createElement "div"
         d.className <- "layer"
@@ -205,10 +259,25 @@ let run () =
         for i in 0 .. CHAPTERS.Count - 1 do
             let c = CHAPTERS.[i]
             if t >= c.start - 0.001 && t < c.``end`` + 0.001 then current <- Some c
-        let card =
+        // A chapter opens on its card, or on the shared map when its bridge scene has a path across it.
+        let opening =
             match current with
             | Some c -> within t c.start (c.talk - 0.25) 0.35
             | None -> 0.0
+        let onMap = match current with Some c -> opensOnMap c | None -> false
+        let card = if onMap then 0.0 else opening
+        MAP
+        |> Option.iter (fun m ->
+            let shown = if onMap then opening else 0.0
+            show m.layer shown 0.0 ""
+            match current with
+            | Some c when shown > 0.001 ->
+                let html = $"<b style=\"color:var(--accent);margin-right:22px\">{c.n} / {CHAPTERS.Count}</b>{Draw.esc c.title}"
+                if m.title?dataset?html <> html then
+                    m.title?dataset?html <- html
+                    m.title.innerHTML <- html
+                m.view.draw { vis = (fun _ -> 1.0); lit = partLit c t; edgeLit = edgeLit c t; zoom = None }
+            | _ -> ())
         show (query "#card") card 0.0 $"scale({lerp 0.96 1.0 card})"
         current
         |> Option.iter (fun c ->
