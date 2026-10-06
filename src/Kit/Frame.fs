@@ -145,7 +145,9 @@ let run () =
         let sentences = c.scenes.[0].sentences
         let t0 = if sentences.Length > 0 then sentences.[0].start else c.start
         let spoken = if sentences.Length > 0 then sentences.[sentences.Length - 1].``end`` else c.talk
-        t0, System.Math.Max(t0, System.Math.Min(System.Math.Max(spoken - 0.3, t0 + 0.8), c.talk - 1.0))
+        // The opener starts to fade 0.6 s before the chapter talks, a part takes 0.4 s to light, and the whole path
+        // should be seen lit for a moment: so the last one starts 1.3 s before.
+        t0, System.Math.Max(t0, System.Math.Min(System.Math.Max(spoken - 0.3, t0 + 0.8), c.talk - 1.3))
     let litAt (c: Chapter) (step: int) : float =
         let t0, t1 = pathTimes c
         lerp t0 t1 (float step / float (c.path.Length * 2 - 2))
@@ -164,7 +166,16 @@ let run () =
         | None -> 0.0
 
     // Visits: maximal runs of consecutive scenes with the same "inside".
-    let insideOf (s: Scene) : string = if truthy (s?inside) then s?inside else ""
+    // A scene whose "inside" does not name a part (check reports it) is drawn as an ordinary scene.
+    let partIds = match Map.definition () with Some def -> def.parts |> Array.map (fun p -> p.id) | None -> [||]
+    let insideOf (s: Scene) : string =
+        let part: obj = s?inside
+        if isNil part then ""
+        elif jsTypeof part = "string" && Array.contains (unbox<string> part) partIds then unbox part
+        else
+            log $"map: scene {s.id} is inside {stringify part}, which is not a part of the map; drawn without a boundary"
+            ""
+    let INSIDE = T.scenes |> Array.map insideOf
     let VISITS =
         if MAP.IsNone then [||]
         else
@@ -172,23 +183,22 @@ let run () =
             let n = T.scenes.Length
             let mutable k = 0
             while k < n do
-                let part = insideOf T.scenes.[k]
+                let part = INSIDE.[k]
                 if part = "" then k <- k + 1
                 else
                     let mutable j = k
-                    while j + 1 < n && insideOf T.scenes.[j + 1] = part do
+                    while j + 1 < n && INSIDE.[j + 1] = part do
                         j <- j + 1
-                    let before = if k > 0 then Some T.scenes.[k - 1] else None
                     let opened =
-                        match before with
-                        | Some b -> insideOf b <> "" || (b.id.EndsWith "-why" && isArray (b?path))
-                        | None -> false
+                        k > 0
+                        && (INSIDE.[k - 1] <> ""
+                            || (T.scenes.[k - 1].id.EndsWith "-why" && isArray (T.scenes.[k - 1]?path)))
                     found.Add
                         { part = part
                           start = T.scenes.[k].start
                           ``end`` = T.scenes.[j].``end``
                           fromMap = opened
-                          toMap = j + 1 < n && insideOf T.scenes.[j + 1] <> ""
+                          toMap = j + 1 < n && INSIDE.[j + 1] <> ""
                           last = T.scenes.[j].``end`` >= T.duration - 0.05 }
                     k <- j + 1
             found.ToArray()
@@ -205,10 +215,18 @@ let run () =
         System.Math.Min(up, down)
     /// What a module's content is multiplied by during a visit: it waits for the zoom in, and leaves before the
     /// zoom out.
+    /// Content that is on screen across the visit's start (not scoped to a scene) first fades out, over the same
+    /// 0.3 s the map fades in.
     let contentShown (v: Visit) (t: float) : float =
+        let before = if v.fromMap then 0.0 else 1.0 - clamp01 ((t - v.start) / 0.3)
         let up = clamp01 ((t - (v.start + Map.ZOOM_IN - 0.2)) / 0.4)
         let down = if v.last then 1.0 else 1.0 - clamp01 ((t - (v.``end`` - Map.ZOOM_OUT)) / 0.3)
-        System.Math.Min(up, down)
+        System.Math.Min(System.Math.Max(before, up), down)
+    /// ... and after a visit that ends on an ordinary scene, content returns over 0.3 s instead of cutting in.
+    let contentAfter (t: float) : float =
+        match VISITS |> Array.tryFind (fun v -> not v.toMap && not v.last && t >= v.``end`` - 0.001 && t < v.``end`` + 0.3) with
+        | Some v -> clamp01 ((t - v.``end``) / 0.3)
+        | None -> 1.0
 
     for m in modules do
         let d = document.createElement "div"
@@ -352,7 +370,7 @@ let run () =
             | Some v -> m.view.draw { vis = (fun _ -> 1.0); lit = lit; edgeLit = edge; zoom = Some(v.part, zoomOf v t) }
             | None when opener > 0.001 -> m.view.draw { vis = (fun _ -> 1.0); lit = lit; edgeLit = edge; zoom = None }
             | None -> ())
-        let content = match visit with Some v -> contentShown v t | None -> 1.0
+        let content = match visit with Some v -> contentShown v t | None -> contentAfter t
         show (query "#card") card 0.0 $"scale({lerp 0.96 1.0 card})"
         current
         |> Option.iter (fun c ->

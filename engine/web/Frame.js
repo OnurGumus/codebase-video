@@ -1,11 +1,11 @@
 
 import { toString, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { bool_type, record_type, float64_type, int32_type, class_type, array_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { pairwise, tryFindIndex, fold, tryFind as tryFind_1, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { pairwise, tryFindIndex, fold, tryFind as tryFind_1, contains, map, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { concat, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { ease, clamp01, progIO, show, within, play, lerp, query, timing } from "./Stage.js";
 import { tryFind, iterateIndexed } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { uncurry2, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { uncurry2, stringHash, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { min, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { ZOOM_OUT, ZOOM_IN, State, build as build_1, definition } from "./Map.js";
 import { value as value_1, ofNullable } from "./fable_modules/fable-library-js.5.19.0/Option.js";
@@ -174,17 +174,34 @@ export function run() {
         const c_2 = c_3;
         const sentences = item(0, c_2.scenes).sentences;
         const t0 = (sentences.length > 0) ? item(0, sentences).start : c_2.start;
-        patternInput = [t0, max(t0, min(max(((sentences.length > 0) ? item(sentences.length - 1, sentences).end : c_2.talk) - 0.3, t0 + 0.8), c_2.talk - 1))];
+        patternInput = [t0, max(t0, min(max(((sentences.length > 0) ? item(sentences.length - 1, sentences).end : c_2.talk) - 0.3, t0 + 0.8), c_2.talk - 1.3))];
         return lerp(patternInput[0], patternInput[1], step / ((c_3.path.length * 2) - 2));
     };
-    const insideOf = (s_3) => {
-        if (!!(s_3.inside)) {
-            return s_3.inside;
-        }
-        else {
+    let partIds;
+    const matchValue_3 = definition();
+    if (matchValue_3 == null) {
+        partIds = [];
+    }
+    else {
+        const def_1 = matchValue_3;
+        partIds = map((p) => p.id, def_1.parts);
+    }
+    const INSIDE = map((s_3) => {
+        const part = s_3.inside;
+        if ((part == null)) {
             return "";
         }
-    };
+        else if (((typeof part) === "string") && contains(part, partIds, {
+            Equals: (x_1, y_2) => (x_1 === y_2),
+            GetHashCode: (x_1) => (stringHash(x_1) | 0),
+        })) {
+            return part;
+        }
+        else {
+            console.log(`map: scene ${s_3.id} is inside ${JSON.stringify(part)}, which is not a part of the map; drawn without a boundary`);
+            return "";
+        }
+    }, timing.scenes);
     let VISITS;
     if (MAP == null) {
         VISITS = [];
@@ -194,25 +211,17 @@ export function run() {
         const n = timing.scenes.length | 0;
         let k_1 = 0;
         while (k_1 < n) {
-            const part = insideOf(item(k_1, timing.scenes));
-            if (part === "") {
+            const part_1 = item(k_1, INSIDE);
+            if (part_1 === "") {
                 k_1 = ((k_1 + 1) | 0);
             }
             else {
                 let j = k_1;
-                while (((j + 1) < n) && (insideOf(item(j + 1, timing.scenes)) === part)) {
+                while (((j + 1) < n) && (item(j + 1, INSIDE) === part_1)) {
                     j = ((j + 1) | 0);
                 }
-                const before = (k_1 > 0) ? item(k_1 - 1, timing.scenes) : undefined;
-                let opened;
-                if (before == null) {
-                    opened = false;
-                }
-                else {
-                    const b_1 = before;
-                    opened = ((insideOf(b_1) !== "") ? true : (b_1.id.endsWith("-why") && (Array.isArray(b_1.path))));
-                }
-                void (found.push(new Visit(part, item(k_1, timing.scenes).start, item(j, timing.scenes).end, opened, ((j + 1) < n) && (insideOf(item(j + 1, timing.scenes)) !== ""), item(j, timing.scenes).end >= (timing.duration - 0.05))));
+                const opened = (k_1 > 0) && ((item(k_1 - 1, INSIDE) !== "") ? true : (item(k_1 - 1, timing.scenes).id.endsWith("-why") && (Array.isArray(item(k_1 - 1, timing.scenes).path))));
+                void (found.push(new Visit(part_1, item(k_1, timing.scenes).start, item(j, timing.scenes).end, opened, ((j + 1) < n) && (item(j + 1, INSIDE) !== ""), item(j, timing.scenes).end >= (timing.duration - 0.05))));
                 k_1 = ((j + 1) | 0);
             }
         }
@@ -277,7 +286,7 @@ export function run() {
         BREAKS = undefined;
     }
     let loaded;
-    const pr_4 = fold((p, m_4) => (p.then(() => {
+    const pr_4 = fold((p_1, m_4) => (p_1.then(() => {
         const m_2 = m_4;
         const failed = (e_3) => {
             console.log(concat("module file ", m_2.key, ".js failed to load: ", message(e_3)));
@@ -322,11 +331,11 @@ export function run() {
         }
     }));
     window["ready"] = (loaded.then(() => {
-        play((t_5) => {
+        play((t_6) => {
             let v_1, t_3, c_4, c_5, v, t_2, c_13, o;
             const withTitle = (TITLE != null) && (!!(timing.card));
-            const tc = withTitle ? within(t_5, -1, value_1(TITLE).end - 0.1, 0.4) : 0;
-            const thumbOn = (THUMB != null) && (t_5 < 0.02);
+            const tc = withTitle ? within(t_6, -1, value_1(TITLE).end - 0.1, 0.4) : 0;
+            const thumbOn = (THUMB != null) && (t_6 < 0.02);
             const option_3 = THUMB;
             if (option_3 != null) {
                 const el_2 = option_3;
@@ -336,13 +345,13 @@ export function run() {
             titleCard.style.justifyContent = (thumbOn ? "flex-start" : "");
             titleCard.style.paddingTop = (thumbOn ? "110px" : "");
             titleCard.style.boxSizing = (thumbOn ? "border-box" : "");
-            show(titleCard, tc, 0, thumbOn ? "" : (`scale(${lerp(0.97, 1, progIO(t_5, 0, 0.8))})`));
+            show(titleCard, tc, 0, thumbOn ? "" : (`scale(${lerp(0.97, 1, progIO(t_6, 0, 0.8))})`));
             const lastSentence = withTitle ? (value_1(TITLE).sentences.at(-1)) : defaultOf();
-            show(query("#tcSub"), withTitle ? (progIO(t_5, lastSentence.start - 0.2, 0.5) * tc) : 0, 10, "");
+            show(query("#tcSub"), withTitle ? (progIO(t_6, lastSentence.start - 0.2, 0.5) * tc) : 0, 10, "");
             let current = undefined;
             for (let i_3 = 0; i_3 <= (CHAPTERS.length - 1); i_3++) {
                 const c_6 = item(i_3, CHAPTERS);
-                if ((t_5 >= (c_6.start - 0.001)) && (t_5 < (c_6.end + 0.001))) {
+                if ((t_6 >= (c_6.start - 0.001)) && (t_6 < (c_6.end + 0.001))) {
                     current = c_6;
                 }
             }
@@ -352,7 +361,7 @@ export function run() {
             }
             else {
                 const c_7 = current;
-                opening = within(t_5, c_7.start, c_7.talk - 0.25, 0.35);
+                opening = within(t_6, c_7.start, c_7.talk - 0.25, 0.35);
             }
             let onMap;
             if (current == null) {
@@ -363,13 +372,13 @@ export function run() {
                 onMap = ((MAP != null) && (c_1.path.length >= 2));
             }
             const card = onMap ? 0 : opening;
-            const visit = tryFind_1((v_3) => {
-                if (t_5 >= (v_3.start - 0.001)) {
-                    if (t_5 < (v_3.end - 0.001)) {
+            const visit = tryFind_1((v_5) => {
+                if (t_6 >= (v_5.start - 0.001)) {
+                    if (t_6 < (v_5.end - 0.001)) {
                         return true;
                     }
                     else {
-                        return v_3.last;
+                        return v_5.last;
                     }
                 }
                 else {
@@ -380,8 +389,8 @@ export function run() {
             if (option_5 != null) {
                 const m_5 = option_5;
                 const opener = onMap ? opening : 0;
-                show(m_5.layer, max(opener, (visit == null) ? 0 : ((v_1 = visit, (t_3 = t_5, min(v_1.fromMap ? 1 : clamp01((t_3 - v_1.start) / 0.3), (v_1.last ? true : v_1.toMap) ? 1 : (1 - clamp01((t_3 - (v_1.end - 0.3)) / 0.3))))))), 0, "");
-                const titled = (visit == null) ? opener : (opener * (1 - clamp01((t_5 - visit.start) / 0.3)));
+                show(m_5.layer, max(opener, (visit == null) ? 0 : ((v_1 = visit, (t_3 = t_6, min(v_1.fromMap ? 1 : clamp01((t_3 - v_1.start) / 0.3), (v_1.last ? true : v_1.toMap) ? 1 : (1 - clamp01((t_3 - (v_1.end - 0.3)) / 0.3))))))), 0, "");
+                const titled = (visit == null) ? opener : (opener * (1 - clamp01((t_6 - visit.start) / 0.3)));
                 show(m_5.title, titled, 0, "");
                 let matchResult, c_10;
                 if (current != null) {
@@ -414,7 +423,7 @@ export function run() {
                     const c_11 = current;
                     patternInput_1 = [(c_4 = c_11, (id) => {
                         const matchValue_2 = tryFindIndex((y) => (id === y), c_4.path);
-                        return (matchValue_2 == null) ? 0 : clamp01((t_5 - litAt(c_4, matchValue_2 * 2)) / 0.4);
+                        return (matchValue_2 == null) ? 0 : clamp01((t_6 - litAt(c_4, matchValue_2 * 2)) / 0.4);
                     }), (c_5 = c_11, (a) => ((b) => {
                         const hop = tryFindIndex((tupledArg) => {
                             const x = tupledArg[0];
@@ -429,7 +438,7 @@ export function run() {
                                 return false;
                             }
                         }, pairwise(c_5.path));
-                        return (hop == null) ? 0 : clamp01((t_5 - litAt(c_5, (hop * 2) + 1)) / 0.4);
+                        return (hop == null) ? 0 : clamp01((t_6 - litAt(c_5, (hop * 2) + 1)) / 0.4);
                     }))];
                 }
                 const lit = patternInput_1[0];
@@ -440,18 +449,30 @@ export function run() {
                     }
                 }
                 else {
-                    const v_6 = visit;
-                    m_5.view.draw(new State((_arg_4) => 1, lit, uncurry2(edge), [v_6.part, (v = v_6, (t_2 = t_5, ease.inOut(clamp01((t_2 - v.start) / ZOOM_IN)) * (1 - (v.last ? 0 : ease.inOut(clamp01((t_2 - (v.end - 0.7)) / 0.7))))))]));
+                    const v_8 = visit;
+                    m_5.view.draw(new State((_arg_4) => 1, lit, uncurry2(edge), [v_8.part, (v = v_8, (t_2 = t_6, ease.inOut(clamp01((t_2 - v.start) / ZOOM_IN)) * (1 - (v.last ? 0 : ease.inOut(clamp01((t_2 - (v.end - 0.7)) / 0.7))))))]));
                 }
             }
             let content;
             if (visit == null) {
-                content = 1;
+                const t_5 = t_6;
+                const matchValue_4 = tryFind_1((v_3) => {
+                    if ((!v_3.toMap && !v_3.last) && (t_5 >= (v_3.end - 0.001))) {
+                        return t_5 < (v_3.end + 0.3);
+                    }
+                    else {
+                        return false;
+                    }
+                }, VISITS);
+                content = ((matchValue_4 == null) ? 1 : clamp01((t_5 - matchValue_4.end) / 0.3));
             }
             else {
                 const v_2 = visit;
-                const t_4 = t_5;
-                content = min(clamp01((t_4 - ((v_2.start + ZOOM_IN) - 0.2)) / 0.4), v_2.last ? 1 : (1 - clamp01((t_4 - (v_2.end - ZOOM_OUT)) / 0.3)));
+                const t_4 = t_6;
+                const before = v_2.fromMap ? 0 : (1 - clamp01((t_4 - v_2.start) / 0.3));
+                const up_1 = clamp01((t_4 - ((v_2.start + ZOOM_IN) - 0.2)) / 0.4);
+                const down_1 = v_2.last ? 1 : (1 - clamp01((t_4 - (v_2.end - ZOOM_OUT)) / 0.3));
+                content = min(max(before, up_1), down_1);
             }
             show(query("#card"), card, 0, `scale(${lerp(0.96, 1, card)})`);
             const option_7 = current;
@@ -463,25 +484,25 @@ export function run() {
             for (let idx_4 = 0; idx_4 <= (modules.length - 1); idx_4++) {
                 let el_3, el_4;
                 const m_6 = item(idx_4, modules);
-                let p_1 = 0;
+                let p_2 = 0;
                 for (let i_4 = 0; i_4 <= (m_6.runs.length - 1); i_4++) {
                     const r = item(i_4, m_6.runs);
-                    p_1 = max(p_1, within(t_5, r.start, (r.end >= (timing.duration - 0.05)) ? (Infinity) : (r.end - 0.05), 0.4));
+                    p_2 = max(p_2, within(t_6, r.start, (r.end >= (timing.duration - 0.05)) ? (Infinity) : (r.end - 0.05), 0.4));
                 }
-                const p_2 = p_1 * content;
-                ((el_3 = m_6.root, el_3.style)).opacity = p_2;
-                ((el_4 = m_6.root, el_4.style)).visibility = ((p_2 <= 0.001) ? "hidden" : "visible");
-                if ((p_2 > 0.001) && (!!(hooks(m_6.key)))) {
+                const p_3 = p_2 * content;
+                ((el_3 = m_6.root, el_3.style)).opacity = p_3;
+                ((el_4 = m_6.root, el_4.style)).visibility = ((p_3 <= 0.001) ? "hidden" : "visible");
+                if ((p_3 > 0.001) && (!!(hooks(m_6.key)))) {
                     try {
-                        hooks(m_6.key).render(t_5);
+                        hooks(m_6.key).render(t_6);
                     }
                     catch (e_6) {
-                        console.log(`module ${m_6.key} render(${t_5.toFixed(2)}) failed: ${message(e_6)}`);
+                        console.log(`module ${m_6.key} render(${t_6.toFixed(2)}) failed: ${message(e_6)}`);
                     }
                 }
             }
             const lab = query("#label");
-            show(lab, (current == null) ? 0 : ((c_13 = current, within(t_5, c_13.talk - 0.3, c_13.end - 0.1, 0.35))), 0, "");
+            show(lab, (current == null) ? 0 : ((c_13 = current, within(t_6, c_13.talk - 0.3, c_13.end - 0.1, 0.35))), 0, "");
             let html_1;
             if (current == null) {
                 html_1 = "";
@@ -496,16 +517,16 @@ export function run() {
             }
             iterateIndexed((i_5, c_15) => {
                 let el_5;
-                ((el_5 = item(i_5, SEG), el_5.style)).transform = (`scaleX(${clamp01((t_5 - c_15.start) / (c_15.end - c_15.start))})`);
+                ((el_5 = item(i_5, SEG), el_5.style)).transform = (`scaleX(${clamp01((t_6 - c_15.start) / (c_15.end - c_15.start))})`);
             }, CHAPTERS);
-            bar.style.opacity = ((CHAPTERS.length > 0) ? within(t_5, item(0, CHAPTERS).start - 0.3, (OUTRO == null) ? (Infinity) : ((o = OUTRO, o.start + 0.2)), 0.4) : 0);
+            bar.style.opacity = ((CHAPTERS.length > 0) ? within(t_6, item(0, CHAPTERS).start - 0.3, (OUTRO == null) ? (Infinity) : ((o = OUTRO, o.start + 0.2)), 0.4) : 0);
             const option_9 = TOASTS;
             if (option_9 != null) {
-                option_9.render(t_5);
+                option_9.render(t_6);
             }
             const option_11 = BREAKS;
             if (option_11 != null) {
-                option_11.render(t_5);
+                option_11.render(t_6);
             }
         });
         return window["ready"];

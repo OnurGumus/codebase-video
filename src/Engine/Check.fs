@@ -995,6 +995,9 @@ let private keysOf (o: obj) : string[] = jsNative
 [<Emit("JSON.stringify($0)")>]
 let private jsonOf (v: obj) : string = jsNative
 
+[<Emit("($0 !== null && typeof $0 === 'object' && !Array.isArray($0))")>]
+let private isObject (v: obj) : bool = jsNative
+
 /// The zoom into a part and back out of it (ZOOM_IN in src/Kit/Map.fs, and the quiet end a zoom out needs).
 let private VISIT_LEAD, VISIT_TAIL = 1.2, 1.5
 
@@ -1003,22 +1006,27 @@ let private VISIT_LEAD, VISIT_TAIL = 1.2, 1.5
 let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson: string option) : unit =
     let scenes = Py.list script "scenes"
     let map = Py.get script "map"
-    let text (o: Json) (k: string) = let v = Py.get o k in if Py.isStr v then Py.str v else ""
-    let number (o: Json) (k: string) (d: float) = let v = Py.get o k in if isNumber v then unbox<float> v else d
+    let field (o: Json) (k: string) : obj = if isObject o then Py.get o k else null
+    let text (o: Json) (k: string) = let v = field o k in if Py.isStr v then Py.str v else ""
+    let number (o: Json) (k: string) (d: float) = let v = field o k in if isNumber v then unbox<float> v else d
     let pathOf (s: Json) = Py.list s "path" |> List.map Py.str
     let hasPath (s: Json) = not (isNull (Py.get s "path"))
     let insideOf (s: Json) = text s "inside"
     if not (Py.truthy map) then
         for s in scenes do
             if hasPath s then f.err $"{idOf s}: \"path\" needs a top-level \"map\" in script.json"
-            if insideOf s <> "" then f.err $"{idOf s}: \"inside\" needs a top-level \"map\" in script.json"
+            if not (isNull (Py.get s "inside")) then f.err $"{idOf s}: \"inside\" needs a top-level \"map\" in script.json"
         for file in jsFiles do
             if (Py.search K_MAP (readText file)).IsSome then
                 f.err $"{basename file}: K.map needs a top-level \"map\" in script.json"
     else
         let kinds = Py.get map "kinds"
-        let parts = Py.list map "parts"
-        let edges = Py.list map "edges"
+        // An entry that is not an object (a null left by a stray comma) is reported and then left out.
+        let objects (what: string) (xs: obj list) =
+            xs |> List.iteri (fun i x -> if not (isObject x) then f.err $"map: {what} {i} is not an object")
+            xs |> List.filter isObject
+        let parts = objects "part" (Py.list map "parts")
+        let edges = objects "edge" (Py.list map "edges")
         if parts.Length < 2 || parts.Length > 7 then
             f.err $"map: {parts.Length} parts; a map has 2 to 7 (more do not fit at a readable size)"
         if Py.truthy kinds then
@@ -1036,7 +1044,7 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
             if kind <> "" && not (Py.truthy kinds && Py.truthy (Py.get kinds kind)) then
                 f.err $"map: {name} has kind {Py.reprStr kind}, which is not in \"kinds\""
             for k, top in [ "col", 3; "row", 2 ] do
-                let v = Py.get p k
+                let v = field p k
                 if isNull v then f.err $"map: {name} has no \"{k}\""
                 elif not (isInteger v) || unbox<float> v < 0.0 || unbox<float> v > float top then
                     f.err $"map: {name} has \"{k}\": {jsonOf v}; the grid's {k}s are 0 to {top}"
@@ -1061,12 +1069,19 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
             elif known a && known b then
                 // An arrow between two parts of one row or column is a straight line: a part in a cell between
                 // them would sit on it.
+                // An arrow that changes row and column leaves and arrives level and turns in the middle: a part
+                // in a column between, in the row it leaves or the row it arrives in, or at the very middle, is in
+                // its way.
                 let (c1, r1), (c2, r2) = cell (byId a), cell (byId b)
                 for p in parts do
                     let c, r = cell p
                     let between x x1 x2 = x > min x1 x2 && x < max x1 x2
                     let crossed = text p "id"
-                    if (r1 = r2 && r = r1 && between c c1 c2) || (c1 = c2 && c = c1 && between r r1 r2) then
+                    let straight = (r1 = r2 && r = r1 && between c c1 c2) || (c1 = c2 && c = c1 && between r r1 r2)
+                    let curved =
+                        r1 <> r2 && c1 <> c2 && between c c1 c2
+                        && (r = r1 || r = r2 || (c * 2.0 = c1 + c2 && r * 2.0 = r1 + r2))
+                    if straight || curved then
                         f.warn $"map: the edge {a} -> {b} would cross {crossed}; move a part, or route the edge through it"
         let joined a b = edges |> List.exists (fun e -> (text e "from" = a && text e "to" = b) || (text e "from" = b && text e "to" = a))
         for s in scenes do
@@ -1081,6 +1096,8 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
                     if known a && known b && not (joined a b) then
                         f.err $"{sid}: the path goes from {a} to {b}, but the map has no edge between them"
             let inside = insideOf s
+            if inside = "" && not (isNull (Py.get s "inside")) then
+                f.err $"{sid}: \"inside\" is the id of one part of the map, as a string"
             if inside <> "" then
                 if not (known inside) then f.err $"{sid}: \"inside\": {Py.reprStr inside} is not a part of the map"
                 if isWhy sid || Py.truthy (Py.get s "recap") then

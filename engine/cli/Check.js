@@ -1729,17 +1729,25 @@ function reportLength(script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$0040999 = [1.2, 1.5];
+export const patternInput$00401002 = [1.2, 1.5];
 
-export const VISIT_TAIL = patternInput$0040999[1];
+export const VISIT_TAIL = patternInput$00401002[1];
 
-const VISIT_LEAD = patternInput$0040999[0];
+const VISIT_LEAD = patternInput$00401002[0];
 
 function checkMap(f, script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
     const map = Py_get(script, "map");
-    const text = (o, k) => {
-        const v = Py_get(o, k);
+    const field = (o, k) => {
+        if ((o !== null && typeof o === 'object' && !Array.isArray(o))) {
+            return Py_get(o, k);
+        }
+        else {
+            return defaultOf();
+        }
+    };
+    const text = (o_1, k_1) => {
+        const v = field(o_1, k_1);
         if (Py_isStr(v)) {
             return Py_str(v);
         }
@@ -1747,8 +1755,8 @@ function checkMap(f, script, jsFiles, lesson) {
             return "";
         }
     };
-    const number = (o_1, k_1, d) => {
-        const v_1 = Py_get(o_1, k_1);
+    const number = (o_2, k_2, d) => {
+        const v_1 = field(o_2, k_2);
         if ((typeof v_1 === 'number')) {
             return v_1;
         }
@@ -1766,7 +1774,7 @@ function checkMap(f, script, jsFiles, lesson) {
                 if (hasPath(s_3)) {
                     Findings__err_Z721C83C5(f, concat(idOf(s_3), ": \"path\" needs a top-level \"map\" in script.json"));
                 }
-                if (insideOf(s_3) !== "") {
+                if (!Operators_IsNull(Py_get(s_3, "inside"))) {
                     Findings__err_Z721C83C5(f, concat(idOf(s_3), ": \"inside\" needs a top-level \"map\" in script.json"));
                 }
             }
@@ -1789,30 +1797,38 @@ function checkMap(f, script, jsFiles, lesson) {
     }
     else {
         const kinds = Py_get(map, "kinds");
-        const parts = Py_list(map, "parts");
-        const edges = Py_list(map, "edges");
+        const objects = (what, xs) => {
+            iterateIndexed((i, x) => {
+                if (!((x !== null && typeof x === 'object' && !Array.isArray(x)))) {
+                    Findings__err_Z721C83C5(f, `map: ${what} ${i} is not an object`);
+                }
+            }, xs);
+            return filter((v_3) => ((v_3 !== null && typeof v_3 === 'object' && !Array.isArray(v_3))), xs);
+        };
+        const parts = objects("part", Py_list(map, "parts"));
+        const edges = objects("edge", Py_list(map, "edges"));
         if ((length_1(parts) < 2) ? true : (length_1(parts) > 7)) {
             Findings__err_Z721C83C5(f, `map: ${length_1(parts)} parts; a map has 2 to 7 (more do not fit at a readable size)`);
         }
         if (Py_truthy(kinds)) {
             const arr = Object.keys(kinds);
             for (let idx = 0; idx <= (arr.length - 1); idx++) {
-                const k_2 = item(idx, arr);
-                const kind = Py_get(kinds, k_2);
+                const k_3 = item(idx, arr);
+                const kind = Py_get(kinds, k_3);
                 if (!Py_truthy(Py_get(kind, "tone")) ? true : !Py_truthy(Py_get(kind, "icon"))) {
-                    Findings__err_Z721C83C5(f, concat("map: kind ", Py_reprStr(k_2), " needs a \"tone\" and an \"icon\""));
+                    Findings__err_Z721C83C5(f, concat("map: kind ", Py_reprStr(k_3), " needs a \"tone\" and an \"icon\""));
                 }
             }
         }
-        iterateIndexed((i, p) => {
+        iterateIndexed((i_1, p) => {
             const id = text(p, "id");
-            const name = (id === "") ? (`part ${i}`) : concat("part ", Py_reprStr(id));
+            const name = (id === "") ? (`part ${i_1}`) : concat("part ", Py_reprStr(id));
             const enumerator_2 = getEnumerator(["id", "label", "kind"]);
             try {
                 while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-                    const k_3 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    if (text(p, k_3) === "") {
-                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_3}"`);
+                    const k_4 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    if (text(p, k_4) === "") {
+                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_4}"`);
                     }
                 }
             }
@@ -1828,13 +1844,13 @@ function checkMap(f, script, jsFiles, lesson) {
                 while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
                     const forLoopVar = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
                     const top = forLoopVar[1] | 0;
-                    const k_4 = forLoopVar[0];
-                    const v_3 = Py_get(p, k_4);
-                    if (Operators_IsNull(v_3)) {
-                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_4}"`);
+                    const k_5 = forLoopVar[0];
+                    const v_4 = field(p, k_5);
+                    if (Operators_IsNull(v_4)) {
+                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_5}"`);
                     }
-                    else if ((!(Number.isInteger(v_3)) ? true : (v_3 < 0)) ? true : (v_3 > top)) {
-                        Findings__err_Z721C83C5(f, `map: ${name} has "${k_4}": ${JSON.stringify(v_3)}; the grid's ${k_4}s are 0 to ${top}`);
+                    else if ((!(Number.isInteger(v_4)) ? true : (v_4 < 0)) ? true : (v_4 > top)) {
+                        Findings__err_Z721C83C5(f, `map: ${name} has "${k_5}": ${JSON.stringify(v_4)}; the grid's ${k_5}s are 0 to ${top}`);
                     }
                 }
             }
@@ -1847,9 +1863,9 @@ function checkMap(f, script, jsFiles, lesson) {
             }
         }, parts);
         const ids = filter((y) => ("" !== y), map_3((p_1) => text(p_1, "id"), parts));
-        const enumerator_4 = getEnumerator(List_countBy((x_1) => x_1, ids, {
-            Equals: (x_2, y_1) => (x_2 === y_1),
-            GetHashCode: (x_2) => (stringHash(x_2) | 0),
+        const enumerator_4 = getEnumerator(List_countBy((x_2) => x_2, ids, {
+            Equals: (x_3, y_1) => (x_3 === y_1),
+            GetHashCode: (x_3) => (stringHash(x_3) | 0),
         }));
         try {
             while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
@@ -1866,7 +1882,7 @@ function checkMap(f, script, jsFiles, lesson) {
         const cell = (p_2) => [number(p_2, "col", -1), number(p_2, "row", -1)];
         const enumerator_5 = getEnumerator(List_groupBy(cell, parts, {
             Equals: equalArrays,
-            GetHashCode: (x_3) => (arrayHash(x_3) | 0),
+            GetHashCode: (x_4) => (arrayHash(x_4) | 0),
         }));
         try {
             while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
@@ -1883,8 +1899,8 @@ function checkMap(f, script, jsFiles, lesson) {
             disposeSafe(enumerator_5);
         }
         const known = (id_2) => contains(id_2, ids, {
-            Equals: (x_4, y_3) => (x_4 === y_3),
-            GetHashCode: (x_4) => (stringHash(x_4) | 0),
+            Equals: (x_5, y_3) => (x_5 === y_3),
+            GetHashCode: (x_5) => (stringHash(x_5) | 0),
         });
         const byId = (id_3) => find((p_4) => (text(p_4, "id") === id_3), parts);
         const enumerator_6 = getEnumerator(edges);
@@ -1923,16 +1939,18 @@ function checkMap(f, script, jsFiles, lesson) {
                             const patternInput_2 = cell(p_5);
                             const r = patternInput_2[1];
                             const c = patternInput_2[0];
-                            const between = (x_5, x1, x2) => {
-                                if (compare(x_5, min_1((x_6, y_4) => (compare(x_6, y_4) | 0), x1, x2)) > 0) {
-                                    return compare(x_5, max_1((x_7, y_5) => (compare(x_7, y_5) | 0), x1, x2)) < 0;
+                            const between = (x_6, x1, x2) => {
+                                if (compare(x_6, min_1((x_7, y_4) => (compare(x_7, y_4) | 0), x1, x2)) > 0) {
+                                    return compare(x_6, max_1((x_8, y_5) => (compare(x_8, y_5) | 0), x1, x2)) < 0;
                                 }
                                 else {
                                     return false;
                                 }
                             };
                             const crossed = text(p_5, "id");
-                            if ((((r1 === r2) && (r === r1)) && between(c, c1, c2)) ? true : (((c1 === c2) && (c === c1)) && between(r, r1, r2))) {
+                            const straight = (((r1 === r2) && (r === r1)) && between(c, c1, c2)) ? true : (((c1 === c2) && (c === c1)) && between(r, r1, r2));
+                            const curved = (((r1 !== r2) && (c1 !== c2)) && between(c, c1, c2)) && (((r === r1) ? true : (r === r2)) ? true : (((c * 2) === (c1 + c2)) && ((r * 2) === (r1 + r2))));
+                            if (straight ? true : curved) {
                                 Findings__warn_Z721C83C5(f, `map: the edge ${a} -> ${b} would cross ${crossed}; move a part, or route the edge through it`);
                             }
                         }
@@ -1998,6 +2016,9 @@ function checkMap(f, script, jsFiles, lesson) {
                     }
                 }
                 const inside = insideOf(s_4);
+                if ((inside === "") && !Operators_IsNull(Py_get(s_4, "inside"))) {
+                    Findings__err_Z721C83C5(f, concat(sid, ": \"inside\" is the id of one part of the map, as a string"));
+                }
                 if (inside !== "") {
                     if (!known(inside)) {
                         Findings__err_Z721C83C5(f, concat(sid, ": \"inside\": ", Py_reprStr(inside), " is not a part of the map"));
@@ -2012,17 +2033,17 @@ function checkMap(f, script, jsFiles, lesson) {
             disposeSafe(enumerator_9);
         }
         const arr_1 = toArray(scenes);
-        iterateIndexed_1((k_5, s_5) => {
+        iterateIndexed_1((k_6, s_5) => {
             const inside_1 = insideOf(s_5);
             if (inside_1 !== "") {
-                const first = (k_5 === 0) ? true : (insideOf(item(k_5 - 1, arr_1)) !== inside_1);
-                const last = (k_5 === (arr_1.length - 1)) ? true : (insideOf(item(k_5 + 1, arr_1)) !== inside_1);
+                const first = (k_6 === 0) ? true : (insideOf(item(k_6 - 1, arr_1)) !== inside_1);
+                const last = (k_6 === (arr_1.length - 1)) ? true : (insideOf(item(k_6 + 1, arr_1)) !== inside_1);
                 const lead = number(s_5, "lead", 0.4);
                 const tail = number(s_5, "pad", 0.9) + number(s_5, "hold", 0);
                 if (first && (lead < VISIT_LEAD)) {
                     Findings__warn_Z721C83C5(f, `${idOf(s_5)}: the zoom into ${inside_1} takes ${VISIT_LEAD} s; give this scene "lead": ${VISIT_LEAD} or more (it has ${lead})`);
                 }
-                if ((last && (k_5 < (arr_1.length - 1))) && (tail < VISIT_TAIL)) {
+                if ((last && (k_6 < (arr_1.length - 1))) && (tail < VISIT_TAIL)) {
                     Findings__warn_Z721C83C5(f, `${idOf(s_5)}: the zoom out of ${inside_1} needs "pad" plus "hold" of ${VISIT_TAIL} s or more (it has ${tail})`);
                 }
             }
