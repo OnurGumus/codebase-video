@@ -112,6 +112,20 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   A packet takes the same two fields, to travel beside such an edge. Do not add hidden nodes to act as anchors.
   A node or edge with no `until` leaves with the flow, at the same rate as text beside it; give one its own
   `until` only to remove it earlier.
+- `K.sequence({ actors: [{ id, label, icon, tone, fill, toneAt, at }], messages: [{ from, to, label, at, reply, tone,
+  toneAt }], x, y, w, gap, dim })` - a sequence diagram: who calls whom, in what order. Use it when the narration
+  walks through an exchange step by step; use `K.flow` when it describes how parts are connected. Actors stand in a
+  row across `w` (default 1800 from x 60), each over a dashed lifeline, in array order; an actor appears with the
+  diagram, or on its own `at`. Messages are the rows below, top to bottom in array order, 112 px apart (`gap`): each
+  arrow is drawn from `from`'s lifeline to `to`'s on its `at`, with its `label` above it (HTML, like a flow edge's:
+  the real method, command or event name, short). `reply: true` dashes the arrow and mutes its label, for a return
+  value or an ack. `from` equal to `to` is a call to self, drawn as a small loop beside the lifeline. `dim: true`
+  fades each message as the next one arrives. A message has no `until`: it leaves with the diagram.
+  Time runs down, so list messages in the order they are spoken; the build fails on a message timed before the one
+  above it, on a message that names an actor not in `actors`, and on a diagram that ends below y 1000. Room to plan
+  around: 6 messages at the default `y: 240`, and about 4 actors; with 4 actors a label between neighbours has
+  about 400 px (some 16 characters). Split a longer exchange across two scenes, repeating the actors.
+  No activation bars, notes or `alt` / `loop` frames: say those in the narration, or show the branch as its own diagram.
 - `K.code({ title, lines, lang, glow: [{ line, from, until, tone }], x, y })` - syntax-highlighted
   (`lang`: "csharp" default, "fsharp", "javascript" (also for TypeScript), "python" (also for Bazel BUILD files), "nix", "dockerfile", "sql", "json", "yaml", "bash", "plain"); `glow` lights a line's background.
   Leave out `w`: a width narrower than the longest line does not wrap or clip, the line runs past the card.

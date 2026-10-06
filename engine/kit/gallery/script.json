@@ -60,10 +60,10 @@
     },
     {
       "id": "k3-why",
-      "chapter": "Timelines and flows",
+      "chapter": "Timelines, flows and sequences",
       "lead": 1.0,
       "pad": 0.5,
-      "say": "Step three: timelines and flows."
+      "say": "Step three: timelines, flows and sequences."
     },
     {
       "id": "tl-demo",
@@ -81,6 +81,12 @@
       "lead": 0.6,
       "pad": 1.0,
       "say": "An edge can choose where it meets a box. The service reads the cache from the left of its bottom side, and writes to the database from the right, so the two pairs never cross."
+    },
+    {
+      "id": "sq-demo",
+      "lead": 0.6,
+      "pad": 1.2,
+      "say": "A sequence diagram runs time down the page. The client sends a request to the service. The service runs a query on the database, and the rows come back. The service checks them itself, and then answers the client."
     },
     {
       "id": "k4-why",

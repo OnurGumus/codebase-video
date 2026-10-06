@@ -1,6 +1,6 @@
 {
   "name": "codebase-video",
   "description": "Make a narrated, animated video that teaches a codebase: explore, fact-check against the code, script, build, audit and render locally.",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "author": { "name": "Onur Gumus" }
 }

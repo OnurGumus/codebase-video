@@ -16,7 +16,7 @@ import { createSvg } from "./Interop.js";
 
 const noTime = defaultOf();
 
-const CSS = "\n.k-abs { position: absolute; }\n.k-title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }\n.k-big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }\n.k-text { font-size: 48px; line-height: 1.3; }\n.k-small { font-size: 44px; line-height: 1.3; }\n.k-mono { font-family: var(--mono); font-size: 46px; }\n.k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }\n.k-muted { color: var(--muted); }\n.k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }\n.k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }\n.k-lines { display: flex; flex-direction: column; }\n.k-line { font-size: 48px; line-height: 1.3; }\n.k-line .k-note { display: block; font-size: 44px; color: var(--muted); margin-top: 2px; }\n.k-line.k-mono-line { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-bullet { color: var(--accent); margin-right: 18px; font-weight: 700; }\n.k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }\n.k-rel { position: relative; display: inline-block; }\n.k-chips { display: flex; flex-wrap: wrap; gap: 18px; }\n.k-table { display: grid; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }\n.k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }\n.k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }\n.k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }\n.k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }\n.k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }\n.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%; }\n.k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }\n.k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }\n.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--card);\n  display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }\n.k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }\n.k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }\n.k-node { position: absolute; background: var(--card); border: 3px solid var(--border); border-radius: 18px; padding: 16px 26px;\n  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap; }\n.k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }\n.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }\n.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }\n.k-node .k-node-icon { margin-right: 14px; }\n.k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }\n.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }\n.k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }\n.k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }\n.k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }\n.k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }\n.k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }\n.k-board .k-br-text { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }\n.k-steps { display: flex; gap: 22px; }\n.k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }\n.k-step b { color: var(--accent); margin-right: 12px; }\n.k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }\n.k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;\n  background: var(--bg2); border: 3px solid var(--tc, var(--accent)); box-shadow: 0 12px 36px #0009;\n  white-space: nowrap; transform-origin: 100% 50%; z-index: 20; }\n.k-toast .k-toast-icon { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n  font-size: 48px; line-height: 1; background: color-mix(in srgb, var(--tc, var(--accent)) 22%, transparent); }\n.k-toast .k-toast-text { font-size: 44px; font-weight: 700; color: var(--tc, var(--accent)); }\n.k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }\n.k-toast .k-ring circle { fill: none; stroke-width: 7; }\n.k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }\n.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--card); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }\n.k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }\n.k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }\n.k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }\n";
+const CSS = "\n.k-abs { position: absolute; }\n.k-title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }\n.k-big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }\n.k-text { font-size: 48px; line-height: 1.3; }\n.k-small { font-size: 44px; line-height: 1.3; }\n.k-mono { font-family: var(--mono); font-size: 46px; }\n.k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }\n.k-muted { color: var(--muted); }\n.k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }\n.k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }\n.k-lines { display: flex; flex-direction: column; }\n.k-line { font-size: 48px; line-height: 1.3; }\n.k-line .k-note { display: block; font-size: 44px; color: var(--muted); margin-top: 2px; }\n.k-line.k-mono-line { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-bullet { color: var(--accent); margin-right: 18px; font-weight: 700; }\n.k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }\n.k-rel { position: relative; display: inline-block; }\n.k-chips { display: flex; flex-wrap: wrap; gap: 18px; }\n.k-table { display: grid; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }\n.k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }\n.k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }\n.k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }\n.k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }\n.k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }\n.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%; }\n.k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }\n.k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }\n.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--card);\n  display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }\n.k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }\n.k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }\n.k-node { position: absolute; background: var(--card); border: 3px solid var(--border); border-radius: 18px; padding: 16px 26px;\n  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap; }\n.k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }\n.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }\n.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }\n.k-node .k-node-icon { margin-right: 14px; }\n.k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }\n.k-seq-label { color: var(--ink); }\n.k-seq-label.k-seq-reply { color: var(--muted); }\n.k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }\n.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }\n.k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }\n.k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }\n.k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }\n.k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }\n.k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }\n.k-board .k-br-text { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }\n.k-steps { display: flex; gap: 22px; }\n.k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }\n.k-step b { color: var(--accent); margin-right: 12px; }\n.k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }\n.k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;\n  background: var(--bg2); border: 3px solid var(--tc, var(--accent)); box-shadow: 0 12px 36px #0009;\n  white-space: nowrap; transform-origin: 100% 50%; z-index: 20; }\n.k-toast .k-toast-icon { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n  font-size: 48px; line-height: 1; background: color-mix(in srgb, var(--tc, var(--accent)) 22%, transparent); }\n.k-toast .k-toast-text { font-size: 44px; font-weight: 700; color: var(--tc, var(--accent)); }\n.k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }\n.k-toast .k-ring circle { fill: none; stroke-width: 7; }\n.k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }\n.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--card); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }\n.k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }\n.k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }\n.k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }\n";
 
 function injectCss() {
     if (Operators_IsNull(document.getElementById("stage-kit-css"))) {
@@ -1046,23 +1046,190 @@ export function kitFor(root) {
                 },
             });
         },
-        code(o_21) {
+        sequence(o_21) {
             const o_22 = opts(o_21);
-            const card = mk(host(o_22), "div", "k-code", defaultOf(), defaultOf());
+            const matchValue_56 = defaultArg(o_22.x, 60);
+            const matchValue_57 = defaultArg(o_22.y, 240);
+            const matchValue_58 = defaultArg(o_22.w, 1800);
+            const y0 = matchValue_57;
+            const gap_1 = defaultArg(o_22.gap, 112);
+            const matchValue_60 = (o_22.actors || []);
+            const matchValue_61 = (o_22.messages || []);
+            const actorOpts = matchValue_60;
+            if (actorOpts.length === 0) {
+                (() => { throw new Error("sequence: no actors"); })();
+            }
+            const layer_1 = mk(host(o_22), "div", "k-abs", defaultOf(), "left:0;top:0;width:1920px;height:1080px");
+            const svg_1 = createSvg("svg");
+            svg_1.setAttribute("class", "layer");
+            svg_1.setAttribute("width", "1920");
+            svg_1.setAttribute("height", "1080");
+            layer_1.append(svg_1);
+            const matchValue_62 = TAt(o_22.at);
+            const matchValue_63 = TUntil(o_22.until);
+            const columns = {};
+            iterateIndexed((i_3, a_2) => {
+                columns[a_2.id] = (matchValue_56 + ((matchValue_58 * (i_3 + 0.5)) / actorOpts.length));
+            }, actorOpts);
+            const column = (id_4) => {
+                const cx = columns[id_4];
+                if ((cx == null)) {
+                    const known = join(", ", map((a_3) => a_3.id, actorOpts));
+                    (() => { throw new Error(concat("sequence: a message names actor ", JSON.stringify(id_4), ", which is not one of: ", known)); })();
+                }
+                return cx;
+            };
+            const lastActor = item(actorOpts, actorOpts.length - 1).id;
+            let cursor = (y0 + 96) + 10;
+            let latest = noTime;
+            const messages = mapIndexed((i_4, m) => {
+                const matchValue_64 = column(m.from);
+                const b_3 = column(m.to);
+                const a_4 = matchValue_64;
+                const self = m.from === m.to;
+                const bottom = cursor + 70;
+                const y_1 = self ? (bottom - 56) : bottom;
+                cursor = ((bottom + gap_1) - 70);
+                const at_15 = T0(m.at);
+                if (!((at_15 == null))) {
+                    if (!((latest == null)) && (at_15 < latest)) {
+                        (() => { throw new Error(`sequence: message ${i_4} (${JSON.stringify(m.label)}) is timed before the message above it; time runs down the diagram, so list messages in the order they are spoken`); })();
+                    }
+                    latest = at_15;
+                }
+                const path_1 = createSvg("path");
+                svg_1.append(path_1);
+                path_1.style.fill = "none";
+                path_1.style.strokeWidth = "5";
+                path_1.style.strokeLinecap = "round";
+                path_1.style.strokeLinejoin = "round";
+                if (!!(m.reply)) {
+                    path_1.style.strokeDasharray = "14 12";
+                }
+                const head = createSvg("polygon");
+                svg_1.append(head);
+                const label_3 = (!!(m.label)) ? mk(layer_1, "div", (!!(m.reply)) ? "k-edge-label k-seq-label k-seq-reply" : "k-edge-label k-seq-label", m.label, defaultOf()) : defaultOf();
+                const side = ((self && (m.from === lastActor)) && (actorOpts.length > 1)) ? -1 : 1;
+                const len_1 = ((90 + 56) + 90) - 28;
+                if (self) {
+                    path_1.setAttribute("d", `M${a_4},${y_1} H${a_4 + (side * 90)} V${bottom} H${a_4 + (side * 28)}`);
+                    head.setAttribute("points", `${a_4},${bottom} ${a_4 + (side * 28)},${bottom - (26 / 2)} ${a_4 + (side * 28)},${bottom + (26 / 2)}`);
+                }
+                if (!Operators_IsNull(label_3)) {
+                    if (self) {
+                        label_3.style.left = (`${a_4 + (side * (90 + 18))}px`);
+                        label_3.style.top = (`${(y_1 + bottom) / 2}px`);
+                        label_3.style.transform = ((side > 0) ? "translate(0, -50%)" : "translate(-100%, -50%)");
+                    }
+                    else {
+                        label_3.style.left = (`${(a_4 + b_3) / 2}px`);
+                        label_3.style.top = (`${y_1}px`);
+                        label_3.style.transform = "translate(-50%, calc(-100% - 10px))";
+                    }
+                }
+                return {
+                    a: a_4,
+                    at: at_15,
+                    b: b_3,
+                    head: head,
+                    label: label_3,
+                    len: len_1,
+                    m: m,
+                    path: path_1,
+                    self: self,
+                    toneAt: T0(m.toneAt),
+                    y: y_1,
+                };
+            }, matchValue_61);
+            const lifeEnd = (messages.length > 0) ? ((cursor - (gap_1 - 70)) + 24) : ((y0 + 96) + 160);
+            if (lifeEnd > 1000) {
+                (() => { throw new Error(`sequence: ${messages.length} messages end at y ${Math.round(lifeEnd)}, below the safe area (${1000}): split the exchange across two scenes (about 6 messages fit), or pass a smaller y or gap`); })();
+            }
+            const actors = map((a_5) => {
+                const cx_1 = column(a_5.id);
+                const line_1 = createSvg("line");
+                svg_1.append(line_1);
+                line_1.setAttribute("x1", `${cx_1}`);
+                line_1.setAttribute("x2", `${cx_1}`);
+                line_1.setAttribute("y1", `${y0 + 96}`);
+                line_1.setAttribute("y2", `${lifeEnd}`);
+                line_1.style.stroke = "var(--border)";
+                line_1.style.strokeWidth = "4";
+                line_1.style.strokeDasharray = "4 14";
+                const el_66 = mk(layer_1, "div", "k-node k-actor", concat((!!(a_5.icon)) ? concat("<span class=\"k-node-icon\">", a_5.icon, "</span>") : "", a_5.label), `left:${cx_1}px;top:${y0}px`);
+                return {
+                    a: a_5,
+                    at: T0(a_5.at),
+                    el: el_66,
+                    line: line_1,
+                    toneAt: T0(a_5.toneAt),
+                };
+            }, actorOpts);
+            return add({
+                el: layer_1,
+                render: (t_10) => {
+                    layer_1.style.opacity = vis$0027(t_10, matchValue_62, matchValue_63);
+                    for (let idx_14 = 0; idx_14 <= (actors.length - 1); idx_14++) {
+                        const ac = item_1(idx_14, actors);
+                        const p_7 = vis$0027(t_10, ac.at, noTime);
+                        show(ac.el, p_7, 12, "translateX(-50%)");
+                        ac.line.style.opacity = p_7;
+                        const on_4 = isOn(ac.a.tone, ac.toneAt, t_10);
+                        ac.el.style.borderColor = (on_4 ? tone(ac.a.tone) : "");
+                        ac.el.style.color = ((on_4 && !(!!(ac.a.fill))) ? tone(ac.a.tone) : "");
+                        ac.el.style.background = ((on_4 && (!!(ac.a.fill))) ? concat("color-mix(in srgb, ", tone(ac.a.tone), " 24%, var(--card))") : "");
+                    }
+                    iterateIndexed((i_5, ms) => {
+                        const next_2 = item(messages, i_5 + 1);
+                        const dimP_1 = (((!!(o_22.dim)) && (!!(next_2))) && !((next_2.at == null))) ? progIO(t_10, next_2.at, 0.4) : 0;
+                        const p_8 = vis$0027(t_10, ms.at, noTime) * lerp(1, 0.45, dimP_1);
+                        const drawn_1 = ((ms.at == null)) ? 1 : progIO(t_10, ms.at, 0.5);
+                        const on_5 = isOn(ms.m.tone, ms.toneAt, t_10);
+                        const stroke = on_5 ? tone(ms.m.tone) : ((!!(ms.m.reply)) ? "var(--faint)" : "var(--muted)");
+                        ms.path.style.opacity = p_8;
+                        ms.path.style.stroke = stroke;
+                        ms.head.style.fill = stroke;
+                        if (ms.self) {
+                            if (!(!!(ms.m.reply))) {
+                                ms.path.style.strokeDasharray = (`${ms.len}`);
+                                ms.path.style.strokeDashoffset = (`${ms.len * (1 - drawn_1)}`);
+                            }
+                            ms.head.style.opacity = (p_8 * clamp01((drawn_1 - 0.85) / 0.15));
+                        }
+                        else {
+                            const dir = Math.sign(ms.b - ms.a);
+                            const tip_1 = lerp(ms.a, ms.b, drawn_1);
+                            const back = tip_1 - (dir * 28);
+                            const lineEnd = (dir > 0) ? max(ms.a, back) : min(ms.a, back);
+                            ms.path.setAttribute("d", `M${ms.a},${ms.y} L${lineEnd},${ms.y}`);
+                            ms.head.setAttribute("points", `${tip_1},${ms.y} ${back},${ms.y - (26 / 2)} ${back},${ms.y + (26 / 2)}`);
+                            ms.head.style.opacity = (p_8 * clamp01(drawn_1 * 8));
+                        }
+                        if (!Operators_IsNull(ms.label)) {
+                            ms.label.style.opacity = p_8;
+                            ms.label.style.color = (on_5 ? tone(ms.m.tone) : "");
+                        }
+                    }, messages);
+                },
+            });
+        },
+        code(o_23) {
+            const o_24 = opts(o_23);
+            const card = mk(host(o_24), "div", "k-code", defaultOf(), defaultOf());
             place(card, ({ ...{
                 x: 60,
                 y: 200,
-            }, ...o_22 }));
-            if (!!(o_22.title)) {
-                mk(card, "div", "k-code-title", o_22.title, defaultOf());
+            }, ...o_24 }));
+            if (!!(o_24.title)) {
+                mk(card, "div", "k-code-title", o_24.title, defaultOf());
             }
-            const lang = defaultArg(o_22.lang, "csharp");
-            const ls = map((l) => mk(card, "div", "k-cl", highlight(l, lang), defaultOf()), o_22.lines);
-            if (!!(o_22.font)) {
-                for (let idx_14 = 0; idx_14 <= (ls.length - 1); idx_14++) {
-                    const l_1 = item_1(idx_14, ls);
-                    l_1.style.fontSize = (`${o_22.font}px`);
-                    const lh = `${Math.round((o_22.font * 60) / 44)}px`;
+            const lang = defaultArg(o_24.lang, "csharp");
+            const ls = map((l) => mk(card, "div", "k-cl", highlight(l, lang), defaultOf()), o_24.lines);
+            if (!!(o_24.font)) {
+                for (let idx_15 = 0; idx_15 <= (ls.length - 1); idx_15++) {
+                    const l_1 = item_1(idx_15, ls);
+                    l_1.style.fontSize = (`${o_24.font}px`);
+                    const lh = `${Math.round((o_24.font * 60) / 44)}px`;
                     l_1.style.height = lh;
                     l_1.style.lineHeight = lh;
                 }
@@ -1071,100 +1238,100 @@ export function kitFor(root) {
                 from: T0(g_3.from),
                 g: g_3,
                 until: TUntil(g_3.until),
-            }), (o_22.glow || []));
-            const matchValue_49 = TAt(o_22.at);
-            const matchValue_50 = TUntil(o_22.until);
+            }), (o_24.glow || []));
+            const matchValue_66 = TAt(o_24.at);
+            const matchValue_67 = TUntil(o_24.until);
             return add({
                 el: card,
-                render: (t_10) => {
-                    show(card, vis$0027(t_10, matchValue_49, matchValue_50), defaultArg(o_22.slide, 20), "");
-                    iterateIndexed((i_3, l_2) => {
-                        let p_7 = 0;
+                render: (t_11) => {
+                    show(card, vis$0027(t_11, matchValue_66, matchValue_67), defaultArg(o_24.slide, 20), "");
+                    iterateIndexed((i_6, l_2) => {
+                        let p_9 = 0;
                         let colour = "var(--accent)";
-                        for (let idx_15 = 0; idx_15 <= (glows.length - 1); idx_15++) {
-                            const gl = item_1(idx_15, glows);
-                            if (gl.g.line === i_3) {
-                                const q_1 = within(t_10, gl.from, (gl.until ?? (Infinity)), 0.25);
-                                if (q_1 > p_7) {
-                                    p_7 = q_1;
+                        for (let idx_16 = 0; idx_16 <= (glows.length - 1); idx_16++) {
+                            const gl = item_1(idx_16, glows);
+                            if (gl.g.line === i_6) {
+                                const q_1 = within(t_11, gl.from, (gl.until ?? (Infinity)), 0.25);
+                                if (q_1 > p_9) {
+                                    p_9 = q_1;
                                     colour = ((tone(gl.g.tone) || colour));
                                 }
                             }
                         }
-                        l_2.style.background = ((p_7 > 0) ? (`color-mix(in srgb, ${colour} ${Math.round(p_7 * 22)}%, transparent)`) : "");
+                        l_2.style.background = ((p_9 > 0) ? (`color-mix(in srgb, ${colour} ${Math.round(p_9 * 22)}%, transparent)`) : "");
                     }, ls);
                 },
             });
         },
-        board(o_23) {
-            const o_24 = opts(o_23);
-            const card_1 = mk(host(o_24), "div", "k-board", defaultOf(), defaultOf());
+        board(o_25) {
+            const o_26 = opts(o_25);
+            const card_1 = mk(host(o_26), "div", "k-board", defaultOf(), defaultOf());
             place(card_1, ({ ...{
                 w: 1800,
                 x: 60,
                 y: 200,
-            }, ...o_24 }));
-            if (!!(o_24.title)) {
-                mk(card_1, "div", "k-board-title", o_24.title, defaultOf());
+            }, ...o_26 }));
+            if (!!(o_26.title)) {
+                mk(card_1, "div", "k-board-title", o_26.title, defaultOf());
             }
             const rows_3 = map((r_6) => {
                 const row_2 = mk(card_1, "div", "k-br", defaultOf(), defaultOf());
-                const label_3 = mk(row_2, "div", "k-br-label", (r_6.label || ""), defaultOf());
+                const label_4 = mk(row_2, "div", "k-br-label", (r_6.label || ""), defaultOf());
                 const text_1 = mk(row_2, "div", "k-br-text", "", defaultOf());
                 const result = (!!(r_6.result)) ? mk(row_2, "div", "k-br-result", esc(r_6.result), defaultOf()) : defaultOf();
-                const at_16 = T0(r_6.at);
+                const at_17 = T0(r_6.at);
                 const resultAt = T0(r_6.resultAt);
                 return {
-                    at: at_16,
+                    at: at_17,
                     dimAt: T0(r_6.dimAt),
-                    label: label_3,
+                    label: label_4,
                     r: r_6,
                     result: result,
                     resultAt: resultAt,
                     row: row_2,
                     text: text_1,
                 };
-            }, o_24.rows);
-            const at_17 = T0((o_24.at ?? ((o_24.rows.length > 0) ? item_1(0, o_24.rows).at : defaultOf())));
-            const until_11 = TUntil(o_24.until);
+            }, o_26.rows);
+            const at_18 = T0((o_26.at ?? ((o_26.rows.length > 0) ? item_1(0, o_26.rows).at : defaultOf())));
+            const until_11 = TUntil(o_26.until);
             return add({
                 el: card_1,
-                render: (t_11) => {
-                    show(card_1, vis$0027(t_11, at_17, until_11), 16, "");
-                    for (let idx_16 = 0; idx_16 <= (rows_3.length - 1); idx_16++) {
-                        const r_7 = item_1(idx_16, rows_3);
-                        const p_8 = ((r_7.at == null)) ? 1 : progIO(t_11, r_7.at - 0.1, 0.3);
-                        r_7.label.style.opacity = p_8;
-                        r_7.text.textContent = typed(r_7.r.text, ((r_7.at == null)) ? 1 : prog(t_11, r_7.at, defaultArg(r_7.r.dur, 1.2), ease.linear));
+                render: (t_12) => {
+                    show(card_1, vis$0027(t_12, at_18, until_11), 16, "");
+                    for (let idx_17 = 0; idx_17 <= (rows_3.length - 1); idx_17++) {
+                        const r_7 = item_1(idx_17, rows_3);
+                        const p_10 = ((r_7.at == null)) ? 1 : progIO(t_12, r_7.at - 0.1, 0.3);
+                        r_7.label.style.opacity = p_10;
+                        r_7.text.textContent = typed(r_7.r.text, ((r_7.at == null)) ? 1 : prog(t_12, r_7.at, defaultArg(r_7.r.dur, 1.2), ease.linear));
                         if (!Operators_IsNull(r_7.result)) {
-                            r_7.result.style.opacity = (((r_7.resultAt == null)) ? p_8 : progIO(t_11, r_7.resultAt - 0.1, 0.4));
+                            r_7.result.style.opacity = (((r_7.resultAt == null)) ? p_10 : progIO(t_12, r_7.resultAt - 0.1, 0.4));
                         }
-                        r_7.row.style.opacity = (((r_7.dimAt == null)) ? 1 : lerp(1, 0.45, progIO(t_11, r_7.dimAt, 0.4)));
+                        r_7.row.style.opacity = (((r_7.dimAt == null)) ? 1 : lerp(1, 0.45, progIO(t_12, r_7.dimAt, 0.4)));
                     }
                 },
             });
         },
-        steps(labels, o_25) {
-            const o_26 = opts(o_25);
-            const box_6 = mk(host(o_26), "div", "k-steps", defaultOf(), defaultOf());
+        steps(labels, o_27) {
+            const o_28 = opts(o_27);
+            const box_6 = mk(host(o_28), "div", "k-steps", defaultOf(), defaultOf());
             place(box_6, ({ ...{
                 x: 60,
                 y: 140,
-            }, ...o_26 }));
-            const els = mapIndexed((i_4, l_3) => mk(box_6, "div", "k-step", `<b>${i_4 + 1}</b>${String(l_3)}`, defaultOf()), labels);
-            const ats = map(T0, (o_26.ats || []));
-            const atOf = (i_5) => item(ats, i_5);
-            const at_18 = T0((o_26.at ?? item(ats, 0)));
-            const until_12 = TUntil(o_26.until);
+            }, ...o_28 }));
+            const els = mapIndexed((i_7, l_3) => mk(box_6, "div", "k-step", `<b>${i_7 + 1}</b>${String(l_3)}`, defaultOf()), labels);
+            const ats = map(T0, (o_28.ats || []));
+            const atOf = (i_8) => item(ats, i_8);
+            const at_19 = T0((o_28.at ?? item(ats, 0)));
+            const until_12 = TUntil(o_28.until);
             return add({
                 el: box_6,
-                render: (t_12) => {
-                    show(box_6, vis$0027(t_12, at_18, until_12), 12, "");
-                    iterateIndexed((i_6, e_3) => {
-                        const ai = atOf(i_6);
-                        const reached = !((ai == null)) && (t_12 >= ai);
-                        const next_2 = atOf(i_6 + 1);
-                        const current_1 = reached && (((i_6 === (els.length - 1)) ? true : ((next_2 == null))) ? true : (t_12 < next_2));
+                render: (t_13) => {
+                    show(box_6, vis$0027(t_13, at_19, until_12), 12, "");
+                    iterateIndexed((i_9, e_3) => {
+                        const ai = atOf(i_9);
+                        const reached = !((ai == null)) && (t_13 >= ai);
+                        const next_3 = atOf(i_9 + 1);
+                        const current_1 = reached && (((i_9 === (els.length - 1)) ? true : ((next_3 == null))) ? true : (t_13 < next_3));
                         e_3.style.borderColor = (current_1 ? "var(--accent)" : "");
                         e_3.style.background = (current_1 ? "var(--accent-dim)" : "");
                         e_3.style.color = (reached ? "var(--ink)" : "");
@@ -1173,57 +1340,57 @@ export function kitFor(root) {
                 },
             });
         },
-        counter(o_27) {
-            const o_28 = opts(o_27);
-            const el_71 = mk(host(o_28), "div", concat("k-", (o_28.size || "counter")), defaultOf(), defaultOf());
-            place(el_71, o_28);
-            const matchValue_51 = TAt(o_28.at);
-            const matchValue_52 = TUntil(o_28.until);
-            const matchValue_53 = T0(o_28.toneAt);
-            const at_19 = matchValue_51;
-            const fmt_1 = (!!(o_28.format)) ? o_28.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
+        counter(o_29) {
+            const o_30 = opts(o_29);
+            const el_84 = mk(host(o_30), "div", concat("k-", (o_30.size || "counter")), defaultOf(), defaultOf());
+            place(el_84, o_30);
+            const matchValue_68 = TAt(o_30.at);
+            const matchValue_69 = TUntil(o_30.until);
+            const matchValue_70 = T0(o_30.toneAt);
+            const at_20 = matchValue_68;
+            const fmt_1 = (!!(o_30.format)) ? o_30.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
             return add({
-                el: el_71,
-                render: (t_13) => {
-                    show(el_71, vis$0027(t_13, at_19, matchValue_52), 10, "");
-                    el_71.textContent = fmt_1(lerp(defaultArg(o_28.from, 0), o_28.to, prog(t_13, at_19, defaultArg(o_28.dur, 1.2), ease.inOut)));
-                    el_71.style.color = (isOn(o_28.tone, matchValue_53, t_13) ? tone(o_28.tone) : "");
+                el: el_84,
+                render: (t_14) => {
+                    show(el_84, vis$0027(t_14, at_20, matchValue_69), 10, "");
+                    el_84.textContent = fmt_1(lerp(defaultArg(o_30.from, 0), o_30.to, prog(t_14, at_20, defaultArg(o_30.dur, 1.2), ease.inOut)));
+                    el_84.style.color = (isOn(o_30.tone, matchValue_70, t_14) ? tone(o_30.tone) : "");
                 },
             });
         },
-        toast(kind, o_29) {
-            const o_30 = opts(o_29);
-            const tt = toastEl(host(o_30), kind, o_30.text);
-            tt.el.style.right = (`${defaultArg(o_30.right, 60)}px`);
-            const option_9 = o_30.x;
+        toast(kind, o_31) {
+            const o_32 = opts(o_31);
+            const tt = toastEl(host(o_32), kind, o_32.text);
+            tt.el.style.right = (`${defaultArg(o_32.right, 60)}px`);
+            const option_9 = o_32.x;
             if (option_9 != null) {
                 const x_3 = option_9;
                 tt.el.style.left = (`${x_3}px`);
                 tt.el.style.right = "";
             }
-            tt.el.style.top = (`${defaultArg(o_30.y, 130)}px`);
-            const matchValue_54 = TAt(o_30.at);
-            const matchValue_55 = TUntil(o_30.until);
-            const at_20 = matchValue_54;
+            tt.el.style.top = (`${defaultArg(o_32.y, 130)}px`);
+            const matchValue_71 = TAt(o_32.at);
+            const matchValue_72 = TUntil(o_32.until);
+            const at_21 = matchValue_71;
             return add({
                 el: tt.el,
-                render: (t_14) => {
-                    tt.draw(t_14, at_20, min((matchValue_55 ?? (Infinity)), at_20 + defaultArg(o_30.dur, TOAST_DUR)));
+                render: (t_15) => {
+                    tt.draw(t_15, at_21, min((matchValue_72 ?? (Infinity)), at_21 + defaultArg(o_32.dur, TOAST_DUR)));
                 },
             });
         },
         custom(build, render) {
-            const el_77 = build(root);
+            const el_90 = build(root);
             return add({
-                el: el_77,
-                render: (t_15) => {
-                    render(t_15, el_77);
+                el: el_90,
+                render: (t_16) => {
+                    render(t_16, el_90);
                 },
             });
         },
-        render(t_16) {
-            for (let i_7 = 0; i_7 <= (parts.length - 1); i_7++) {
-                item_1(i_7, parts).render(t_16);
+        render(t_17) {
+            for (let i_10 = 0; i_10 <= (parts.length - 1); i_10++) {
+                item_1(i_10, parts).render(t_17);
             }
         },
     };

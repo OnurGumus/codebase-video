@@ -37,6 +37,11 @@ exists) says per scene what to show, the exact code to show, and what not to sho
 - Diagrams of modules, calls and data: boxes for components (the file or module name in mono as the label or sub),
   arrows for calls or data flow in their real direction, a packet (`tone: "muted"`) travelling a flow when the
   narration follows a request through it; an arrow never appears before both its boxes.
+- Call order (K.sequence): when the narration walks through an exchange step by step (who calls whom, then what comes
+  back), draw a sequence diagram instead of a flow: one actor per component, in the order they first take part, each
+  with the tone and icon of its kind; one message per call, labelled with the real method, command or event name, on
+  the phrase that names it; `reply: true` for what comes back. Only calls the document cites, in the order the code
+  makes them; at most 6 messages and about 4 actors per diagram, a longer exchange split across two scenes.
 - The frame draws toasts and "Pause and think" countdowns in the band above y 120, the chapter cards and the recap
   cards (`*-why` and `*-recap` are not yours). Keep content inside x 60-1860, y 240-1000.
 - Pause-and-think scenes: show the question's facts and the spoken question through the silence, but nothing that IS

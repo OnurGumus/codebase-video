@@ -1,7 +1,7 @@
 /// A component kit for lesson animations (port of engine/stage-kit.js): window.Kit. The patterns every clip
 /// kept rebuilding by hand (a heading, lines that arrive with the words, chips, tables, bars against a
-/// capacity line, a stacked timeline, boxes with arrows and moving packets, a code card, a whiteboard, a step
-/// strip), each timed by the narration and drawn purely from t. Styles are injected once, by install().
+/// capacity line, a stacked timeline, boxes with arrows and moving packets, a sequence diagram, a code card, a
+/// whiteboard, a step strip), each timed by the narration and drawn purely from t. Styles are injected once, by install().
 ///
 /// A module (long videos, see templates/long/clip.html) is written as
 ///
@@ -214,6 +214,31 @@ type FlowOpts =
     abstract edges: FlowEdge[]
     abstract packets: Packet[]
 
+type SeqActor =
+    abstract id: string
+    abstract label: string
+    abstract icon: string
+    abstract at: Spec
+    abstract tone: string
+    abstract fill: bool
+    abstract toneAt: Spec
+
+type SeqMessage =
+    abstract from: string
+    abstract ``to``: string
+    abstract label: string
+    abstract at: Spec
+    abstract reply: bool
+    abstract tone: string
+    abstract toneAt: Spec
+
+type SequenceOpts =
+    inherit Opts
+    abstract actors: SeqActor[]
+    abstract messages: SeqMessage[]
+    abstract gap: float option
+    abstract dim: bool
+
 type Glow =
     abstract line: int
     abstract from: Spec
@@ -280,6 +305,7 @@ type IKit =
     abstract bars: ?o: BarsOpts -> Comp
     abstract timeline: ?o: TimelineOpts -> Comp
     abstract flow: ?o: FlowOpts -> Comp
+    abstract sequence: ?o: SequenceOpts -> Comp
     abstract code: ?o: CodeOpts -> Comp
     abstract board: ?o: BoardOpts -> Comp
     abstract steps: labels: obj[] * ?o: StepsOpts -> Comp
@@ -341,6 +367,9 @@ let private CSS =
 .k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }
 .k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }
 .k-node .k-node-icon { margin-right: 14px; }
+.k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }
+.k-seq-label { color: var(--ink); }
+.k-seq-label.k-seq-reply { color: var(--muted); }
 .k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }
 .k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }
 .k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
@@ -1096,6 +1125,149 @@ let kitFor (root: HTMLElement) : IKit =
                             let fade = if f > fadeAt then 1.0 - clamp01 ((f - fadeAt) / (1.0 - fadeAt + 1e-6)) else 1.0
                             show pk.el (if moving then fade else 0.0) 0.0
                                 $"translate({lerp a.x b.x f - w / 2.0}px, {lerp a.y b.y f - h / 2.0 + defaultArg pk.p.lift 0.0}px)" |}
+
+        /// A sequence diagram: { actors: [{ id, label, icon, tone, fill, toneAt, at }], messages: [{ from, to, label, at,
+        /// reply, tone, toneAt }], x, y, w, gap, dim }. Actors stand in a row across `w`, each over a dashed lifeline;
+        /// messages are rows below them, top to bottom in array order, each an arrow drawn from `from`'s lifeline to
+        /// `to`'s on its `at`, with its label above. `reply: true` dashes the arrow and mutes its label; `from` = `to`
+        /// is a call to self, drawn as a loop beside the lifeline. `dim` fades a message as the next one arrives.
+        /// Everything is placed from the options alone (an actor box is always 96 px tall), so a diagram that would
+        /// run below the safe area, a message that names no actor, and a message timed before the one above it all
+        /// fail the module's build.
+        member _.sequence o =
+            let o = opts o
+            let HEAD_L, HEAD_W, BOX_H, LABEL_ROOM, LOOP_W, LOOP_H, SAFE_BOTTOM = 28.0, 26.0, 96.0, 70.0, 90.0, 56.0, 1000.0
+            let x0, y0, w, gap = defaultArg o.x 60.0, defaultArg o.y 240.0, defaultArg o.w 1800.0, defaultArg o.gap 112.0
+            let actorOpts, messageOpts = jsOr o.actors [||], jsOr o.messages [||]
+            if actorOpts.Length = 0 then fail "sequence: no actors"
+            let layer = mk (host o) "div" "k-abs" null "left:0;top:0;width:1920px;height:1080px"
+            let svg = createSvg "svg"
+            svg.setAttribute ("class", "layer")
+            svg.setAttribute ("width", "1920")
+            svg.setAttribute ("height", "1080")
+            layer?append (svg)
+            let layerAt, layerUntil = TAt o.at, TUntil o.until
+            // Where each actor's lifeline is: the centre of its share of the width.
+            let columns = table ()
+            actorOpts |> Array.iteri (fun i a -> put columns a.id (x0 + w * (float i + 0.5) / float actorOpts.Length))
+            let column (id: string) : float =
+                let cx = get<float> columns id
+                if isNil cx then
+                    let known = actorOpts |> Array.map (fun a -> a.id) |> String.concat ", "
+                    fail $"sequence: a message names actor {stringify id}, which is not one of: {known}"
+                cx
+            let lastActor = (item actorOpts (actorOpts.Length - 1)).id
+            // Rows, top to bottom, each `gap` tall. A message's `y` is its arrow; a call to self is a loop from `y`
+            // down to `bottom`, in the room another row gives its label.
+            let mutable cursor = y0 + BOX_H + 10.0
+            let mutable latest = noTime
+            let messages =
+                messageOpts
+                |> Array.mapi (fun i m ->
+                    let a, b = column m.from, column m.``to``
+                    let self = m.from = m.``to``
+                    let bottom = cursor + LABEL_ROOM
+                    let y = if self then bottom - LOOP_H else bottom
+                    cursor <- bottom + gap - LABEL_ROOM
+                    let at = T0 m.at
+                    if not (isNil at) then
+                        if not (isNil latest) && at < latest then
+                            fail $"sequence: message {i} ({stringify m.label}) is timed before the message above it; time runs down the diagram, so list messages in the order they are spoken"
+                        latest <- at
+                    let path = createSvg "path"
+                    svg?append (path)
+                    path?style?fill <- "none"
+                    path?style?strokeWidth <- "5"
+                    path?style?strokeLinecap <- "round"
+                    path?style?strokeLinejoin <- "round"
+                    if truthy m.reply then path?style?strokeDasharray <- "14 12"
+                    let head = createSvg "polygon"
+                    svg?append (head)
+                    let label =
+                        if truthy m.label then
+                            mk layer "div" (if truthy m.reply then "k-edge-label k-seq-label k-seq-reply" else "k-edge-label k-seq-label") m.label null
+                        else null
+                    // A loop opens to the right of its lifeline, or to the left under the last actor, where the right
+                    // has no room for the label.
+                    let side = if self && m.from = lastActor && actorOpts.Length > 1 then -1.0 else 1.0
+                    let len = LOOP_W + LOOP_H + LOOP_W - HEAD_L
+                    if self then
+                        path.setAttribute ("d", $"M{a},{y} H{a + side * LOOP_W} V{bottom} H{a + side * HEAD_L}")
+                        head.setAttribute ("points", $"{a},{bottom} {a + side * HEAD_L},{bottom - HEAD_W / 2.0} {a + side * HEAD_L},{bottom + HEAD_W / 2.0}")
+                    if not (isNull label) then
+                        if self then
+                            label.style.left <- $"{a + side * (LOOP_W + 18.0)}px"
+                            label.style.top <- $"{(y + bottom) / 2.0}px"
+                            label.style.transform <- if side > 0.0 then "translate(0, -50%)" else "translate(-100%, -50%)"
+                        else
+                            label.style.left <- $"{(a + b) / 2.0}px"
+                            label.style.top <- $"{y}px"
+                            label.style.transform <- "translate(-50%, calc(-100% - 10px))"
+                    {| m = m; a = a; b = b; y = y; self = self; len = len; path = path; head = head; label = label; at = at
+                       toneAt = T0 m.toneAt |})
+            let lifeEnd = if messages.Length > 0 then cursor - (gap - LABEL_ROOM) + 24.0 else y0 + BOX_H + 160.0
+            if lifeEnd > SAFE_BOTTOM then
+                fail $"sequence: {messages.Length} messages end at y {round lifeEnd}, below the safe area ({SAFE_BOTTOM}): split the exchange across two scenes (about 6 messages fit), or pass a smaller y or gap"
+            let actors =
+                actorOpts
+                |> Array.map (fun a ->
+                    let cx = column a.id
+                    let line = createSvg "line"
+                    svg?append (line)
+                    line.setAttribute ("x1", $"{cx}")
+                    line.setAttribute ("x2", $"{cx}")
+                    line.setAttribute ("y1", $"{y0 + BOX_H}")
+                    line.setAttribute ("y2", $"{lifeEnd}")
+                    line?style?stroke <- "var(--border)"
+                    line?style?strokeWidth <- "4"
+                    line?style?strokeDasharray <- "4 14"
+                    let icon = if truthy a.icon then $"""<span class="k-node-icon">{a.icon}</span>""" else ""
+                    let el = mk layer "div" "k-node k-actor" $"{icon}{a.label}" $"left:{cx}px;top:{y0}px"
+                    {| a = a; el = el; line = line; at = T0 a.at; toneAt = T0 a.toneAt |})
+            add
+                {| el = layer
+                   render =
+                    fun t ->
+                        layer.style?opacity <- vis' t layerAt layerUntil
+                        for ac in actors do
+                            let p = vis' t ac.at noTime
+                            show ac.el p 12.0 "translateX(-50%)"
+                            ac.line?style?opacity <- p
+                            let on = isOn ac.a.tone ac.toneAt t
+                            ac.el.style.borderColor <- if on then tone ac.a.tone else ""
+                            ac.el.style.color <- if on && not (truthy ac.a.fill) then tone ac.a.tone else ""
+                            ac.el.style.background <-
+                                if on && truthy ac.a.fill then $"color-mix(in srgb, {tone ac.a.tone} 24%%, var(--card))" else ""
+                        messages
+                        |> Array.iteri (fun i ms ->
+                            let next = item messages (i + 1)
+                            let dimP = if truthy o.dim && truthy next && not (isNil next.at) then progIO t next.at 0.4 else 0.0
+                            let p = vis' t ms.at noTime * lerp 1.0 0.45 dimP
+                            let drawn = if isNil ms.at then 1.0 else progIO t ms.at 0.5
+                            let on = isOn ms.m.tone ms.toneAt t
+                            let stroke = if on then tone ms.m.tone else if truthy ms.m.reply then "var(--faint)" else "var(--muted)"
+                            ms.path?style?opacity <- p
+                            ms.path?style?stroke <- stroke
+                            ms.head?style?fill <- stroke
+                            if ms.self then
+                                // The loop is revealed along its length; its head arrives with the last of it.
+                                if not (truthy ms.m.reply) then
+                                    ms.path?style?strokeDasharray <- $"{ms.len}"
+                                    ms.path?style?strokeDashoffset <- $"{ms.len * (1.0 - drawn)}"
+                                ms.head?style?opacity <- p * clamp01 ((drawn - 0.85) / 0.15)
+                            else
+                                // The arrow grows from the caller's lifeline, its head leading, so a dashed reply
+                                // is drawn the same way as a call.
+                                let dir = sign (ms.b - ms.a)
+                                let tip = lerp ms.a ms.b drawn
+                                let back = tip - dir * HEAD_L
+                                let lineEnd = if dir > 0.0 then Math.Max(ms.a, back) else Math.Min(ms.a, back)
+                                ms.path.setAttribute ("d", $"M{ms.a},{ms.y} L{lineEnd},{ms.y}")
+                                ms.head.setAttribute ("points", $"{tip},{ms.y} {back},{ms.y - HEAD_W / 2.0} {back},{ms.y + HEAD_W / 2.0}")
+                                ms.head?style?opacity <- p * clamp01 (drawn * 8.0)
+                            if not (isNull ms.label) then
+                                ms.label.style?opacity <- p
+                                ms.label.style.color <- if on then tone ms.m.tone else "") |}
 
         /// A code card whose lines glow as they run: { title, lines: [...], glow: [{ line, from, until, tone }] }.
         /// `font` (px, default 44) shrinks the lines so verbatim tool output keeps its real indentation.
