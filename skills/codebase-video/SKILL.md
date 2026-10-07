@@ -155,7 +155,8 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
 speaker notes, the script to read, the video without the voice), run `CV present` after the render. It writes
 `WS/out/<name>.pptx` (a slide per sentence, the sentence as its speaker note, a section per chapter),
 `<name>.script.md` (the narration with each line's slide and time), `<name>.srt` and `<name>.silent.mp4`; give the
-user those paths. For the animated click-through version, `CV present --serve` prints a URL (`?present`) and serves
+user those paths. When they want the slides to move, `CV present --clips`: each slide plays its part of the
+animation as it opens (PowerPoint and Keynote; Google Slides shows a still). For the animated click-through version, `CV present --serve` prints a URL (`?present`) and serves
 it until Ctrl+C: → or a click plays the next step, ← goes back, S opens speaker notes in a second window. If it
 says the slide writer is not installed, run `CV setup` once and try again.
 

@@ -10,9 +10,11 @@
 ///   node engine/cli/Cv.js <ws> video [--full]        render and encode -> out/<name>.{mp4,webm,jpg,vtt}; scenes that did
 ///                                                    not change are reused from build/segments (--full: none are)
 ///   node engine/cli/Cv.js <ws> all                   narrate, then video
-///   node engine/cli/Cv.js <ws> present [--serve]     for presenting in your own voice: out/<name>.pptx (a slide per
+///   node engine/cli/Cv.js <ws> present [--clips] [--serve]
+///                                                    for presenting in your own voice: out/<name>.pptx (a slide per
 ///                                                    sentence, the sentence as its speaker note), .script.md, .srt,
-///                                                    .silent.mp4; --serve also serves the click-through deck
+///                                                    .silent.mp4; --clips: each slide plays its animation;
+///                                                    --serve also serves the click-through deck
 ///   node engine/cli/Cv.js <ws> history [--done]      progress videos: the facts of the commit range -> build/history.md,
 ///                                                    history.json; --done records where this video ended
 ///   node engine/cli/Cv.js <ws> scan [t0 t1 step]     DOM scan every 0.25 s -> build/scan.json

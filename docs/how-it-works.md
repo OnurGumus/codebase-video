@@ -95,6 +95,10 @@ To give the video in your own voice, `present` adds (`node engine/cli/Cv.js <wor
     <video name>.silent.mp4     the video without its sound
 ```
 
+`present --clips` puts a clip on each slide instead of a still: the video from the previous slide's moment to its
+own, which plays as the slide opens. PowerPoint and Keynote play it; an app that does not (Google Slides) shows its
+first frame. The deck is then about the size of the video.
+
 `present --serve` also serves a click-through version: the animated video in the browser, a step per sentence. Each
 click or → plays the next step and holds; S opens the speaker notes in a second window. A slide and a step show the
 same moment: just after the sentence has been said, before the scene's content leaves.

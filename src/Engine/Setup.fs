@@ -3,7 +3,7 @@
 ///   - kokoro-js (the local, offline text-to-speech voice) and the full eSpeak NG it gets phonemes from
 ///   - the Kokoro v1.0 model (about 330 MB, downloaded once from Hugging Face into <tool home>/models)
 ///   - puppeteer-core (drives your installed Chrome or Chromium; it does not download a browser)
-///   - pptxgenjs (writes the .pptx of the `present` step; only that step needs it)
+///   - pptxgenjs and jszip (write the .pptx of the `present` step; only that step needs them)
 /// System tools it checks for but does not install: node (18+), npm, ffmpeg (with libx264, libvpx-vp9, libopus) and
 /// Chrome or Chromium. Safe to run again: finished steps are skipped. Port of engine/setup.sh (without Python).
 module Setup
@@ -17,7 +17,8 @@ let private dependencies =
     [ "puppeteer-core", "^25.12.0"
       "kokoro-js", "1.2.1"
       "@echogarden/espeak-ng-emscripten", "0.3.5"
-      "pptxgenjs", "4.0.1" ]
+      "pptxgenjs", "4.0.1"
+      "jszip", "3.10.1" ]
 
 /// What every step but `present` needs: a tool home set up before pptxgenjs was added still renders and voices.
 let private core = [ "puppeteer-core"; "kokoro-js"; "@echogarden/espeak-ng-emscripten" ]
