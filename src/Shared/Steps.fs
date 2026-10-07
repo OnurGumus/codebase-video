@@ -28,16 +28,19 @@ type Step =
 let private FRAME = 1.0 / 30.0
 /// How long after its sentence a step holds: room for what its last words set moving.
 let private AFTER = 0.5
+/// The kit starts a reveal up to 0.2 s before its cue (a table's rows, src/Kit/Kit.fs), so a sentence holds at least
+/// this long before the next one starts, before what the next sentence brings begins to fade in.
+let private EARLY = 0.25
 /// A scene's content starts to leave this long before the scene ends (a module fades over its last 0.45 s, the
 /// title card over 0.5 s), so a scene's last sentence holds no later.
 let private LEAVING = 0.6
 
-/// A sentence holds AFTER seconds after it is said, before the next one starts; a scene's last sentence holds as
-/// it ends, before the scene's content leaves. Never before the sentence starts.
+/// A sentence holds AFTER seconds after it is said, but EARLY before the next one starts; a scene's last sentence
+/// holds as it ends, before the scene's content leaves. Never before the sentence starts.
 let private holdOf (sceneEnds: float) (s: Sentence) (next: Sentence option) : float =
     let hold =
         match next with
-        | Some n -> min (s.End + AFTER) (n.Start - FRAME)
+        | Some n -> min (s.End + AFTER) (n.Start - EARLY)
         | None -> min s.End (sceneEnds - LEAVING)
     max hold s.Start
 

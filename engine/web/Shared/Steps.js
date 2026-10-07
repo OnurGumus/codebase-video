@@ -67,10 +67,12 @@ const FRAME = 1 / 30;
 
 const AFTER = 0.5;
 
+const EARLY = 0.25;
+
 const LEAVING = 0.6;
 
 function holdOf(sceneEnds, s, next) {
-    return max((next == null) ? min(s.End, sceneEnds - LEAVING) : min(s.End + AFTER, next.Start - FRAME), s.Start);
+    return max((next == null) ? min(s.End, sceneEnds - LEAVING) : min(s.End + AFTER, next.Start - EARLY), s.Start);
 }
 
 /**
