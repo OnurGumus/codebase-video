@@ -73,6 +73,8 @@ exists) says per scene what to show, the exact code to show, and what not to sho
 - If a module fails to build (a cue that is not spoken, a JavaScript error), the page draws every element of it at once
   and the render prints "page error" or "build failed": always read the render output and look at your sheets.
 
+{{KIND}}
+
 **Check** with `node {{ENGINE}}/cli/Cv.js {{WS}} sheet <your keys>` (only your modules, keys as separate arguments) and
 `node {{ENGINE}}/cli/Cv.js {{WS}} check --lesson {{WS}}/build/lesson.md` (other builders' missing modules are expected
 errors; yours must produce none). Read every sheet image; use `stills <t>` for moments the sheet misses (always one

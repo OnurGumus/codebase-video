@@ -31,6 +31,7 @@ Find:
 9. in-place swaps that blink or jump (a drawing must cross-fade with rise 0 on both elements; text replaced by different
    text must not overlap), and any module drawn all at once (its build failed: look for "page error" in render output).
 {{VISUAL}}
+{{KIND}}
 
 For each: time or scene, the exact on-screen text, what is wrong, the fix (file, line, new value). Rank must-fix /
 should-fix / nit. Also list what you checked and found correct, and which frames you did not look at. Do not pad.
