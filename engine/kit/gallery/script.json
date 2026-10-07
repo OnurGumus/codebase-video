@@ -264,7 +264,7 @@
       "id": "mp-inside2",
       "inside": "service",
       "lead": 0.6,
-      "pad": 1.8,
+      "pad": 2.2,
       "say": "The boundary stays while the scenes stay inside, and shrinks back to the box when they leave."
     },
     {

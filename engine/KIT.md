@@ -106,7 +106,7 @@ shrinks back to the box at the end of the last. The module draws its content exa
 boundary of its own.
 
 - The first scene of a visit needs `"lead": 1.4` (1.2 at least): nothing of the module is shown during the zoom.
-- The last scene needs `"pad": 1.8` (`pad` plus `hold` of 1.5 s at least), for the way back out: the content fades,
+- The last scene needs `"pad": 2.2` (`pad` plus `hold` of 1.9 s at least), for the way back out: the content fades,
   the boundary shrinks to the box, and the whole map is held for a moment before the next scene.
 - In an `inside` scene keep the heading under about 60 characters, so the row's right end is free for the tag.
 - Not on a bridge or recap scene. A think scene may be inside.
@@ -117,8 +117,9 @@ with the component, an edge once both its parts have. It takes `at`, `until` and
 labels or colours. Never redraw the map by hand with `K.flow`.
 
 **A video about change.** With `"kind": "progress"` at the top of `script.json`, a chapter is a theme and its
-`path` is the parts that theme touched: they need not be joined by edges, and they light up together, with no arrow
-lit.
+`path` is the parts that theme touched: they need not be joined by edges, and they light up together, with the
+arrows between them. A recap card's lines are marked with a bullet in place of a tick, since a progress recap also
+lists what is still open.
 
 `check` verifies the map, every path and every visit before anything is drawn.
 

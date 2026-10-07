@@ -3,7 +3,7 @@ import { comparePrimitives, defaultOf } from "./fable_modules/fable-library-js.5
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { find, append, mapIndexed, iterateIndexed, map, item as item_1 } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { play, timing, typed, clamp01, clamp, progIO, api, scene, time, show, ease, lerp, prog, within } from "./Stage.js";
-import { FSharpRef, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { toString, FSharpRef, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { array_type, string_type, record_type, lambda_type, unit_type, float64_type, class_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { replace, split, concat, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { HEAD_W, HEAD_L, Point, along, centre, route, Box, tone, esc, mk } from "./Draw.js";
@@ -1354,7 +1354,7 @@ export function frameBreaks(root) {
             mk(box, "div", "k-recap-title", "So far", defaultOf());
             const sent = s.sentences;
             const lines = mapIndexed((i, text) => {
-                const el_2 = mk(box, "div", "k-recap-line", concat("<b>✓</b>", esc(text)), defaultOf());
+                const el_2 = mk(box, "div", "k-recap-line", concat("<b>", (toString(timing.kind) === "progress") ? "•" : "✓", "</b>", esc(text)), defaultOf());
                 return {
                     at: ((sent.length > 0) ? item_1(min(i, sent.length - 1), sent).start : s.start) - 0.15,
                     el: el_2,

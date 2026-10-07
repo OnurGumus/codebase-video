@@ -57,9 +57,9 @@ type View = { el: HTMLElement; draw: State -> unit }
 let BOUND: Box = { x = 36.0; y = 218.0; w = 1848.0; h = 804.0 }
 
 /// How long the zoom into a part takes, and how much of a visit's quiet end the way back out takes (seconds): the
-/// content fades (0.3), the boundary shrinks to the box (0.7), the whole map is held for a moment (0.2) so the
-/// viewer sees where they came out, then it leaves (0.3).
-let ZOOM_IN, ZOOM_OUT = 1.2, 1.5
+/// content fades (0.3), the boundary shrinks to the box (0.7), the whole map is held (0.6) so the viewer sees
+/// where they came out, then it leaves (0.3).
+let ZOOM_IN, ZOOM_OUT = 1.2, 1.9
 
 let private X0, Y0, CELL_W, CELL_H, BOX_H = 60.0, 240.0, 450.0, 253.0, 96.0
 let private DIM = 0.35
@@ -198,10 +198,12 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             let g, a, b = e.g, e.a.box, e.b.box
             let fromPos, toPos = pos g.e.from e.fromSide e.b e.i, pos g.e.``to`` e.toSide e.a e.i
             // The label of an arrow with a turn goes over its level stretch, from x0 to x1 at height y.
-            let overLevel (x0: float) (x1: float) (y: float) =
+            // Above the line, or below it when the stretch is the lower of several that leave or meet one side:
+            // above, it would sit on the line over it and read as that arrow's label.
+            let overLevel (x0: float) (x1: float) (y: float) (below: bool) =
                 g.label.style.left <- $"{(x0 + x1) / 2.0}px"
                 g.label.style.top <- $"{y}px"
-                g.label.style.transform <- "translate(-50%, -125%)"
+                g.label.style.transform <- if below then "translate(-50%, 25%)" else "translate(-50%, -125%)"
                 g.fits <- g.label.offsetWidth + 40.0 <= abs (x1 - x0)
             match e.mode with
             | "level" | "upright" ->
@@ -226,7 +228,7 @@ let build (parent: HTMLElement) (def: MapDef) : View =
                 let turn = System.Math.Min(60.0, System.Math.Min(abs (back - sx), abs (ey - sy)))
                 g.path.setAttribute ("d", $"M{sx},{sy} L{sx},{ey - down * turn} Q{sx},{ey} {sx + dir * turn},{ey} L{back},{ey}")
                 g.head.setAttribute ("points", $"{tip},{ey} {back},{ey - HEAD_W / 2.0} {back},{ey + HEAD_W / 2.0}")
-                overLevel (sx + dir * turn) back ey
+                overLevel (sx + dir * turn) back ey (toPos > 0.5)
             | _ ->
                 let sx, sy = (if e.fromSide = "right" then a.x + a.w else a.x), a.y + a.h * fromPos
                 let ex = b.x + b.w * toPos
@@ -237,7 +239,7 @@ let build (parent: HTMLElement) (def: MapDef) : View =
                 let turn = System.Math.Min(60.0, System.Math.Min(abs (ex - sx), abs (back - sy)))
                 g.path.setAttribute ("d", $"M{sx},{sy} L{ex - dir * turn},{sy} Q{ex},{sy} {ex},{sy + down * turn} L{ex},{back}")
                 g.head.setAttribute ("points", $"{ex},{tip} {ex - HEAD_W / 2.0},{back} {ex + HEAD_W / 2.0},{back}")
-                overLevel sx (ex - dir * turn) sy
+                overLevel sx (ex - dir * turn) sy (fromPos > 0.5)
             if not g.fits && truthy g.e.label then
                 log $"map: label {stringify g.e.label} on {g.e.from} -> {g.e.``to``} does not fit, not drawn"
         // A badge goes above its part, or below when arrows meet the top and none the bottom; when arrows meet
@@ -274,8 +276,12 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             q.el.style.borderColor <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--border))"
             q.el.style.color <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--ink))"
             if not (isNull q.badge) then
-                q.badge.style?opacity <- v * lerp DIM 1.0 l
-                q.badge.style.color <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--muted))"
+                // The badge of the part being zoomed into leaves as the zoom starts and is back as it ends; it does
+                // not wait for the box and then pop. A badge is never in its part's colour: it says the same thing
+                // beside every part.
+                let bv = if q.p.id = zoomed then clamp01 (s.vis q.p.id) * (1.0 - clamp01 (z * 4.0)) else v
+                q.badge.style?opacity <- bv * lerp DIM 1.0 l
+                q.badge.style.color <- $"color-mix(in srgb, var(--ink) {l * 100.0}%%, var(--muted))"
         for g in edges do
             let l = clamp01 (s.edgeLit g.e.from g.e.``to``)
             let v = System.Math.Min(clamp01 (s.vis g.e.from), clamp01 (s.vis g.e.``to``)) * others

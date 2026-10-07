@@ -1785,7 +1785,7 @@ function reportLength(script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401029 = [1.2, 1.5];
+export const patternInput$00401029 = [1.2, 1.9];
 
 export const VISIT_TAIL = patternInput$00401029[1];
 

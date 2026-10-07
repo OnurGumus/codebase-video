@@ -46,7 +46,7 @@ export function View_$reflection() {
 
 export const BOUND = new Box(36, 218, 1848, 804);
 
-export const patternInput$004062 = [1.2, 1.5];
+export const patternInput$004062 = [1.2, 1.9];
 
 export const ZOOM_OUT = patternInput$004062[1];
 
@@ -252,10 +252,10 @@ export function build(parent, def) {
                 const matchValue_13 = pos(g_1.e.from, e_2.fromSide, e_2.b, e_2.i);
                 const toPos = pos(g_1.e.to, e_2.toSide, e_2.a, e_2.i);
                 const fromPos = matchValue_13;
-                const overLevel = (x0, x1, y_5) => {
+                const overLevel = (x0, x1, y_5, below) => {
                     g_1.label.style.left = (`${(x0 + x1) / 2}px`);
                     g_1.label.style.top = (`${y_5}px`);
-                    g_1.label.style.transform = "translate(-50%, -125%)";
+                    g_1.label.style.transform = (below ? "translate(-50%, 25%)" : "translate(-50%, -125%)");
                     g_1.fits = ((g_1.label.offsetWidth + 40) <= Math.abs(x1 - x0));
                 };
                 const matchValue_15 = e_2.mode;
@@ -284,7 +284,7 @@ export function build(parent, def) {
                         const turn = min(60, min(Math.abs(back - sx), Math.abs(ey - sy)));
                         g_1.path.setAttribute("d", `M${sx},${sy} L${sx},${ey - (down * turn)} Q${sx},${ey} ${sx + (dir * turn)},${ey} L${back},${ey}`);
                         g_1.head.setAttribute("points", `${tip},${ey} ${back},${ey - (HEAD_W / 2)} ${back},${ey + (HEAD_W / 2)}`);
-                        overLevel(sx + (dir * turn), back, ey);
+                        overLevel(sx + (dir * turn), back, ey, toPos > 0.5);
                         break;
                     }
                     default: {
@@ -298,7 +298,7 @@ export function build(parent, def) {
                         const turn_1 = min(60, min(Math.abs(ex - sx_1), Math.abs(back_1 - sy_1)));
                         g_1.path.setAttribute("d", `M${sx_1},${sy_1} L${ex - (dir_1 * turn_1)},${sy_1} Q${ex},${sy_1} ${ex},${sy_1 + (down_1 * turn_1)} L${ex},${back_1}`);
                         g_1.head.setAttribute("points", `${ex},${tip_1} ${ex - (HEAD_W / 2)},${back_1} ${ex + (HEAD_W / 2)},${back_1}`);
-                        overLevel(sx_1, ex - (dir_1 * turn_1), sy_1);
+                        overLevel(sx_1, ex - (dir_1 * turn_1), sy_1, fromPos > 0.5);
                     }
                 }
                 if (!g_1.fits && (!!(g_1.e.label))) {
@@ -364,8 +364,9 @@ export function build(parent, def) {
             q_2.el.style.borderColor = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--border))`);
             q_2.el.style.color = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--ink))`);
             if (!Operators_IsNull(q_2.badge)) {
-                q_2.badge.style.opacity = (v * lerp(DIM, 1, l));
-                q_2.badge.style.color = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--muted))`);
+                const bv = (q_2.p.id === zoomed) ? (clamp01(s.vis(q_2.p.id)) * (1 - clamp01(z_2 * 4))) : v;
+                q_2.badge.style.opacity = (bv * lerp(DIM, 1, l));
+                q_2.badge.style.color = (`color-mix(in srgb, var(--ink) ${l * 100}%, var(--muted))`);
             }
         }
         for (let idx_4 = 0; idx_4 <= (edges.length - 1); idx_4++) {

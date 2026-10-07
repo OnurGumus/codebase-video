@@ -32,7 +32,7 @@ set it}, and `scenes`.
   right along one row. `kinds` gives each kind the tone and icon of this video's colour table: {{COLOURS}}.
   On the bridge scene of each chapter that follows a flow, add `"path"`: the parts that flow touches, in the order it
   reaches them. On each content scene that is about the inside of one part, add `"inside": "<part id>"`; give the
-  first scene of such a run `"lead": 1.4` and the last one `"pad": 1.8`. Leave `inside` off scenes that are about how
+  first scene of such a run `"lead": 1.4` and the last one `"pad": 2.2`. Leave `inside` off scenes that are about how
   parts talk to each other.
 - Target {{MINUTES}}: {{WORDS}}. File paths, identifiers and flags cost several spoken words each. Plan the cut before
   you write: follow one flow end to end rather than skimming all of them, and say in `intro-path` what is left for later.

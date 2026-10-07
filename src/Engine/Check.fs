@@ -1026,7 +1026,7 @@ let private jsonOf (v: obj) : string = jsNative
 let private isObject (v: obj) : bool = jsNative
 
 /// The zoom into a part and back out of it (ZOOM_IN in src/Kit/Map.fs, and the quiet end a zoom out needs).
-let private VISIT_LEAD, VISIT_TAIL = 1.2, 1.5
+let private VISIT_LEAD, VISIT_TAIL = 1.2, 1.9
 
 /// The shared map (script.json "map"), each chapter's "path" across it and each scene's "inside": the frame draws
 /// them (src/Kit/Map.fs, src/Kit/Frame.fs), so everything it relies on is checked here first.

@@ -1411,7 +1411,10 @@ let frameBreaks (root: HTMLElement) : FrameLayer =
             let lines =
                 s.recap
                 |> Array.mapi (fun i text ->
-                    let el = mk box "div" "k-recap-line" $"<b>✓</b>{esc text}" null
+                    // A tick says "done". A progress video's recap also lists what is open or unpublished, so
+                    // there the mark is a plain bullet.
+                    let mark = if string (timing?kind) = "progress" then "•" else "✓"
+                    let el = mk box "div" "k-recap-line" $"<b>{mark}</b>{esc text}" null
                     let cue = if sent.Length > 0 then sent.[Math.Min(i, sent.Length - 1)].start else s.start
                     {| el = el; at = cue - 0.15 |})
             let from = if sent.Length > 0 then sent.[0].start - 0.4 else s.start
