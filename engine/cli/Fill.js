@@ -1,7 +1,7 @@
 
 import { tail, head, isEmpty, append, empty, map as map_1, tryFind, contains, find, exists as exists_1, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { join as join_1, split, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { basename, writeText, dirname, mkdirp, path, readText, exists, pluginRoot, join, readJson, fs } from "./Node.js";
-import { join as join_1, concat, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { Py_flush, Py_print, Py_fail, Py_str, Py_reprStr, Py_get } from "./Check.js";
 import { comparePrimitives, int32ToString, stringHash, defaultOf, equals } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
@@ -16,6 +16,15 @@ const LENGTHS = ofArray([["short", ofArray([["MINUTES", "3-5 minutes, hard cap 5
 const PROGRESS_LENGTHS = ofArray([["short", ofArray([["MINUTES", "3-5 minutes, hard cap 5.5"], ["WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"], ["CHAPTERS", "an \"At a glance\" chapter, 2-3 theme chapters and an \"In flight\" chapter"], ["SCENES", "1-3 content scenes per chapter, each 15-40 s"], ["THINKS", "no pause-and-think scene"], ["DOC", "150-300 lines"]])], ["tour", ofArray([["MINUTES", "6-10 minutes, hard cap 11"], ["WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"], ["CHAPTERS", "an \"At a glance\" chapter, 4-6 theme chapters and an \"In flight\" chapter"], ["SCENES", "2-3 content scenes per chapter, each 20-45 s"], ["THINKS", "no pause-and-think scene"], ["DOC", "300-500 lines"]])]]);
 
 const FOCUS = ofArray([["shipped", "**What shipped.** The features and fixes that exist at the end of the range and did not at its start, in plain language, each shown before and after. This is the spine of the video."], ["effort", "**Where the effort went.** Which areas of the codebase saw the most change and which were left alone, from the area table of the history file. Say it as where the work went, never as how hard anyone worked."], ["goals", "**Progress against goals.** Each goal of the goals file, quoted, with what the history shows for it: done, partly done, or nothing found, each with its commits. A goal is done only when the diff shows it."], ["people", "**Who worked on what.** By area, which people committed there and how many commits, exactly as the history file gives it. No ranking, no totals per person across the project, no word that judges a person or compares two."]]);
+
+function plural(n, one) {
+    if (n === 1) {
+        return concat("1 ", one);
+    }
+    else {
+        return `${n} ${one}s`;
+    }
+}
 
 const TEMPLATES = ofArray(["explore", "verify", "writer", "narration-audit", "builder", "visual-audit", "reaudit"]);
 
@@ -135,7 +144,9 @@ export function run(ws) {
                 let how;
                 const matchValue_9 = toString(h.sinceWas);
                 how = ((matchValue_9 === "last video") ? " The start is where the last progress video of this repository ended." : ((matchValue_9 === "latest tag") ? " No start was given, so the range starts at the latest tag." : ((matchValue_9 === "30 days") ? " No start was given and there is no earlier tag, so the range starts 30 days back." : ((matchValue_9 === "first commit") ? " The start asked for is before the first commit, so the range starts at the first commit." : ""))));
-                range = ofArray([["SINCE", point(h.since)], ["UNTIL", point(h.until)], ["RANGE", `from ${point(h.since)} to ${point(h.until)}: ${h.days} days, ${h.commits} commits.${how}`], ["HISTORY", join(ofArray([ws_1, "build", "history.md"]))], ["GOALS", (goalsPath === "") ? "no goals file was given" : goalsPath], ["FOCUS", join_1("\n", map_1((f_2) => ("- " + find((arg_3) => (f_2 === arg_3[0]), FOCUS)[1]), focus))]]);
+                const matchValue_10 = plural(h.days, "day");
+                const matchValue_11 = plural(h.commits, "commit");
+                range = ofArray([["SINCE", point(h.since)], ["UNTIL", point(h.until)], ["RANGE", `from ${point(h.since)} to ${point(h.until)}: ${matchValue_10}, ${matchValue_11}.${how}`], ["HISTORY", join(ofArray([ws_1, "build", "history.md"]))], ["GOALS", (goalsPath === "") ? "no goals file was given" : goalsPath], ["FOCUS", join_1("\n", map_1((f_2) => ("- " + find((arg_3) => (f_2 === arg_3[0]), FOCUS)[1]), focus))]]);
             }
             let kindNotes;
             const file = join(ofArray([pluginRoot, "briefs", concat("kind.", kind, ".md")]));
@@ -160,8 +171,8 @@ export function run(ws) {
                     if (!isEmpty(jobs_1)) {
                         const file_1 = head(jobs_1)[0];
                         const template = readText(file_1);
-                        const matchValue_10 = tryFind_1((k_2) => !FSharpSet__Contains(known, k_2), Array.from(template.matchAll(/\{\{([A-Z_]+)\}\}/g), m => m[1]));
-                        if (matchValue_10 == null) {
+                        const matchValue_12 = tryFind_1((k_2) => !FSharpSet__Contains(known, k_2), Array.from(template.matchAll(/\{\{([A-Z_]+)\}\}/g), m => m[1]));
+                        if (matchValue_12 == null) {
                             const out = join(ofArray([ws_1, "build", head(jobs_1)[1]]));
                             mkdirp(dirname(out));
                             writeText(out, (template.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => ((k_4) => FSharpMap__get_Item(table, k_4))(k))) + hintsBlock);
@@ -170,7 +181,7 @@ export function run(ws) {
                             continue fill;
                         }
                         else {
-                            const k_3 = matchValue_10;
+                            const k_3 = matchValue_12;
                             return Py_fail(concat(basename(file_1), ": unknown placeholder ", Py_reprStr(("{{" + k_3) + "}}"))) | 0;
                         }
                     }

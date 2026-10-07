@@ -85,6 +85,8 @@ let private placeholders (template: string) : string[] = jsNative
 [<Emit("Array.isArray($0)")>]
 let private isArray (o: obj) : bool = jsNative
 
+let private plural (n: int) (one: string) : string = if n = 1 then $"1 {one}" else $"{n} {one}s"
+
 let private TEMPLATES = [ "explore"; "verify"; "writer"; "narration-audit"; "builder"; "visual-audit"; "reaudit" ]
 
 let private realpath (p: string) : string = fs?realpathSync(p)
@@ -142,9 +144,10 @@ let run (ws: string) : int =
                     | "30 days" -> " No start was given and there is no earlier tag, so the range starts 30 days back."
                     | "first commit" -> " The start asked for is before the first commit, so the range starts at the first commit."
                     | _ -> ""
+                let days, commits = plural (unbox h?days) "day", plural (unbox h?commits) "commit"
                 [ "SINCE", point h?since
                   "UNTIL", point h?until
-                  "RANGE", $"from {point h?since} to {point h?until}: {h?days} days, {h?commits} commits.{how}"
+                  "RANGE", $"from {point h?since} to {point h?until}: {days}, {commits}.{how}"
                   "HISTORY", join [ ws; "build"; "history.md" ]
                   "GOALS", (if goalsPath = "" then "no goals file was given" else goalsPath)
                   "FOCUS", focus |> List.map (fun f -> "- " + (FOCUS |> List.find (fst >> (=) f) |> snd)) |> String.concat "\n" ]

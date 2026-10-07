@@ -5,7 +5,7 @@ import { difference, toList as toList_1, ofArray as ofArray_1, ofList, empty as 
 import { int32ToString, disposeSafe, getEnumerator, compareArrays, createObj, stringHash, equals, defaultOf, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { truncate as truncate_1, singleton as singleton_1, toArray, length, sortBy, sumBy, filter, exists as exists_1, map, collect as collect_1, contains, empty as empty_2, head as head_1, tail, isEmpty, append, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { eprint, dirname, toJsonIndented, writeText, mkdirp, childProcess, readJson, exists, join as join_1, runCapture } from "./Node.js";
-import { printf, toConsole, padRight, concat, join, split, substring, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { printf, toConsole, concat, join, split, substring, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { map as map_1, item, last as last_1, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { empty, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
@@ -353,8 +353,13 @@ function strings(o) {
     }
 }
 
-function pad(width, s) {
-    return padRight(s, width);
+function count(n, one) {
+    if (n === 1) {
+        return concat("1 ", one);
+    }
+    else {
+        return `${n} ${one}s`;
+    }
 }
 
 function write(ws) {
@@ -526,7 +531,7 @@ function write(ws) {
             Equals: (x_5, y_5) => (x_5 === y_5),
             GetHashCode: (x_5) => (stringHash(x_5) | 0),
         });
-        const count = (kind_1) => (length(filter((tupledArg_9) => {
+        const count_1 = (kind_1) => (length(filter((tupledArg_9) => {
             if (tupledArg_9[0] === kind_1) {
                 return areaOf(tupledArg_9[1]) === area;
             }
@@ -537,7 +542,7 @@ function write(ws) {
         return createObj(append(ofArray([["area", area], ["commits", length(commits)], ["files", length(List_distinct(map((tupledArg_10) => tupledArg_10[1], rows_1), {
             Equals: (x_6, y_6) => (x_6 === y_6),
             GetHashCode: (x_6) => (stringHash(x_6) | 0),
-        }))], ["added", count("added")], ["deleted", count("deleted")], ["renamed", count("renamed")], ["linesAdded", sumBy((tupledArg_11) => (tupledArg_11[2] | 0), rows_1, {
+        }))], ["added", count_1("added")], ["deleted", count_1("deleted")], ["renamed", count_1("renamed")], ["linesAdded", sumBy((tupledArg_11) => (tupledArg_11[2] | 0), rows_1, {
             GetZero: () => 0,
             Add: (x_7, y_7) => ((x_7 + y_7) | 0),
         })], ["linesRemoved", sumBy((tupledArg_12) => (tupledArg_12[3] | 0), rows_1, {
@@ -680,7 +685,9 @@ function write(ws) {
     const chosen = (sinceWas === "last video") ? " The start is where the last progress video of this repository ended." : ((sinceWas === "latest tag") ? " No start was given: the range starts at the latest tag." : ((sinceWas === "30 days") ? " No start was given and the repository has no earlier tag: the range starts 30 days back." : ((sinceWas === "first commit") ? " The start asked for is before the repository\'s first commit: the range starts at the first commit." : "")));
     line_1(concat("# History: ", sinceRef, " to ", untilRef));
     line_1("");
-    line_1(`From ${sinceRef} (${shortOf(repo, since)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000)} days, ${length(all)} commits.${chosen}`);
+    const matchValue_3 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
+    const matchValue_4 = count(length(all), "commit");
+    line_1(`From ${sinceRef} (${shortOf(repo, since)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_3}, ${matchValue_4}.${chosen}`);
     line_1("");
     line_1("Every number in the video comes from this file or from history.json. Do not count anything yourself.");
     line_1("");
@@ -786,10 +793,10 @@ function write(ws) {
         disposeSafe(enumerator_3);
     }
     writeText(join_1(ofArray([build, "history.md"])), join("\n", md) + "\n");
-    const arg_2 = length(all) | 0;
-    const arg_3 = (Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000)) | 0;
+    const arg_2 = count(length(all), "commit");
+    const arg_3 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
     const arg_4 = join_1(ofArray([build, "history.md"]));
-    toConsole(printf("history: %s to %s, %d commits, %d days -> %s"))(sinceRef)(untilRef)(arg_2)(arg_3)(arg_4);
+    toConsole(printf("history: %s to %s, %s, %s -> %s"))(sinceRef)(untilRef)(arg_2)(arg_3)(arg_4);
     return 0;
 }
 

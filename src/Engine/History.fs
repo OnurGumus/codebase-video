@@ -232,7 +232,8 @@ let private generated (repo: string) (paths: string list) : Set<string> =
 
 let private strings (o: obj) : string list = if isArray o then unbox<string[]> o |> Array.toList else []
 
-let private pad (width: int) (s: string) = s.PadRight width
+/// "1 day", "19 commits".
+let private count (n: int) (one: string) : string = if n = 1 then $"1 {one}" else $"{n} {one}s"
 
 /// Reads the range and writes build/history.json and build/history.md.
 let private write (ws: string) : int =
@@ -386,7 +387,8 @@ let private write (ws: string) : int =
         | _ -> ""
     line $"# History: {sinceRef} to {untilRef}"
     line ""
-    line $"From {sinceRef} ({shortOf repo since}, {sinceDate}) to {untilRef} ({shortOf repo until}, {untilDate}): {daysBetween sinceDate untilDate} days, {all.Length} commits.{chosen}"
+    let days, commits = count (daysBetween sinceDate untilDate) "day", count all.Length "commit"
+    line $"From {sinceRef} ({shortOf repo since}, {sinceDate}) to {untilRef} ({shortOf repo until}, {untilDate}): {days}, {commits}.{chosen}"
     line ""
     line "Every number in the video comes from this file or from history.json. Do not count anything yourself."
     line ""
@@ -442,7 +444,7 @@ let private write (ws: string) : int =
             for b in (said c.Body).Split '\n' do
                 if b.Trim() <> "" then line $"    {b.TrimEnd()}"
     writeText (join [ build; "history.md" ]) (String.concat "\n" md + "\n")
-    printfn "history: %s to %s, %d commits, %d days -> %s" sinceRef untilRef all.Length (daysBetween sinceDate untilDate) (join [ build; "history.md" ])
+    printfn "history: %s to %s, %s, %s -> %s" sinceRef untilRef (count all.Length "commit") (count (daysBetween sinceDate untilDate) "day") (join [ build; "history.md" ])
     0
 
 /// Records where this video ended, for the next one's default start.
