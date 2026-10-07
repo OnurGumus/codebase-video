@@ -37,7 +37,10 @@ commit message says what its author meant; the diff says what happened. Where th
    - why, as the commit messages say it: always "the commit message says ...", never as your own statement.
    Leave out a theme that a later commit in the range undid: work that did not last has not shipped. If it is worth
    telling, tell it as tried and withdrawn.
-4. `## In flight and at risk`: what the code shows as unfinished or fragile at the end of the range: markers added
+4. `## In flight and at risk`: first, if the facts say that commits of the range are not on the published branch,
+   say so here, with which themes those commits belong to. Work that is only on a branch has not shipped: wherever
+   else the document speaks of it, it says "on a branch", "in progress" or "not yet published", never "shipped" or
+   "now does". Then, what the code shows as unfinished or fragile at the end of the range: markers added
    in the range (TODO, FIXME, a skipped test, a feature switched off), an area with much change and no change to its
    tests. Each with its evidence. These are observations, not verdicts: say what is there, not what it means about
    anyone.

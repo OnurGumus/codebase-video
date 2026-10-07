@@ -3,10 +3,10 @@ import { toString, Record, FSharpException } from "./fable_modules/fable-library
 import { record_type, list_type, tuple_type, int32_type, bool_type, string_type, class_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { difference, toList as toList_1, ofArray as ofArray_1, ofList, empty as empty_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { int32ToString, disposeSafe, getEnumerator, compareArrays, createObj, stringHash, equals, defaultOf, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { truncate as truncate_1, singleton as singleton_1, toArray, length, sortBy, sumBy, filter, exists as exists_1, map, collect as collect_1, contains, empty as empty_2, head as head_1, tail, isEmpty, append, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { tryFind, truncate as truncate_1, singleton as singleton_1, toArray, length, sortBy, sumBy, filter, exists as exists_1, map, collect as collect_1, contains, empty as empty_2, head as head_1, tail, isEmpty, append, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { eprint, dirname, toJsonIndented, writeText, mkdirp, childProcess, readJson, exists, join as join_1, runCapture } from "./Node.js";
 import { printf, toConsole, concat, join, split, substring, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { map as map_1, item, last as last_1, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { map as map_1, reverse, item, last as last_1, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { empty, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
@@ -363,6 +363,7 @@ function count(n, one) {
 }
 
 function write(ws) {
+    let array_3;
     const brief = readJson(join_1(ofArray([ws, "brief.json"])));
     const repo = ((brief.repo == null)) ? stop("history: brief.json has no \"repo\"") : brief.repo;
     if (git(repo, ofArray(["rev-parse", "--git-dir"]))[0] !== 0) {
@@ -593,6 +594,36 @@ function write(ws) {
     const tagged = ofList(map((tupledArg_20) => tupledArg_20[1], tags), {
         Compare: (x_19, y_19) => (comparePrimitives(x_19, y_19) | 0),
     });
+    let publishedBranch;
+    const matchValue_1 = git(repo, ofArray(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]));
+    let matchResult_1;
+    if (matchValue_1[0] === 0) {
+        if (matchValue_1[1] !== "") {
+            matchResult_1 = 0;
+        }
+        else {
+            matchResult_1 = 1;
+        }
+    }
+    else {
+        matchResult_1 = 1;
+    }
+    switch (matchResult_1) {
+        case 0: {
+            publishedBranch = matchValue_1[1];
+            break;
+        }
+        default:
+            publishedBranch = tryFind((r_12) => (commitOf(repo, r_12) != null), ofArray(["origin/main", "origin/master"]));
+    }
+    let unpublished;
+    if (publishedBranch == null) {
+        unpublished = [];
+    }
+    else {
+        const branch = publishedBranch;
+        unpublished = reverse(map_1((sha_1) => shortOf(repo, sha_1), (array_3 = split(gitOut(repo, ofArray(["rev-list", "--abbrev-commit", concat(since, "..", until), "--not", branch])), ["\n"], undefined, 0), array_3.filter((y_20) => ("" !== y_20)))));
+    }
     const partial = length(all) > LIST_ALL;
     const listed = partial ? filter((c_8) => {
         if (c_8.Merge ? true : FSharpSet__Contains(tagged, c_8.Id)) {
@@ -636,8 +667,8 @@ function write(ws) {
         commits: length(all),
     }], ["totals", {
         files: length(List_distinct(map((tupledArg_23) => tupledArg_23[0], keptFiles), {
-            Equals: (x_20, y_20) => (x_20 === y_20),
-            GetHashCode: (x_20) => (stringHash(x_20) | 0),
+            Equals: (x_21, y_21) => (x_21 === y_21),
+            GetHashCode: (x_21) => (stringHash(x_21) | 0),
         })),
         linesAdded: totalAdded,
         linesRemoved: totalRemoved,
@@ -645,7 +676,11 @@ function write(ws) {
         tag: tupledArg_24[0],
         commit: tupledArg_24[1],
         date: tupledArg_24[2],
-    }), tags))], ["listed", partial ? "partial" : "all"], ["commits", toArray(map((c_9) => createObj(append(ofArray([["id", c_9.Id], ["date", c_9.Date], ["subject", said(c_9.Subject)], ["body", said(c_9.Body)], ["merge", c_9.Merge], ["files", toArray(map((tupledArg_21) => tupledArg_21[0], c_9.Files))]]), people ? singleton_1(["author", c_9.Author]) : empty_2())), listed))], ["areas", toArray(areas)], ["files", {
+    }), tags))], ["published", (publishedBranch == null) ? defaultOf() : {
+        branch: publishedBranch,
+        missing: unpublished.length,
+        commits: unpublished,
+    }], ["listed", partial ? "partial" : "all"], ["commits", toArray(map((c_9) => createObj(append(ofArray([["id", c_9.Id], ["date", c_9.Date], ["subject", said(c_9.Subject)], ["body", said(c_9.Body)], ["merge", c_9.Merge], ["files", toArray(map((tupledArg_21) => tupledArg_21[0], c_9.Files))]]), people ? singleton_1(["author", c_9.Author]) : empty_2())), listed))], ["areas", toArray(areas)], ["files", {
         mostChanged: toArray(map((tupledArg_25) => ({
             path: tupledArg_25[0],
             commits: tupledArg_25[1],
@@ -660,8 +695,8 @@ function write(ws) {
         }), of$0027("renamed"))),
     }], ["ignored", {
         files: toArray(List_distinct(map((tupledArg_27) => tupledArg_27[0], left), {
-            Equals: (x_21, y_21) => (x_21 === y_21),
-            GetHashCode: (x_21) => (stringHash(x_21) | 0),
+            Equals: (x_22, y_22) => (x_22 === y_22),
+            GetHashCode: (x_22) => (stringHash(x_22) | 0),
         })),
         commits: length(filter((c_10) => exists_1((tupledArg_28) => ignored(tupledArg_28[0]), c_10.Files), all)),
         linesAdded: leftAdded,
@@ -670,10 +705,10 @@ function write(ws) {
         name: tupledArg_29[0],
         commits: tupledArg_29[1],
     }), sortBy((tuple_4) => tuple_4[0], List_countBy((c_11) => c_11.Author, all, {
-        Equals: (x_22, y_22) => (x_22 === y_22),
-        GetHashCode: (x_22) => (stringHash(x_22) | 0),
+        Equals: (x_23, y_23) => (x_23 === y_23),
+        GetHashCode: (x_23) => (stringHash(x_23) | 0),
     }), {
-        Compare: (x_23, y_23) => (comparePrimitives(x_23, y_23) | 0),
+        Compare: (x_24, y_24) => (comparePrimitives(x_24, y_24) | 0),
     })))]) : empty_2()));
     const build = join_1(ofArray([ws, "build"]));
     mkdirp(build);
@@ -685,21 +720,35 @@ function write(ws) {
     const chosen = (sinceWas === "last video") ? " The start is where the last progress video of this repository ended." : ((sinceWas === "latest tag") ? " No start was given: the range starts at the latest tag." : ((sinceWas === "30 days") ? " No start was given and the repository has no earlier tag: the range starts 30 days back." : ((sinceWas === "first commit") ? " The start asked for is before the repository\'s first commit: the range starts at the first commit." : "")));
     line_1(concat("# History: ", sinceRef, " to ", untilRef));
     line_1("");
-    const matchValue_3 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
-    const matchValue_4 = count(length(all), "commit");
-    line_1(`From ${sinceRef} (${shortOf(repo, since)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_3}, ${matchValue_4}.${chosen}`);
+    const matchValue_4 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
+    const matchValue_5 = count(length(all), "commit");
+    line_1(`From ${sinceRef} (${shortOf(repo, since)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_4}, ${matchValue_5}.${chosen}`);
     line_1("");
     line_1("Every number in the video comes from this file or from history.json. Do not count anything yourself.");
     line_1("");
     line_1(`Totals: ${json.totals.files} files changed, ${totalAdded} lines added, ${totalRemoved} lines removed. Lines and files are sums over the range's commits; added, deleted and renamed compare its two ends.`);
     if (!isEmpty(left)) {
         const names = List_distinct(map((tupledArg_30) => tupledArg_30[0], left), {
-            Equals: (x_24, y_24) => (x_24 === y_24),
-            GetHashCode: (x_24) => (stringHash(x_24) | 0),
+            Equals: (x_25, y_25) => (x_25 === y_25),
+            GetHashCode: (x_25) => (stringHash(x_25) | 0),
         });
         line_1("");
         const sample = join(", ", truncate_1(5, names));
         line_1(`Left out of every number above and below (lock files, generated files, the brief's "ignore"): ${length(names)} files, ${leftAdded} lines added, ${leftRemoved} removed, across ${json.ignored.commits} of the commits. For example: ${sample}.`);
+    }
+    if (publishedBranch == null) {
+    }
+    else if (unpublished.length > 0) {
+        const branch_3 = publishedBranch;
+        const ids = join(", ", truncate(40, unpublished));
+        const more = (unpublished.length > 40) ? ", ..." : "";
+        line_1("");
+        line_1(`Not published yet: ${count(unpublished.length, "commit")} of the range ${(unpublished.length === 1) ? "is" : "are"} not on ${branch_3}, the published branch of this repository (${ids}${more}). What only those commits did is in progress on a branch; it has not shipped.`);
+    }
+    else {
+        const branch_4 = publishedBranch;
+        line_1("");
+        line_1(concat("Every commit of the range is on ", branch_4, ", the published branch of this repository."));
     }
     line_1("");
     line_1("## Tags in the range");
@@ -756,16 +805,16 @@ function write(ws) {
     line_1("## Files");
     line_1("");
     line_1(concat("Most changed (by commits): ", join(", ", map((tupledArg_31) => (((tupledArg_31[0] + " (") + int32ToString(tupledArg_31[1])) + ")"), mostChanged)), "."));
-    const list_73 = (title, paths) => {
+    const list_74 = (title, paths) => {
         if (!isEmpty(paths)) {
             line_1("");
             const shown = join(", ", truncate_1(40, paths)) + ((length(paths) > 40) ? ", ..." : "");
             line_1(`${title} (${length(paths)}): ${shown}`);
         }
     };
-    list_73("Added", map((tupledArg_32) => tupledArg_32[1], of$0027("added")));
-    list_73("Deleted", map((tupledArg_33) => tupledArg_33[1], of$0027("deleted")));
-    list_73("Renamed", map((tupledArg_34) => ((tupledArg_34[2] + " -> ") + tupledArg_34[1]), of$0027("renamed")));
+    list_74("Added", map((tupledArg_32) => tupledArg_32[1], of$0027("added")));
+    list_74("Deleted", map((tupledArg_33) => tupledArg_33[1], of$0027("deleted")));
+    list_74("Renamed", map((tupledArg_34) => ((tupledArg_34[2] + " -> ") + tupledArg_34[1]), of$0027("renamed")));
     line_1("");
     line_1("## Commits, oldest first");
     line_1("");

@@ -21,7 +21,9 @@ Check, line by line:
    error.
 5. Every theme: was any of it undone or replaced by a later commit in the range (`git log -S`, `git log -- <path>`,
    a `Revert` in the facts)? Work that did not last must not be shown as shipped.
-6. `## In flight and at risk`: is each marker really there at the end of the range and really added inside it? Is
+6. Published or not: the facts say which commits of the range are not on the published branch. Is anything that
+   only those commits did presented as shipped, anywhere in the document? Does "In flight and at risk" say so first?
+   `## In flight and at risk`: is each marker really there at the end of the range and really added inside it? Is
    anything written as a verdict about people or pace? That is an error: it may only say what the code shows.
 7. `## Against the goals`, if present: read the goals file. Is each goal quoted as it is written? Does the diff
    support each "done"? Reject a "done" that rests on a commit message alone.

@@ -38,6 +38,10 @@ base brief says. In addition, for each part whose status in the document is `new
 touched: for a progress video they need not be joined by arrows, and they light up together. Use `"inside"` on a
 scene only when it is about the inside of one part.
 
+**Shipped or not:** what the document says is on a branch and not yet published is "in progress on a branch", in
+every sentence and on the title card, never "shipped" and never "now it does". Say it once plainly where the theme
+begins.
+
 **Numbers:** every number you speak or caption is in the document, and through it in the facts. Do not add two of
 them, compare them as a percentage, or turn one into "almost half" unless the document does.
 

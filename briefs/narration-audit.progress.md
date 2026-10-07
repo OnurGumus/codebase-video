@@ -15,8 +15,8 @@ N. Numbers: every number spoken or captioned, checked against the document and a
    for a number are errors.
 O. Reasons: a reason for a change stated as fact instead of attributed to the commit message; a reason the message
    does not give.
-P. What shipped: anything presented as shipped that the document says was undone, is partial, or is still in
-   flight. Open the commits where a sentence matters and compare with the diff.
+P. What shipped: anything presented as shipped that the document says was undone, is partial, is still in
+   flight, or is on a branch and not yet published (the facts list those commits). Open the commits where a sentence matters and compare with the diff.
 Q. Verdicts: any claim about speed, quality, productivity or morale; any praise or blame; any advice to the team.
    The video reports what changed and what was claimed. None of these may stay.
 R. People: if the document has no "Who worked on what" section, any person's name anywhere in the script. If it has

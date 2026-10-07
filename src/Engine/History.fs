@@ -314,6 +314,21 @@ let private write (ws: string) : int =
         |> List.sortBy (fun (t, _, d) -> d, t)
     let tagged = tags |> List.map (fun (_, id, _) -> id) |> Set.ofList
 
+    // What of the range is not on the published branch yet: the remote's default branch, when there is a remote.
+    // Work that is only on a local branch, or on a branch that was never merged, has not shipped.
+    let publishedBranch =
+        match git repo [ "symbolic-ref"; "--quiet"; "--short"; "refs/remotes/origin/HEAD" ] with
+        | 0, r when r <> "" -> Some r
+        | _ -> [ "origin/main"; "origin/master" ] |> List.tryFind (fun r -> (commitOf repo r).IsSome)
+    let unpublished =
+        match publishedBranch with
+        | Some branch ->
+            (gitOut repo [ "rev-list"; "--abbrev-commit"; $"{since}..{until}"; "--not"; branch ]).Split '\n'
+            |> Array.filter ((<>) "")
+            |> Array.map (fun sha -> shortOf repo sha)
+            |> Array.rev
+        | None -> [||]
+
     // A long range lists only the commits that stand out; the rest are in the counts.
     let partial = all.Length > LIST_ALL
     let listed = if partial then all |> List.filter (fun c -> c.Merge || tagged.Contains c.Id || c.Files.Length > WIDE) else all
@@ -343,6 +358,10 @@ let private write (ws: string) : int =
                          "linesAdded" ==> totalAdded
                          "linesRemoved" ==> totalRemoved ]
                "tags" ==> (tags |> List.map (fun (t, id, d) -> createObj [ "tag" ==> t; "commit" ==> id; "date" ==> d ]) |> List.toArray)
+               "published"
+               ==> (match publishedBranch with
+                    | Some branch -> createObj [ "branch" ==> branch; "missing" ==> unpublished.Length; "commits" ==> unpublished ]
+                    | None -> null)
                "listed" ==> (if partial then "partial" else "all")
                "commits" ==> (listed |> List.map commitJson |> List.toArray)
                "areas" ==> List.toArray areas
@@ -398,6 +417,17 @@ let private write (ws: string) : int =
         line ""
         let sample = names |> List.truncate 5 |> String.concat ", "
         line $"Left out of every number above and below (lock files, generated files, the brief's \"ignore\"): {names.Length} files, {leftAdded} lines added, {leftRemoved} removed, across {json?ignored?commits} of the commits. For example: {sample}."
+    match publishedBranch with
+    | Some branch when unpublished.Length > 0 ->
+        let ids = unpublished |> Array.truncate 40 |> String.concat ", "
+        let more = if unpublished.Length > 40 then ", ..." else ""
+        line ""
+        let n, verb = count unpublished.Length "commit", (if unpublished.Length = 1 then "is" else "are")
+        line $"Not published yet: {n} of the range {verb} not on {branch}, the published branch of this repository ({ids}{more}). What only those commits did is in progress on a branch; it has not shipped."
+    | Some branch ->
+        line ""
+        line $"Every commit of the range is on {branch}, the published branch of this repository."
+    | None -> ()
     line ""
     line "## Tags in the range"
     line ""
