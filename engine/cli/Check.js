@@ -1,21 +1,20 @@
 
 import { readDir, resolve, readText, basename, mtime, exists, readJson, join as join_1, fs } from "./Node.js";
 import { concat, split, trimStart, trimEnd, padLeft, replicate, padRight, replace, indexOf, substring, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { max as max_1, min as min_1, compare, arrayHash, equalArrays, stringHash, equals, defaultOf, int32ToString, comparePrimitives, disposeSafe, getEnumerator, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { StringBuilder_$ctor_Z721C83C5, StringBuilder__Append_244C7CD6, StringBuilder__Append_Z721C83C5, StringBuilder_$ctor } from "./fable_modules/fable-library-js.5.19.0/System.Text.js";
+import { max as max_1, min as min_1, compare, arrayHash, equalArrays, disposeSafe, getEnumerator, stringHash, equals, defaultOf, int32ToString, comparePrimitives, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
-import { Union, Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_2, truncate, pairwise, tryPick as tryPick_1, concat as concat_1, sumBy, exists as exists_1, contains, zip as zip_1, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, filter, fold, map as map_3, sortWith, toArray, tail as tail_1, head, isEmpty, indexed, mapFold, ofArray, empty, reverse, ofArrayWithTail, cons } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { Union, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { union_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { some, defaultArg, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { pairwise as pairwise_1, fold as fold_1, sumBy as sumBy_1, pick, tryPick, indexed, last as last_1, setItem, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_1, truncate, cons, pairwise, tryPick as tryPick_1, indexed as indexed_1, fold, mapFold, concat as concat_1, sumBy, exists as exists_1, contains, zip, toArray, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { empty as empty_1, singleton as singleton_1, collect, append, delay, toList, findIndex, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { some, defaultArg, value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { pairwise as pairwise_1, fold as fold_1, sumBy as sumBy_1, pick, tryPick, indexed as indexed_1, last as last_2, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { empty as empty_1, singleton as singleton_1, collect, append, delay, findIndex, reverse as reverse_1, toList, zip, tryFind, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { max, parse as parse_1, isInfinity, isNegativeInfinity, isPositiveInfinity, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { load as load_1, uses as uses_1, apply } from "./Glossary.js";
 import { List_groupBy, List_distinctBy, List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
-import { toList as toList_1, FSharpSet__Contains, ofSeq as ofSeq_1 } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { empty as empty_2, FSharpMap__ContainsKey, tryFind, add, FSharpMap__get_Item, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
+import { empty as empty_2, FSharpMap__ContainsKey, tryFind as tryFind_1, add as add_1, FSharpMap__get_Item, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 
@@ -25,21 +24,32 @@ import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp
 export function Py_writeFd(fd, s) {
     const buf = Buffer.from(s, 'utf8');
     const len = buf.length | 0;
-    let off = 0;
-    while (off < len) {
-        try {
-            const n = (fs.writeSync(fd, buf, off, (len - off))) | 0;
-            off = ((off + n) | 0);
-        }
-        catch (e) {
-            if (e.code === "EAGAIN") {
-                Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+    const from = (off_1_mut) => {
+        from:
+        while (true) {
+            const off_1 = off_1_mut;
+            let off;
+            if (off_1 < len) {
+                off_1_mut = (off_1 + ((off = (off_1 | 0), (() => {
+                    try {
+                        return (fs.writeSync(fd, buf, off, (len - off))) | 0;
+                    }
+                    catch (e) {
+                        if (e.code === "EAGAIN") {
+                            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+                            return 0;
+                        }
+                        else {
+                            throw e;
+                        }
+                    }
+                })())));
+                continue from;
             }
-            else {
-                throw e;
-            }
+            break;
         }
-    }
+    };
+    from(0);
 }
 
 const Py_outBuf = [];
@@ -75,55 +85,76 @@ const Py_S = "\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028
 const Py_syntaxChars = "^$\\.*+?()[]{}|/";
 
 function Py_translate(p, multiline) {
-    const sb = StringBuilder_$ctor();
     const boundary = ((((((("(?:(?<=[" + Py_W) + "])(?![") + Py_W) + "])|(?<![") + Py_W) + "])(?=[") + Py_W) + "]))";
     const nonBoundary = ((((((("(?:(?<=[" + Py_W) + "])(?=[") + Py_W) + "])|(?<![") + Py_W) + "])(?![") + Py_W) + "]))";
-    let i = 0;
-    let inClass = false;
-    while (i < p.length) {
-        const c = p[i];
-        if ((c === "\\") && ((i + 1) < p.length)) {
-            const d = p[i + 1];
-            i = ((i + 2) | 0);
-            StringBuilder__Append_Z721C83C5(sb, (d === "-") ? (isDigit(d) ? ("\\" + d) : (inClass ? "\\-" : ((Py_syntaxChars.indexOf(d) >= 0) ? ("\\" + d) : d))) : ((d === "A") ? "(?<![\\s\\S])" : ((d === "B") ? nonBoundary : ((d === "D") ? "\\P{Nd}" : ((d === "P") ? ("\\" + d) : ((d === "S") ? (("[^" + Py_S) + "]") : ((d === "W") ? (("[^" + Py_W) + "]") : ((d === "Z") ? "(?![\\s\\S])" : ((d === "b") ? (inClass ? "\\x08" : boundary) : ((d === "d") ? "\\p{Nd}" : ((d === "f") ? ("\\" + d) : ((d === "n") ? ("\\" + d) : ((d === "p") ? ("\\" + d) : ((d === "r") ? ("\\" + d) : ((d === "s") ? (inClass ? Py_S : (("[" + Py_S) + "]")) : ((d === "t") ? ("\\" + d) : ((d === "u") ? ("\\" + d) : ((d === "v") ? ("\\" + d) : ((d === "w") ? (inClass ? Py_W : (("[" + Py_W) + "]")) : ((d === "x") ? ("\\" + d) : (isDigit(d) ? ("\\" + d) : ((Py_syntaxChars.indexOf(d) >= 0) ? ("\\" + d) : d))))))))))))))))))))));
-        }
-        else if (inClass) {
-            if (c === "]") {
-                inClass = false;
+    const scan = (i_mut, inClass_mut, acc_mut) => {
+        scan:
+        while (true) {
+            const i = i_mut, inClass = inClass_mut, acc = acc_mut;
+            if (i >= p.length) {
+                return acc;
             }
-            StringBuilder__Append_244C7CD6(sb, c);
-            i = ((i + 1) | 0);
-        }
-        else {
-            switch (c) {
-                case "$": {
-                    StringBuilder__Append_Z721C83C5(sb, multiline ? "(?=\\n|(?![\\s\\S]))" : "(?=\\n?(?![\\s\\S]))");
-                    break;
+            else {
+                const c = p[i];
+                if ((c === "\\") && ((i + 1) < p.length)) {
+                    const d = p[i + 1];
+                    i_mut = (i + 2);
+                    inClass_mut = inClass;
+                    acc_mut = cons((d === "-") ? (isDigit(d) ? ("\\" + d) : (inClass ? "\\-" : ((Py_syntaxChars.indexOf(d) >= 0) ? ("\\" + d) : d))) : ((d === "A") ? "(?<![\\s\\S])" : ((d === "B") ? nonBoundary : ((d === "D") ? "\\P{Nd}" : ((d === "P") ? ("\\" + d) : ((d === "S") ? (("[^" + Py_S) + "]") : ((d === "W") ? (("[^" + Py_W) + "]") : ((d === "Z") ? "(?![\\s\\S])" : ((d === "b") ? (inClass ? "\\x08" : boundary) : ((d === "d") ? "\\p{Nd}" : ((d === "f") ? ("\\" + d) : ((d === "n") ? ("\\" + d) : ((d === "p") ? ("\\" + d) : ((d === "r") ? ("\\" + d) : ((d === "s") ? (inClass ? Py_S : (("[" + Py_S) + "]")) : ((d === "t") ? ("\\" + d) : ((d === "u") ? ("\\" + d) : ((d === "v") ? ("\\" + d) : ((d === "w") ? (inClass ? Py_W : (("[" + Py_W) + "]")) : ((d === "x") ? ("\\" + d) : (isDigit(d) ? ("\\" + d) : ((Py_syntaxChars.indexOf(d) >= 0) ? ("\\" + d) : d))))))))))))))))))))), acc);
+                    continue scan;
                 }
-                case ".": {
-                    StringBuilder__Append_Z721C83C5(sb, "[^\\n]");
-                    break;
+                else if (inClass) {
+                    i_mut = (i + 1);
+                    inClass_mut = (c !== "]");
+                    acc_mut = cons(c, acc);
+                    continue scan;
                 }
-                case "[": {
-                    inClass = true;
-                    StringBuilder__Append_244C7CD6(sb, c);
-                    if (((i + 1) < p.length) && (p[i + 1] === "^")) {
-                        StringBuilder__Append_244C7CD6(sb, "^");
-                        i = ((i + 1) | 0);
+                else {
+                    switch (c) {
+                        case "$": {
+                            i_mut = (i + 1);
+                            inClass_mut = false;
+                            acc_mut = cons(multiline ? "(?=\\n|(?![\\s\\S]))" : "(?=\\n?(?![\\s\\S]))", acc);
+                            continue scan;
+                        }
+                        case ".": {
+                            i_mut = (i + 1);
+                            inClass_mut = false;
+                            acc_mut = cons("[^\\n]", acc);
+                            continue scan;
+                        }
+                        case "[":
+                            if (((i + 1) < p.length) && (p[i + 1] === "^")) {
+                                i_mut = (i + 2);
+                                inClass_mut = true;
+                                acc_mut = ofArrayWithTail(["^", "["], acc);
+                                continue scan;
+                            }
+                            else {
+                                i_mut = (i + 1);
+                                inClass_mut = true;
+                                acc_mut = cons("[", acc);
+                                continue scan;
+                            }
+                        case "^": {
+                            i_mut = (i + 1);
+                            inClass_mut = false;
+                            acc_mut = cons(multiline ? "(?<![^\\n])" : "^", acc);
+                            continue scan;
+                        }
+                        default: {
+                            i_mut = (i + 1);
+                            inClass_mut = false;
+                            acc_mut = cons(c, acc);
+                            continue scan;
+                        }
                     }
-                    break;
                 }
-                case "^": {
-                    StringBuilder__Append_Z721C83C5(sb, multiline ? "(?<![^\\n])" : "^");
-                    break;
-                }
-                default:
-                    StringBuilder__Append_244C7CD6(sb, c);
             }
-            i = ((i + 1) | 0);
+            break;
         }
-    }
-    return toString(sb);
+    };
+    return join("", reverse(scan(0, false, empty())));
 }
 
 export class Py_Rx extends Record {
@@ -163,7 +194,7 @@ export function Py_M_$reflection() {
 }
 
 export function Py_M__get_Value(m) {
-    return value_8(item(0, m.Groups));
+    return value_1(item(0, m.Groups));
 }
 
 export function Py_M__Group_Z524259A4(m, n) {
@@ -187,7 +218,7 @@ function Py_toM(m) {
         }
     }, m);
     const start = m.index | 0;
-    return new Py_M(groups, start, start + value_8(item(0, groups)).length);
+    return new Py_M(groups, start, start + value_1(item(0, groups)).length);
 }
 
 export function Py_finditer(r, s) {
@@ -226,23 +257,21 @@ export function Py_fullmatch(r, s) {
 }
 
 /**
+ * re.sub with a function that is also given the number of the match (0 for the first).
+ */
+export function Py_subIndexed(r, f, s) {
+    const patternInput = mapFold((last, tupledArg) => {
+        const m = tupledArg[1];
+        return [substring(s, last, m.Start - last) + f(tupledArg[0], m), m.End];
+    }, 0, indexed(Py_finditer(r, s)));
+    return join("", patternInput[0]) + substring(s, patternInput[1]);
+}
+
+/**
  * re.sub with a function.
  */
 export function Py_sub(r, f, s) {
-    const sb = StringBuilder_$ctor();
-    let last = 0;
-    const enumerator = getEnumerator(Py_finditer(r, s));
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const m = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            StringBuilder__Append_Z721C83C5(StringBuilder__Append_Z721C83C5(sb, substring(s, last, m.Start - last)), f(m));
-            last = (m.End | 0);
-        }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    return toString(StringBuilder__Append_Z721C83C5(sb, substring(s, last)));
+    return Py_subIndexed(r, (_arg, m) => f(m), s);
 }
 
 export function Py_split(r, s) {
@@ -329,13 +358,23 @@ export function Py_count(s, sub) {
         return (Py_len(s) + 1) | 0;
     }
     else {
-        let n = 0;
-        let i = indexOf(s, sub, 4);
-        while (i >= 0) {
-            n = ((n + 1) | 0);
-            i = (indexOf(s, sub, 4, i + sub.length) | 0);
-        }
-        return n | 0;
+        const from = (start_mut, n_mut) => {
+            from:
+            while (true) {
+                const start = start_mut, n = n_mut;
+                const matchValue = indexOf(s, sub, 4, start) | 0;
+                if (matchValue === -1) {
+                    return n | 0;
+                }
+                else {
+                    start_mut = (matchValue + sub.length);
+                    n_mut = (n + 1);
+                    continue from;
+                }
+                break;
+            }
+        };
+        return from(0, 0) | 0;
     }
 }
 
@@ -367,19 +406,13 @@ export function Py_cmpStr(a, b) {
     const matchValue = Array.from(a);
     const y = Array.from(b);
     const x = matchValue;
-    let i = 0;
-    let r = 0;
-    while (((r === 0) && (i < x.length)) && (i < y.length)) {
-        const cx = (item(i, x).codePointAt(0)) | 0;
-        const cy = (item(i, y).codePointAt(0)) | 0;
-        r = (comparePrimitives(cx, cy) | 0);
-        i = ((i + 1) | 0);
-    }
-    if (r !== 0) {
-        return r | 0;
+    const point = (cp) => ((cp.codePointAt(0)) | 0);
+    const matchValue_2 = tryFind((y_1) => (0 !== y_1), map_2((tupledArg) => (comparePrimitives(point(tupledArg[0]), point(tupledArg[1])) | 0), zip(x, y)));
+    if (matchValue_2 == null) {
+        return comparePrimitives(x.length, y.length) | 0;
     }
     else {
-        return comparePrimitives(x.length, y.length) | 0;
+        return matchValue_2 | 0;
     }
 }
 
@@ -457,23 +490,27 @@ function Py_exactDigits(x) {
 }
 
 function Py_roundAt(ds, q) {
-    const kept = substring(ds, 0, q).split("");
+    const kept = substring(ds, 0, q);
     const rest = substring(ds, q);
-    if ((rest === "") ? false : ((rest[0] > "5") ? true : ((rest[0] < "5") ? false : ((trimEnd(substring(rest, 1), "0") !== "") ? true : ((q > 0) && (((~~item(q - 1, kept).charCodeAt(0) - ~~"0".charCodeAt(0)) % 2) === 1)))))) {
-        let j = q - 1;
-        let carry = true;
-        while (carry && (j >= 0)) {
-            if (item(j, kept) === "9") {
-                setItem(kept, j, "0");
-                j = ((j - 1) | 0);
+    const carry = (digits) => {
+        if (!isEmpty(digits)) {
+            if (head(digits) === "9") {
+                return cons("0", carry(tail_1(digits)));
             }
             else {
-                setItem(kept, j, String.fromCharCode((~~item(j, kept).charCodeAt(0) + 1) & 0xFFFF));
-                carry = false;
+                return cons(String.fromCharCode((~~head(digits).charCodeAt(0) + 1) & 0xFFFF), tail_1(digits));
             }
         }
+        else {
+            return empty();
+        }
+    };
+    if ((rest === "") ? false : ((rest[0] > "5") ? true : ((rest[0] < "5") ? false : ((trimEnd(substring(rest, 1), "0") !== "") ? true : ((q > 0) && (((~~kept[q - 1].charCodeAt(0) - ~~"0".charCodeAt(0)) % 2) === 1)))))) {
+        return toArray(reverse(carry(toList(reverse_1(kept.split("")))))).join('');
     }
-    return kept.join('');
+    else {
+        return kept;
+    }
 }
 
 function Py_signOf(x) {
@@ -593,14 +630,43 @@ function Py_hex(n, width) {
  */
 export function Py_reprStr(s) {
     const q = ((s.indexOf("\'") >= 0) && !(s.indexOf("\"") >= 0)) ? "\"" : "\'";
-    const sb = StringBuilder_$ctor_Z721C83C5(q);
-    const arr = Array.from(s);
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const ch = item(idx, arr);
+    return (q + join("", map_1((ch) => {
         const c = (ch.codePointAt(0)) | 0;
-        StringBuilder__Append_Z721C83C5(sb, ((ch === q) ? true : (ch === "\\")) ? ("\\" + ch) : ((c === 9) ? "\\t" : ((c === 10) ? "\\n" : ((c === 13) ? "\\r" : (((c < 32) ? true : (c === 127)) ? ("\\x" + Py_hex(c, 2)) : ((c < 127) ? ch : (((ch !== " ") && Py_fullmatch(Py_unprintable, ch)) ? ((c <= 255) ? ("\\x" + Py_hex(c, 2)) : ((c <= 65535) ? ("\\u" + Py_hex(c, 4)) : ("\\U" + Py_hex(c, 8)))) : ch)))))));
-    }
-    return toString(StringBuilder__Append_Z721C83C5(sb, q));
+        if ((ch === q) ? true : (ch === "\\")) {
+            return "\\" + ch;
+        }
+        else {
+            switch (c) {
+                case 9:
+                    return "\\t";
+                case 10:
+                    return "\\n";
+                case 13:
+                    return "\\r";
+                default:
+                    if ((c < 32) ? true : (c === 127)) {
+                        return "\\x" + Py_hex(c, 2);
+                    }
+                    else if (c < 127) {
+                        return ch;
+                    }
+                    else if ((ch !== " ") && Py_fullmatch(Py_unprintable, ch)) {
+                        if (c <= 255) {
+                            return "\\x" + Py_hex(c, 2);
+                        }
+                        else if (c <= 65535) {
+                            return "\\u" + Py_hex(c, 4);
+                        }
+                        else {
+                            return "\\U" + Py_hex(c, 8);
+                        }
+                    }
+                    else {
+                        return ch;
+                    }
+            }
+        }
+    }, Array.from(s)))) + q;
 }
 
 /**
@@ -748,46 +814,48 @@ const openingBreaks = Py_rx("(?:\\[(?:pause|think)(?:\\s+[\\d.]+)?\\]\\s*)+");
  * {fr:moins le quart} [3:45] or..." is one sentence, "{fr:Il est midi.} Then..." is two.
  */
 export function sentences(say_1) {
-    const shielded = [];
-    const out = [];
-    const enumerator = getEnumerator(map_3((arg) => Py_strip(Py_sub(restoreRx, (m_1) => item(parse(Py_M__G_Z524259A4(m_1, 1), 511, false, 32), shielded), arg)), filter((p) => (Py_strip(p) !== ""), Py_split(splitter, Py_sub(FOREIGN, (m) => {
-        void (shielded.push(Py_M__get_Value(m)));
-        const e = Py_found(shieldEnd, Py_M__G_Z524259A4(m, 2)) ? "\u0001" : "\u0000";
-        return ("\u0000" + int32ToString(shielded.length - 1)) + e;
-    }, Py_strip(say_1))))));
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            let p_2 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const matchValue = Py_matchStart(openingBreaks, p_2);
-            let matchResult, m_3;
-            if (matchValue != null) {
-                if (out.length > 0) {
-                    matchResult = 0;
-                    m_3 = matchValue;
-                }
-                else {
-                    matchResult = 1;
-                }
+    const stripped = Py_strip(say_1);
+    const shielded = toArray(map_3(Py_M__get_Value, Py_finditer(FOREIGN, stripped)));
+    return reverse(fold((found, p) => {
+        const matchValue = Py_matchStart(openingBreaks, p);
+        let matchResult, before, last, m_3;
+        if (matchValue != null) {
+            if (!isEmpty(found)) {
+                matchResult = 0;
+                before = tail_1(found);
+                last = head(found);
+                m_3 = matchValue;
             }
             else {
                 matchResult = 1;
             }
-            switch (matchResult) {
-                case 0: {
-                    setItem(out, out.length - 1, (item(out.length - 1, out) + " ") + Py_strip(Py_M__get_Value(m_3)));
-                    p_2 = Py_strip(substring(p_2, m_3.End));
-                    break;
+        }
+        else {
+            matchResult = 1;
+        }
+        switch (matchResult) {
+            case 0: {
+                const p_1 = Py_strip(substring(p, m_3.End));
+                const found_1 = cons((last + " ") + Py_strip(Py_M__get_Value(m_3)), before);
+                if (p_1 !== "") {
+                    return cons(p_1, found_1);
+                }
+                else {
+                    return found_1;
                 }
             }
-            if (p_2 !== "") {
-                void (out.push(p_2));
-            }
+            default:
+                if (p !== "") {
+                    return cons(p, found);
+                }
+                else {
+                    return found;
+                }
         }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    return ofSeq(out);
+    }, empty(), map_3((arg) => Py_strip(Py_sub(restoreRx, (m_2) => item(parse(Py_M__G_Z524259A4(m_2, 1), 511, false, 32), shielded), arg)), filter((p_2) => (Py_strip(p_2) !== ""), Py_split(splitter, Py_subIndexed(FOREIGN, (i, m_1) => {
+        const e = Py_found(shieldEnd, Py_M__G_Z524259A4(m_1, 2)) ? "\u0001" : "\u0000";
+        return ("\u0000" + int32ToString(i)) + e;
+    }, stripped))))));
 }
 
 /**
@@ -922,7 +990,7 @@ function checkScene(glossary, s) {
     const own = toList(delay(() => append(!Py_fullmatch(sceneIdRx, sid) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": scene ids are lowercase words joined by \'-\' (the part before the first \'-\' names the module)")])) : empty_1(), delay(() => collect((m) => {
         const shownText = Py_M__G_Z524259A4(m, 1);
         const after = substring(narration, m.End, min(2, narration.length - m.End));
-        return (Py_found(endsSentence, shownText) && (Py_matchStart(nextStarts, after + " ") != null)) ? singleton_1(new Finding(/* Error */ 0, [`${sid}: [${shownText}](...) ends a sentence inside the brackets; move the '${last_1(Array.from(shownText))}' outside, or the next sentence merges into this one`])) : empty_1();
+        return (Py_found(endsSentence, shownText) && (Py_matchStart(nextStarts, after + " ") != null)) ? singleton_1(new Finding(/* Error */ 0, [`${sid}: [${shownText}](...) ends a sentence inside the brackets; move the '${last_2(Array.from(shownText))}' outside, or the next sentence merges into this one`])) : empty_1();
     }, Py_finditer(PRONOUNCE, narration))))));
     const sentenceNotes = mapIndexed((i, sent) => checkSentence(sid, i, sent), sentences(narration));
     return [append_1(own, collect_1((tuple) => tuple[0], sentenceNotes)), collect_1((tuple_1) => tuple_1[1], sentenceNotes)];
@@ -965,7 +1033,7 @@ function checkLong(clip, script) {
             else {
                 return false;
             }
-        }, zip(prefixes, scenes))), {
+        }, zip_1(prefixes, scenes))), {
             Equals: (x, y) => (x === y),
             GetHashCode: (x) => (stringHash(x) | 0),
         });
@@ -979,7 +1047,7 @@ function checkLong(clip, script) {
             const s_4 = matchValue[1];
             const k_1 = matchValue[0] | 0;
             return (isWhy(idOf(s_4)) && ((((k_1 + 1) >= arr.length) ? true : isWhy(idOf(item(k_1 + 1, arr)))) ? true : (prefix(idOf(item(k_1 + 1, arr))) === "outro"))) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_4), ": chapter has no content scenes")])) : empty_1();
-        }, indexed(arr)), delay(() => collect((key) => (!exists(join_1(ofArray([clip, key + ".js"]))) ? singleton_1(new Finding(/* Error */ 0, [`module ${Py_reprStr(key)} has no ${key}.js`])) : empty_1()), keys)))))))))))))];
+        }, indexed_1(arr)), delay(() => collect((key) => (!exists(join_1(ofArray([clip, key + ".js"]))) ? singleton_1(new Finding(/* Error */ 0, [`module ${Py_reprStr(key)} has no ${key}.js`])) : empty_1()), keys)))))))))))))];
     }
 }
 
@@ -993,7 +1061,7 @@ const SCENE_REF = Py_rx("\\b([A-Za-z_][A-Za-z0-9_]*)\\s*\\+\\s*[\"\'`]((?:\\||#)
 
 const CUE_CALL = Py_rx("\\b(?:cue|at|part)\\(\\s*[\"\'`]([a-z0-9]+(?:-[a-z0-9]+)+)[\"\'`]\\s*(?:,\\s*(-?\\d+))?");
 
-const toastKinds = ofSeq_1(["idea", "tricky", "remember", "careful", "mistake", "surprise", "remark", "question", "tip"], {
+const toastKinds = ofSeq(["idea", "tricky", "remember", "careful", "mistake", "surprise", "remark", "question", "tip"], {
     Compare: (x, y) => (comparePrimitives(x, y) | 0),
 });
 
@@ -1050,9 +1118,9 @@ function checkCuesWith(timing, jsFiles) {
                 return [empty(), names];
             }
             else {
-                const names_2 = fold((names_1, d) => add(Py_M__G_Z524259A4(d, 1), Py_M__G_Z524259A4(d, 2), names_1), names, Py_finditer(SCENE_CONST, line_1));
+                const names_2 = fold((names_1, d) => add_1(Py_M__G_Z524259A4(d, 1), Py_M__G_Z524259A4(d, 2), names_1), names, Py_finditer(SCENE_CONST, line_1));
                 return [(name = name_1, (ln = ((tupledArg[0] + 1) | 0), (line = Py_sub(SCENE_REF, (m_3) => {
-                    const matchValue_8 = tryFind(Py_M__G_Z524259A4(m_3, 1), names_2);
+                    const matchValue_8 = tryFind_1(Py_M__G_Z524259A4(m_3, 1), names_2);
                     if (matchValue_8 == null) {
                         return Py_M__get_Value(m_3);
                     }
@@ -1150,7 +1218,7 @@ function checkCuesWith(timing, jsFiles) {
             }
         }, empty_2({
             Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
-        }), indexed_1(Py_splitlines(readText(file))))[0]);
+        }), indexed(Py_splitlines(readText(file))))[0]);
     }, jsFiles);
     const toasts = toList(delay(() => collect((s_3) => collect((d_1) => {
         let s_2, at, sents, k, want_1;
@@ -1200,7 +1268,7 @@ function checkCuesWith(timing, jsFiles) {
 
 function checkCues(timing, jsFiles) {
     if (timing != null) {
-        return checkCuesWith(value_8(timing), jsFiles);
+        return checkCuesWith(value_1(timing), jsFiles);
     }
     else {
         return singleton(new Finding(/* Warning */ 1, ["no build/timing.json yet: cue checks skipped (run narrate first)"]));
@@ -1226,7 +1294,7 @@ function norm(n) {
 }
 
 function checkLesson(glossary, script, jsFiles, lessonText) {
-    const have = ofSeq_1(append_1(toList(delay(() => map_2((m) => norm(Py_M__get_Value(m)), Py_finditer(NUM, lessonText)))), toList(delay(() => collect((m_1) => {
+    const have = ofSeq(append_1(toList(delay(() => map_2((m) => norm(Py_M__get_Value(m)), Py_finditer(NUM, lessonText)))), toList(delay(() => collect((m_1) => {
         let mult;
         const matchValue = Py_M__G_Z524259A4(m_1, 2);
         switch (matchValue) {
@@ -1253,11 +1321,11 @@ function checkLesson(glossary, script, jsFiles, lessonText) {
             const text = pick((x_1) => x_1, m_4.Groups.slice(1, m_4.Groups.length));
             return !(((((!Py_found(anyDigit, text) ? true : Py_found(layoutish, text)) ? true : Py_fullmatch(svgPath, text)) ? true : Py_fullmatch(coords, text)) ? true : (text.indexOf("|") >= 0)) ? true : (text.indexOf("${") >= 0)) ? map_2((n) => [norm(Py_M__get_Value(n)), `${basename(file)}:${matchValue_1[0] + 1}`], Py_finditer(NUM, text)) : empty_1();
         }, Py_finditer(stringLit, line)) : empty_1();
-    }, indexed_1(Py_splitlines(readText(file)))), jsFiles)))), {
+    }, indexed(Py_splitlines(readText(file)))), jsFiles)))), {
         Equals: (x_2, y_1) => (x_2 === y_1),
         GetHashCode: (x_2) => (stringHash(x_2) | 0),
     });
-    const small = ofSeq_1(append_1(toList(delay(() => map_2(int32ToString, rangeDouble(0, 1, 12)))), singleton("100")), {
+    const small = ofSeq(append_1(toList(delay(() => map_2(int32ToString, rangeDouble(0, 1, 12)))), singleton("100")), {
         Compare: (x_3, y_2) => (comparePrimitives(x_3, y_2) | 0),
     });
     return map_3((tupledArg_3) => (new Finding(/* Warning */ 1, [concat(tupledArg_3[0], " (", tupledArg_3[1], ") does not appear in the lesson; check it is derived from lesson numbers, or drop it")])), Py_sortWith((tupledArg_1, tupledArg_2) => (Py_cmpStr(tupledArg_1[1], tupledArg_2[1]) | 0), filter((tupledArg) => {
@@ -1379,7 +1447,7 @@ function reportBreathingWith(timing, longVideo) {
         }, [0, start(item(0, sents)), item(0, sents)], pairwise_1(sents));
         const runStart_1 = patternInput[1];
         const longest_1 = patternInput[0];
-        const lastS = last_1(sents);
+        const lastS = last_2(sents);
         const patternInput_1 = ((stop(lastS) - runStart_1) > longest_1) ? [stop(lastS) - runStart_1, lastS] : [longest_1, patternInput[2]];
         const where_2 = patternInput_1[1];
         const longest_2 = patternInput_1[0];
@@ -1417,7 +1485,7 @@ function reportBreathing(timing, longVideo) {
         return empty();
     }
     else {
-        return reportBreathingWith(value_8(timing), longVideo);
+        return reportBreathingWith(value_1(timing), longVideo);
     }
 }
 
@@ -1425,12 +1493,12 @@ export const lengthCaps = ofArray([["short", 5.5], ["tour", 11], ["deep", 29]]);
 
 function reportDuration(clip, timing) {
     if (timing != null) {
-        const minutes = num(value_8(timing), "duration") / 60;
+        const minutes = num(value_1(timing), "duration") / 60;
         Py_print(concat("video:  ", Py_fmtF(1, minutes), " min with pauses, cards and recaps"));
         const briefPath = join_1(ofArray([clip, "brief.json"]));
         if (exists(briefPath)) {
             const length = Py_str(Py_get(readJson(briefPath), "length"));
-            const matchValue = tryFind_1((tupledArg) => (tupledArg[0] === length), lengthCaps);
+            const matchValue = tryFind_2((tupledArg) => (tupledArg[0] === length), lengthCaps);
             let matchResult, cap_1;
             if (matchValue != null) {
                 if (minutes > matchValue[1]) {
@@ -1487,11 +1555,11 @@ function reportLength(glossary, script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401060 = [1.2, 1.9];
+export const patternInput$00401058 = [1.2, 1.9];
 
-export const VISIT_TAIL = patternInput$00401060[1];
+export const VISIT_TAIL = patternInput$00401058[1];
 
-const VISIT_LEAD = patternInput$00401060[0];
+const VISIT_LEAD = patternInput$00401058[0];
 
 function checkMap(script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
@@ -1529,7 +1597,7 @@ function checkMap(script, jsFiles, lesson) {
     }
     else {
         const kinds = Py_get(map, "kinds");
-        const notObjects = (what, xs) => toList(delay(() => collect((matchValue) => (!((matchValue[1] !== null && typeof matchValue[1] === 'object' && !Array.isArray(matchValue[1]))) ? singleton_1(new Finding(/* Error */ 0, [`map: ${what} ${matchValue[0]} is not an object`])) : empty_1()), indexed_1(xs))));
+        const notObjects = (what, xs) => toList(delay(() => collect((matchValue) => (!((matchValue[1] !== null && typeof matchValue[1] === 'object' && !Array.isArray(matchValue[1]))) ? singleton_1(new Finding(/* Error */ 0, [`map: ${what} ${matchValue[0]} is not an object`])) : empty_1()), indexed(xs))));
         const rawParts = Py_list(map, "parts");
         const rawEdges = Py_list(map, "edges");
         const parts = filter((v_3) => ((v_3 !== null && typeof v_3 === 'object' && !Array.isArray(v_3))), rawParts);
@@ -1564,7 +1632,7 @@ function checkMap(script, jsFiles, lesson) {
                     }));
                 }))));
             }));
-        }, indexed_1(parts)), delay(() => append(collect((matchValue_7) => {
+        }, indexed(parts)), delay(() => append(collect((matchValue_7) => {
             const n = matchValue_7[1] | 0;
             return (n > 1) ? singleton_1(new Finding(/* Error */ 0, [`map: ${n} parts have the id ${Py_reprStr(matchValue_7[0])}`])) : empty_1();
         }, List_countBy((x_3) => x_3, ids, {
@@ -1671,7 +1739,7 @@ function checkMap(script, jsFiles, lesson) {
             else {
                 return empty_1();
             }
-        }, indexed(arr)), delay(() => append(!exists_1(hasPath, scenes) ? singleton_1(new Finding(/* Warning */ 1, ["map: no bridge scene has a \"path\", so the map never opens a chapter"])) : empty_1(), delay(() => {
+        }, indexed_1(arr)), delay(() => append(!exists_1(hasPath, scenes) ? singleton_1(new Finding(/* Warning */ 1, ["map: no bridge scene has a \"path\", so the map never opens a chapter"])) : empty_1(), delay(() => {
             const matchValue_15 = lesson;
             if (matchValue_15 == null) {
                 return empty_1();
@@ -1722,7 +1790,7 @@ export function run(ws, args) {
     const script = patternInput[1];
     const jsFiles = map_3((n_1) => join_1(ofArray([clip, n_1])), Py_sortWith((a, b) => (Py_cmpStr(a, b) | 0), filter((n) => n.endsWith(".js"), readDir(clip))));
     const patternInput_1 = checkScript(glossary, script);
-    const ok = ofSeq_1(map_3(Py_str, Py_list(script, "readsFine")), {
+    const ok = ofSeq(map_3(Py_str, Py_list(script, "readsFine")), {
         Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
     });
     const readAsWritten = toList(delay(() => collect((matchValue_1) => {

@@ -47,14 +47,23 @@ module Py =
     let writeFd (fd: int) (s: string) : unit =
         let buf = utf8 s
         let len: int = buf?length
-        let mutable off = 0
-        while off < len do
+        // how many bytes the next write took: none when the pipe is full, after a short sleep
+        let write (off: int) : int =
             try
-                let n: int = fs?writeSync(fd, buf, off, len - off)
-                off <- off + n
+                fs?writeSync(fd, buf, off, len - off)
             with e ->
-                if (e?code: string) = "EAGAIN" then sleepMs 2 else raise e
+                if (e?code: string) = "EAGAIN" then
+                    sleepMs 2
+                    0
+                else
+                    raise e
+        let rec from (off: int) = if off < len then from (off + write off)
+        from 0
 
+    // The one piece of state left in this file: the process's stdout, as `print` has filled it and `flush` has not yet
+    // written it. It is a ResizeArray because `print` (Python's print()) is called all over Check, ScanReport, Fill
+    // and ApplyFixes, whose `run`s return an exit code and not their output, and because a run that throws before
+    // `flush` writes nothing to stdout, which a write per `print` would change.
     let private outBuf = ResizeArray<string>()
 
     /// print(): one line to stdout (buffered until flush).
@@ -82,52 +91,46 @@ module Py =
     let private syntaxChars = @"^$\.*+?()[]{}|/"
 
     let private translate (p: string) (multiline: bool) : string =
-        let sb = System.Text.StringBuilder()
         let boundary = "(?:(?<=[" + W + "])(?![" + W + "])|(?<![" + W + "])(?=[" + W + "]))"
         let nonBoundary = "(?:(?<=[" + W + "])(?=[" + W + "])|(?<![" + W + "])(?![" + W + "]))"
-        let mutable i = 0
-        let mutable inClass = false
-        while i < p.Length do
-            let c = p.[i]
-            if c = '\\' && i + 1 < p.Length then
-                let d = p.[i + 1]
-                i <- i + 2
-                let s =
-                    match d with
-                    | 'w' -> if inClass then W else "[" + W + "]"
-                    | 'W' -> "[^" + W + "]"
-                    | 'd' -> @"\p{Nd}"
-                    | 'D' -> @"\P{Nd}"
-                    | 's' -> if inClass then S else "[" + S + "]"
-                    | 'S' -> "[^" + S + "]"
-                    | 'b' -> if inClass then @"\x08" else boundary
-                    | 'B' -> nonBoundary
-                    | 'A' -> @"(?<![\s\S])"
-                    | 'Z' -> @"(?![\s\S])"
-                    | 'x' | 'u' | 'n' | 't' | 'r' | 'f' | 'v' | 'p' | 'P' -> "\\" + string d
-                    | _ when System.Char.IsDigit d -> "\\" + string d
-                    | '-' when inClass -> @"\-"
-                    | _ when syntaxChars.IndexOf d >= 0 -> "\\" + string d
-                    | _ -> string d // an identity escape the u flag would reject: the character itself
-                sb.Append(s) |> ignore
-            elif inClass then
-                if c = ']' then inClass <- false
-                sb.Append(c) |> ignore
-                i <- i + 1
+        // The pattern from index i on, translated piece by piece (latest piece first in `acc`); `inClass` says whether
+        // the scan is inside a [...] class.
+        let rec scan (i: int) (inClass: bool) (acc: string list) : string list =
+            if i >= p.Length then
+                acc
             else
-                match c with
-                | '[' ->
-                    inClass <- true
-                    sb.Append(c) |> ignore
-                    if i + 1 < p.Length && p.[i + 1] = '^' then
-                        sb.Append('^') |> ignore
-                        i <- i + 1
-                | '.' -> sb.Append(@"[^\n]") |> ignore
-                | '$' -> sb.Append(if multiline then @"(?=\n|(?![\s\S]))" else @"(?=\n?(?![\s\S]))") |> ignore
-                | '^' -> sb.Append(if multiline then @"(?<![^\n])" else "^") |> ignore
-                | _ -> sb.Append(c) |> ignore
-                i <- i + 1
-        sb.ToString()
+                let c = p.[i]
+                if c = '\\' && i + 1 < p.Length then
+                    let d = p.[i + 1]
+                    let s =
+                        match d with
+                        | 'w' -> if inClass then W else "[" + W + "]"
+                        | 'W' -> "[^" + W + "]"
+                        | 'd' -> @"\p{Nd}"
+                        | 'D' -> @"\P{Nd}"
+                        | 's' -> if inClass then S else "[" + S + "]"
+                        | 'S' -> "[^" + S + "]"
+                        | 'b' -> if inClass then @"\x08" else boundary
+                        | 'B' -> nonBoundary
+                        | 'A' -> @"(?<![\s\S])"
+                        | 'Z' -> @"(?![\s\S])"
+                        | 'x' | 'u' | 'n' | 't' | 'r' | 'f' | 'v' | 'p' | 'P' -> "\\" + string d
+                        | _ when System.Char.IsDigit d -> "\\" + string d
+                        | '-' when inClass -> @"\-"
+                        | _ when syntaxChars.IndexOf d >= 0 -> "\\" + string d
+                        | _ -> string d // an identity escape the u flag would reject: the character itself
+                    scan (i + 2) inClass (s :: acc)
+                elif inClass then
+                    scan (i + 1) (c <> ']') (string c :: acc)
+                else
+                    match c with
+                    | '[' when i + 1 < p.Length && p.[i + 1] = '^' -> scan (i + 2) true ("^" :: "[" :: acc)
+                    | '[' -> scan (i + 1) true ("[" :: acc)
+                    | '.' -> scan (i + 1) false (@"[^\n]" :: acc)
+                    | '$' -> scan (i + 1) false ((if multiline then @"(?=\n|(?![\s\S]))" else @"(?=\n?(?![\s\S]))") :: acc)
+                    | '^' -> scan (i + 1) false ((if multiline then @"(?<![^\n])" else "^") :: acc)
+                    | _ -> scan (i + 1) false (string c :: acc)
+        scan 0 false [] |> List.rev |> String.concat ""
 
     type Rx = { Src: string; Flags: string }
 
@@ -182,14 +185,15 @@ module Py =
     let fullmatch (r: Rx) (s: string) : bool =
         not (isNone (exec s (mk ("^(?:" + r.Src + ")$") r.Flags)))
 
+    /// re.sub with a function that is also given the number of the match (0 for the first).
+    let subIndexed (r: Rx) (f: int -> M -> string) (s: string) : string =
+        let pieces, last =
+            (0, List.indexed (finditer r s))
+            ||> List.mapFold (fun last (i, m) -> s.Substring(last, m.Start - last) + f i m, m.End)
+        String.concat "" pieces + s.Substring last
+
     /// re.sub with a function.
-    let sub (r: Rx) (f: M -> string) (s: string) : string =
-        let sb = System.Text.StringBuilder()
-        let mutable last = 0
-        for m in finditer r s do
-            sb.Append(s.Substring(last, m.Start - last)).Append(f m) |> ignore
-            last <- m.End
-        sb.Append(s.Substring(last)).ToString()
+    let sub (r: Rx) (f: M -> string) (s: string) : string = subIndexed r (fun _ m -> f m) s
 
     [<Emit("$0.split($1)")>]
     let private jsSplit (s: string) (r: obj) : string[] = jsNative
@@ -230,12 +234,12 @@ module Py =
     let count (s: string) (sub: string) : int =
         if sub = "" then len s + 1
         else
-            let mutable n = 0
-            let mutable i = s.IndexOf(sub, System.StringComparison.Ordinal)
-            while i >= 0 do
-                n <- n + 1
-                i <- s.IndexOf(sub, i + sub.Length, System.StringComparison.Ordinal)
-            n
+            // each match is counted and the search goes on after it
+            let rec from (start: int) (n: int) =
+                match s.IndexOf(sub, start, System.StringComparison.Ordinal) with
+                | -1 -> n
+                | i -> from (i + sub.Length) (n + 1)
+            from 0 0
 
     /// str.replace(old, new): every occurrence.
     [<Emit("$0.split($1).join($2)")>]
@@ -253,14 +257,11 @@ module Py =
     /// Python string ordering (by code point; JS < compares UTF-16 units).
     let cmpStr (a: string) (b: string) : int =
         let x, y = codePoints a, codePoints b
-        let mutable i = 0
-        let mutable r = 0
-        while r = 0 && i < x.Length && i < y.Length do
-            let cx: int = x.[i]?codePointAt(0)
-            let cy: int = y.[i]?codePointAt(0)
-            r <- compare cx cy
-            i <- i + 1
-        if r <> 0 then r else compare x.Length y.Length
+        let point (cp: string) : int = cp?codePointAt(0)
+        // the first code points that differ decide; when one string is the start of the other, the shorter is less
+        match Seq.zip x y |> Seq.map (fun (cx, cy) -> compare (point cx) (point cy)) |> Seq.tryFind ((<>) 0) with
+        | Some r -> r
+        | None -> compare x.Length y.Length
 
     // ── numbers ────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -324,7 +325,7 @@ module Py =
 
     /// Keep ds[0..q-1], rounding half to even on the rest. The result has q digits (the leading pad absorbs a carry).
     let private roundAt (ds: string) (q: int) : string =
-        let kept = ds.Substring(0, q).ToCharArray()
+        let kept = ds.Substring(0, q)
         let rest = ds.Substring(q)
         let up =
             if rest = "" then false
@@ -332,17 +333,14 @@ module Py =
             elif rest.[0] < '5' then false
             elif rest.Substring(1).TrimEnd('0') <> "" then true
             else q > 0 && (int kept.[q - 1] - int '0') % 2 = 1
-        if up then
-            let mutable j = q - 1
-            let mutable carry = true
-            while carry && j >= 0 do
-                if kept.[j] = '9' then
-                    kept.[j] <- '0'
-                    j <- j - 1
-                else
-                    kept.[j] <- char (int kept.[j] + 1)
-                    carry <- false
-        System.String(kept)
+        // add one to the last digit, carrying left (digits come least significant first); a carry out of the
+        // first digit is dropped
+        let rec carry (digits: char list) : char list =
+            match digits with
+            | [] -> []
+            | '9' :: more -> '0' :: carry more
+            | d :: more -> char (int d + 1) :: more
+        if up then System.String(kept |> Seq.rev |> Seq.toList |> carry |> List.rev |> List.toArray) else kept
 
     let private signOf (x: float) = if negative x then "-" else ""
 
@@ -416,23 +414,20 @@ module Py =
     /// repr(str)
     let reprStr (s: string) : string =
         let q = if s.Contains "'" && not (s.Contains "\"") then "\"" else "'"
-        let sb = System.Text.StringBuilder(q)
-        for ch in codePoints s do
+        let escaped (ch: string) : string =
             let c: int = ch?codePointAt(0)
-            let piece =
-                if ch = q || ch = "\\" then "\\" + ch
-                elif c = 9 then "\\t"
-                elif c = 10 then "\\n"
-                elif c = 13 then "\\r"
-                elif c < 32 || c = 0x7f then "\\x" + hex c 2
-                elif c < 0x7f then ch
-                elif ch <> " " && fullmatch unprintable ch then
-                    if c <= 0xff then "\\x" + hex c 2
-                    elif c <= 0xffff then "\\u" + hex c 4
-                    else "\\U" + hex c 8
-                else ch
-            sb.Append(piece) |> ignore
-        sb.Append(q).ToString()
+            if ch = q || ch = "\\" then "\\" + ch
+            elif c = 9 then "\\t"
+            elif c = 10 then "\\n"
+            elif c = 13 then "\\r"
+            elif c < 32 || c = 0x7f then "\\x" + hex c 2
+            elif c < 0x7f then ch
+            elif ch <> " " && fullmatch unprintable ch then
+                if c <= 0xff then "\\x" + hex c 2
+                elif c <= 0xffff then "\\u" + hex c 4
+                else "\\U" + hex c 8
+            else ch
+        q + (codePoints s |> Array.map escaped |> String.concat "") + q
 
     /// repr() of a JSON value (dicts keep their key order).
     let rec repr (v: obj) : string =
@@ -497,25 +492,28 @@ let private openingBreaks = Py.rx @"(?:\[(?:pause|think)(?:\s+[\d.]+)?\]\s*)+"
 /// piece. A shielded phrase ends a sentence only when it ends in . ! ? itself (marked \x01): "is
 /// {fr:moins le quart} [3:45] or..." is one sentence, "{fr:Il est midi.} Then..." is two.
 let sentences (say: string) : string list =
-    let shielded = ResizeArray<string>()
-    let shield (m: Py.M) =
-        shielded.Add m.Value
+    let stripped = Py.strip say
+    // the shielded phrases, in order: piece i is replaced by a marker that holds i
+    let shielded = Py.finditer FOREIGN stripped |> List.map (fun m -> m.Value) |> List.toArray
+    let shield (i: int) (m: Py.M) =
         let e = if Py.found shieldEnd (m.G 2) then "\u0001" else "\u0000"
-        "\u0000" + string (shielded.Count - 1) + e
-    let text = Py.sub FOREIGN shield (Py.strip say)
+        "\u0000" + string i + e
+    let text = Py.subIndexed FOREIGN shield stripped
     let parts = Py.split splitter text
     let restore s = Py.sub restoreRx (fun m -> shielded.[int (m.G 1)]) s
-    let out = ResizeArray<string>()
-    for p in parts |> List.filter (fun p -> Py.strip p <> "") |> List.map (restore >> Py.strip) do
-        let mutable p = p
-        // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because...").
-        match Py.matchStart openingBreaks p with
-        | Some m when out.Count > 0 ->
-            out.[out.Count - 1] <- out.[out.Count - 1] + " " + Py.strip m.Value
-            p <- Py.strip (p.Substring m.End)
-        | _ -> ()
-        if p <> "" then out.Add p
-    List.ofSeq out
+    // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because...").
+    let add (found: string list) (p: string) : string list =
+        match Py.matchStart openingBreaks p, found with
+        | Some m, last :: before ->
+            let p = Py.strip (p.Substring m.End)
+            let found = (last + " " + Py.strip m.Value) :: before
+            if p <> "" then p :: found else found
+        | _ -> if p <> "" then p :: found else found
+    parts
+    |> List.filter (fun p -> Py.strip p <> "")
+    |> List.map (restore >> Py.strip)
+    |> List.fold add []
+    |> List.rev
 
 /// The silences a sentence asks for after it: [("pause", 1.5), ("think", 4.0)].
 let breaks (s: string) : (string * float) list =
