@@ -151,6 +151,14 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
     `CV narrate`: that chapter). The rest is reused and the files are joined in seconds. The last line says how many
     scenes were reused. `CV video --full` draws everything again; use it only if a reused scene looks wrong.
 
+**Presenting it in their own voice.** When the user wants to give the video themselves (a deck, slides, a PowerPoint,
+speaker notes, the script to read, the video without the voice), run `CV present` after the render. It writes
+`WS/out/<name>.pptx` (a slide per sentence, the sentence as its speaker note, a section per chapter),
+`<name>.script.md` (the narration with each line's slide and time), `<name>.srt` and `<name>.silent.mp4`; give the
+user those paths. For the animated click-through version, `CV present --serve` prints a URL (`?present`) and serves
+it until Ctrl+C: → or a click plays the next step, ← goes back, S opens speaker notes in a second window. If it
+says the slide writer is not installed, run `CV setup` once and try again.
+
 ## Progress videos
 
 A progress video follows the same steps with these differences. Workspace as for any video.

@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Node.fs" />
+    <Compile Include="../Shared/Steps.fs" />
     <Compile Include="Wav.fs" />
     <Compile Include="Glossary.fs" />
     <Compile Include="Narrate.fs" />
@@ -20,11 +21,13 @@
     <Compile Include="Render.fs" />
     <Compile Include="Scan.fs" />
     <Compile Include="Video.fs" />
+    <Compile Include="Present.fs" />
     <Compile Include="Setup.fs" />
     <Compile Include="Cv.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Fable.Core" Version="5.3.0" />
     <PackageReference Include="Fable.Promise" Version="3.2.1" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
   </ItemGroup>
 </Project>

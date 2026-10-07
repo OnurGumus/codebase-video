@@ -10,7 +10,9 @@ import { requirePackages, selfTest, modelDir, modelFile, packageInstalled } from
 import { PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
 import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
 
-const dependencies = ofArray([["puppeteer-core", "^25.12.0"], ["kokoro-js", "1.2.1"], ["@echogarden/espeak-ng-emscripten", "0.3.5"]]);
+const dependencies = ofArray([["puppeteer-core", "^25.12.0"], ["kokoro-js", "1.2.1"], ["@echogarden/espeak-ng-emscripten", "0.3.5"], ["pptxgenjs", "4.0.1"]]);
+
+const core = ofArray(["puppeteer-core", "kokoro-js", "@echogarden/espeak-ng-emscripten"]);
 
 function packageJson() {
     return toJsonIndented({
@@ -113,6 +115,6 @@ export function run() {
  * Exits with a hint to run setup when the tool home is not ready.
  */
 export function requireReady() {
-    requirePackages(map((tuple) => tuple[0], dependencies));
+    requirePackages(core);
 }
 

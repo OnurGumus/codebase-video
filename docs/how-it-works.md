@@ -86,6 +86,19 @@ without asking anything; see [ci.md](ci.md).
     <video name>.chapters.vtt   chapter markers
 ```
 
+To give the video in your own voice, `present` adds (`node engine/cli/Cv.js <workspace> present`):
+
+```
+    <video name>.pptx           a slide per sentence, the sentence as its speaker note, a section per chapter
+    <video name>.script.md      the narration to read aloud: each sentence with its slide and its time in the video
+    <video name>.srt            the narration as subtitles, for a video editor
+    <video name>.silent.mp4     the video without its sound
+```
+
+`present --serve` also serves a click-through version: the animated video in the browser, a step per sentence. Each
+click or → plays the next step and holds; S opens the speaker notes in a second window. A slide and a step show the
+same moment: just after the sentence has been said, before the scene's content leaves.
+
 ## Short videos and GitHub
 
 GitHub plays a video attached to a README only up to 10 MB, and shows the video's first frame before it plays. A

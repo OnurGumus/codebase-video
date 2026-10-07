@@ -4,7 +4,8 @@
 ///   sheet g1 g2        -> build/sheet-g1-g2-<n>.png: only scenes of those modules (ids "g1-…"),
 ///                         so builders working on one clip in parallel never touch each other's sheets
 ///   serve              -> prints a URL to preview the clip with its narration
-/// and, for the `video` step (src/Engine/Video.fs), renders runs of frames, each piped into its own ffmpeg process
+/// and `shots` draws given moments to JPEG files for the `present` step's slides (src/Engine/Present.fs);
+/// for the `video` step (src/Engine/Video.fs), it renders runs of frames, each piped into its own ffmpeg process
 /// (`ranges`): one run per scene that is not in the cache.
 /// The clip directory is served as the site root and the engine directory as /engine/, so clip.html loads
 /// /engine/web/Main.js wherever the clip lives. Frames render in WORKERS parallel pages (default 4), written in order.
@@ -411,6 +412,17 @@ let run (ws: string) (mode: string) (args: string list) : JS.Promise<int> =
                     | "stills" -> stills clip first args |> Promise.map (fun () -> 0)
                     | _ -> sheet clip first args)
     }
+
+/// Draws the frame at each time and writes it as a JPEG to its file (the `present` step's slides); returns an exit code.
+let shots (ws: string) (wanted: (float * string) list) : JS.Promise<int> =
+    withChrome (resolve ws) (fun _ first ->
+        promise {
+            for t, file in wanted do
+                do! awaitJs (first?evaluate (renderAt, t))
+                let! jpg = awaitJs (first?screenshot (createObj [ "type" ==> "jpeg"; "quality" ==> 90 ]))
+                writeBytes file jpg
+            return 0
+        })
 
 /// Renders the runs one after another, in one Chrome. Stops at the first that fails; returns an exit code.
 let ranges (ws: string) (fps: float) (jobs: Range list) : JS.Promise<int> =

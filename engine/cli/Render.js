@@ -472,6 +472,19 @@ export function run(ws, mode, args) {
 }
 
 /**
+ * Draws the frame at each time and writes it as a JPEG to its file (the `present` step's slides); returns an exit code.
+ */
+export function shots(ws, wanted_1) {
+    return withChrome(resolve(ws), (_arg, first) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (PromiseBuilder__For_1565554B(promise, wanted_1, (_arg_1) => (awaitJs(first.evaluate(renderAt, _arg_1[0])).then(() => (awaitJs(first.screenshot({
+        type: "jpeg",
+        quality: 90,
+    })).then((_arg_3) => {
+        writeBytes(_arg_1[1], _arg_3);
+        return Promise.resolve();
+    }))))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve(0))))))));
+}
+
+/**
  * Renders the runs one after another, in one Chrome. Stops at the first that fails; returns an exit code.
  */
 export function ranges(ws, fps, jobs) {

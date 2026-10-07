@@ -9,6 +9,7 @@ committed, which is why users need only Node.js.
 | `briefs/` | the instructions for each helper agent (explorer, checker, writer, builder, auditor) |
 | `src/Engine` | the command-line engine in F#: voice, checks, drawing frames, encoding |
 | `src/Kit` | the animation kit in F# that runs in the browser: code cards, diagrams, the chapter frame |
+| `src/Shared` | F# both compile: how a video is cut into presentation steps (the `.pptx` slides and the click-through deck) |
 | `engine/cli`, `engine/web` | the compiled JavaScript of the two folders above |
 | `engine/KIT.md` | how to draw a scene with the kit |
 | `briefs/*.progress.md`, `briefs/kind.progress.md` | what differs for a progress video (how the code changed over a commit range) |
