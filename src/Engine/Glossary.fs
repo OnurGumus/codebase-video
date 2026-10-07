@@ -35,8 +35,14 @@ let private escapeRx (s: string) : string = jsNative
 [<Emit("new RegExp($0, $1)")>]
 let private regex (pattern: string) (flags: string) : obj = jsNative
 
-[<Emit("$0.replace($1, (...m) => $2(m[0], m[1], m[2]))")>]
-let private replace3 (s: string) (rx: obj) (f: string -> string -> string -> string) : string = jsNative
+/// Every match of `rx` (a global expression) in `text`: where it starts, the whole match, and its first two groups
+/// (undefined when a group did not take part).
+[<Emit("Array.from($0.matchAll($1), m => [m.index, m[0], m[1], m[2]])")>]
+let private finds (text: string) (rx: obj) : (int * string * string * string)[] = jsNative
+
+/// Where each match of `rx` (a global expression) in `text` starts and how long it is.
+[<Emit("Array.from($0.matchAll($1), m => [m.index, m[0].length])")>]
+let private spans (text: string) (rx: obj) : (int * int)[] = jsNative
 
 /// What a script has already marked, which the glossary must not look inside.
 let private MARKED = regex """\[[^\]]*\]\([^)]*\)|\{[a-z]{2,3}:[^{}]+\}|\[(?:pause|think|rest)[^\]]*\]""" "g"
@@ -89,42 +95,43 @@ let private dotted (g: Glossary) (name: string) : string =
                 | None -> p)
             |> String.concat " dot "
 
-/// The terms of `text` (which holds no marks) and how each will be said, in order.
-let private found (g: Glossary) (text: string) : (string * string) list =
-    let out = ResizeArray<string * string>()
-    replace3 text g.Finder (fun whole name term ->
-        let said = if isNull name || jsTypeof name = "undefined" then g.Terms.[term] else dotted g name
-        if said <> whole then out.Add(whole, said)
-        whole)
-    |> ignore
-    List.ofSeq out
+/// A stretch of a "say": the script's own mark, which the glossary leaves alone, or the words between marks.
+type private Piece =
+    | Plain of string
+    | Marked of string
 
-/// The stretches of a "say" between the script's own marks.
-let private unmarked (say: string) (f: string -> string) : string =
-    let mutable out, pos = "", 0
-    let rx = MARKED
-    rx?lastIndex <- 0
-    let mutable m: obj = rx?exec (say)
-    while not (isNull m) do
-        let i: int = m?index
-        let len: int = m?(0)?length
-        out <- out + f (say.Substring(pos, i - pos)) + say.Substring(i, len)
-        pos <- i + len
-        m <- rx?exec (say)
-    out + f (say.Substring pos)
+/// A "say" cut into the stretches between the script's own marks and the marks themselves, in order.
+let private pieces (say: string) : Piece list =
+    let rec walk (pos: int) (found: (int * int) list) (cut: Piece list) =
+        match found with
+        | [] -> List.rev (Plain (say.Substring pos) :: cut)
+        | (i, len) :: rest ->
+            walk (i + len) rest (Marked (say.Substring(i, len)) :: Plain (say.Substring(pos, i - pos)) :: cut)
+    walk 0 (List.ofArray (spans say MARKED)) []
+
+/// `text` (which holds no marks) with every term the glossary knows written as `[term](how it is said)`, and each
+/// term the glossary says differently from how it is written, with how, in the order they come.
+let private scan (g: Glossary) (text: string) : string * (string * string) list =
+    let rec walk (pos: int) (found: (int * string * string * string) list) (built: string list) said =
+        match found with
+        | [] -> String.concat "" (List.rev (text.Substring pos :: built)), List.rev said
+        | (i, whole, name, term) :: rest ->
+            let spoken = if isNull name || jsTypeof name = "undefined" then g.Terms.[term] else dotted g name
+            let shown, said' = if spoken = whole then whole, said else $"[{whole}]({spoken})", (whole, spoken) :: said
+            walk (i + whole.Length) rest (shown :: text.Substring(pos, i - pos) :: built) said'
+    walk 0 (List.ofArray (finds text g.Finder)) [] []
 
 /// A scene's "say" with every term the glossary knows written as `[term](how it is said)`.
 let apply (g: Glossary) (say: string) : string =
-    unmarked say (fun text ->
-        replace3 text g.Finder (fun whole name term ->
-            let said = if isNull name || jsTypeof name = "undefined" then g.Terms.[term] else dotted g name
-            if said = whole then whole else $"[{whole}]({said})"))
+    pieces say
+    |> List.map (function
+        | Plain text -> fst (scan g text)
+        | Marked mark -> mark)
+    |> String.concat ""
 
 /// Every term of a "say" that the glossary will say differently from how it is written, with how.
 let uses (g: Glossary) (say: string) : (string * string) list =
-    let out = ResizeArray<string * string>()
-    unmarked say (fun text ->
-        out.AddRange(found g text)
-        text)
-    |> ignore
-    List.ofSeq out
+    pieces say
+    |> List.collect (function
+        | Plain text -> snd (scan g text)
+        | Marked _ -> [])

@@ -23,59 +23,62 @@ let private isAbsolutePath (p: string) : bool = path?isAbsolute(p)
 /// boolean masks. The changed-line count must equal Python's, so this is its algorithm, not a plain LCS:
 /// a line in more than 1% of b (b of 200+ lines) is "popular" and never starts a match.
 let private unmatched (a: string[]) (b: string[]) : bool[] * bool[] =
-    let b2j = System.Collections.Generic.Dictionary<string, ResizeArray<int>>()
-    b |> Array.iteri (fun i elt ->
-        match b2j.TryGetValue elt with
-        | true, l -> l.Add i
-        | _ -> b2j.[elt] <- ResizeArray [ i ])
-    if b.Length >= 200 then
-        let ntest = b.Length / 100 + 1
-        for elt in [ for kv in b2j do if kv.Value.Count > ntest then kv.Key ] do
-            b2j.Remove elt |> ignore
+    // Where each line occurs in b, the indices ascending (folding from the end puts each in front of the later ones).
+    let b2j: Map<string, int list> =
+        (Array.indexed b, Map.empty)
+        ||> Array.foldBack (fun (i, elt) m -> m.Add(elt, i :: defaultArg (m.TryFind elt) []))
+    let b2j =
+        if b.Length >= 200 then
+            let ntest = b.Length / 100 + 1
+            b2j |> Map.filter (fun _ idxs -> idxs.Length <= ntest)
+        else b2j
 
+    // The longest block a[i:i+k] = b[j:j+k] inside a[alo:ahi] and b[blo:bhi] as (i, j, k).
     let findLongestMatch alo ahi blo bhi =
-        let mutable besti, bestj, bestsize = alo, blo, 0
-        let mutable j2len = System.Collections.Generic.Dictionary<int, int>()
-        for i in alo .. ahi - 1 do
-            let newj2len = System.Collections.Generic.Dictionary<int, int>()
-            match b2j.TryGetValue a.[i] with
-            | true, js ->
-                let mutable stop = false
-                for j in js do
-                    if not stop && j >= blo then
-                        if j >= bhi then stop <- true
-                        else
-                            let k = (match j2len.TryGetValue(j - 1) with | true, v -> v | _ -> 0) + 1
-                            newj2len.[j] <- k
-                            if k > bestsize then
-                                besti <- i - k + 1
-                                bestj <- j - k + 1
-                                bestsize <- k
-            | _ -> ()
-            j2len <- newj2len
+        let step (j2len: Map<int, int>, best: int * int * int) i =
+            // The lines of b that equal a[i] and lie inside [blo, bhi): b2j is ascending, so the first at or past bhi
+            // ends the scan, and those before blo are skipped.
+            let inRange =
+                b2j
+                |> Map.tryFind a.[i]
+                |> Option.defaultValue []
+                |> List.takeWhile (fun j -> j < bhi)
+                |> List.filter (fun j -> j >= blo)
+            ((Map.empty, best), inRange)
+            ||> List.fold (fun (newj2len: Map<int, int>, (_, _, bestsize as best)) j ->
+                let k = (j2len |> Map.tryFind (j - 1) |> Option.defaultValue 0) + 1
+                // Only a strictly longer match replaces the best one, as in Python.
+                newj2len.Add(j, k), (if k > bestsize then (i - k + 1, j - k + 1, k) else best))
+        let _, best = ((Map.empty, (alo, blo, 0)), [ alo .. ahi - 1 ]) ||> List.fold step
         // No junk, so only the non-junk extensions apply (popular lines may extend a match).
-        while besti > alo && bestj > blo && a.[besti - 1] = b.[bestj - 1] do
-            besti <- besti - 1
-            bestj <- bestj - 1
-            bestsize <- bestsize + 1
-        while besti + bestsize < ahi && bestj + bestsize < bhi && a.[besti + bestsize] = b.[bestj + bestsize] do
-            bestsize <- bestsize + 1
-        besti, bestj, bestsize
+        let rec back (besti, bestj, bestsize) =
+            if besti > alo && bestj > blo && a.[besti - 1] = b.[bestj - 1] then
+                back (besti - 1, bestj - 1, bestsize + 1)
+            else besti, bestj, bestsize
+        let rec forward (besti, bestj, bestsize) =
+            if besti + bestsize < ahi && bestj + bestsize < bhi && a.[besti + bestsize] = b.[bestj + bestsize] then
+                forward (besti, bestj, bestsize + 1)
+            else besti, bestj, bestsize
+        forward (back best)
 
-    let inA = Array.create a.Length true
-    let inB = Array.create b.Length true
-    let queue = System.Collections.Generic.Stack<int * int * int * int>()
-    queue.Push((0, a.Length, 0, b.Length))
-    while queue.Count > 0 do
-        let alo, ahi, blo, bhi = queue.Pop()
-        let i, j, k = findLongestMatch alo ahi blo bhi
-        if k > 0 then
-            for d in 0 .. k - 1 do
-                inA.[i + d] <- false
-                inB.[j + d] <- false
-            if alo < i && blo < j then queue.Push((alo, i, blo, j))
-            if i + k < ahi && j + k < bhi then queue.Push((i + k, ahi, j + k, bhi))
-    inA, inB
+    // The longest match of a range, then the same on each side of it (the right side first, as Python's queue does).
+    let rec blocks (queue: (int * int * int * int) list) (found: (int * int * int) list) =
+        match queue with
+        | [] -> found
+        | (alo, ahi, blo, bhi) :: rest ->
+            match findLongestMatch alo ahi blo bhi with
+            | i, j, k when k > 0 ->
+                let rest = if alo < i && blo < j then (alo, i, blo, j) :: rest else rest
+                let rest = if i + k < ahi && j + k < bhi then (i + k, ahi, j + k, bhi) :: rest else rest
+                blocks rest ((i, j, k) :: found)
+            | _ -> blocks rest found
+    let matched = blocks [ (0, a.Length, 0, b.Length) ] []
+    // The lines of one side that no block covers: each block is its start on that side and its size.
+    let uncovered (length: int) (starts: (int * int) list) : bool[] =
+        let covered = starts |> List.collect (fun (start, k) -> [ start .. start + k - 1 ]) |> Set.ofList
+        Array.init length (fun x -> not (covered.Contains x))
+    uncovered a.Length (matched |> List.map (fun (i, _, k) -> i, k)),
+    uncovered b.Length (matched |> List.map (fun (_, j, k) -> j, k))
 
 /// len([d for d in unified_diff(..., n=0) if d.startswith(("+", "-")) and not d.startswith(("+++", "---"))]):
 /// removed lines not starting "--" plus added lines not starting "++".
@@ -118,9 +121,8 @@ let run (ws: string) (args: string list) : int =
         Py.print $"{Py.len before} -> {Py.len after} chars; {changedLines before after} changed lines"
         if apply then
             let backup n = join [ ws; "build"; $"lesson.before-{n}.md" ]
-            let mutable n = 1
-            while exists (backup n) do
-                n <- n + 1
+            let rec firstFree n = if exists (backup n) then firstFree (n + 1) else n
+            let n = firstFree 1
             writeText (backup n) before
             writeText doc after
             Py.print $"applied; the previous text is build/lesson.before-{n}.md"
