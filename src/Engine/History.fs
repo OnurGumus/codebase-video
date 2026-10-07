@@ -66,7 +66,8 @@ type private Commit =
 
 /// git in the repository: its exit code and what it printed, trimmed.
 let private git (repo: string) (args: string list) : int * string =
-    let code, out, _ = runCapture "git" ([ "-C"; repo ] @ args)
+    // core.quotePath=false: a path with letters outside ASCII is printed as it is, not as "caf\303\251"
+    let code, out, _ = runCapture "git" ([ "-c"; "core.quotePath=false"; "-C"; repo ] @ args)
     code, out.Trim()
 
 let private gitOut (repo: string) (args: string list) : string = snd (git repo args)
@@ -134,30 +135,44 @@ let private resolveUntil (repo: string) (reference: string) : string =
         | Some sha -> sha
         | None -> stop $"history: \"until\" is {reference}, which is not a tag, a commit or a date here; {nearTags repo}"
 
-/// Where the range starts, and how that was chosen.
-let private resolveSince (repo: string) (given: string option) (until: string) : string * string * string =
-    let first () = (gitOut repo [ "rev-list"; "--max-parents=0"; until ]).Split('\n') |> Array.last
+/// Where the range starts (None: at the very beginning, the first commit included), the words for it, how it was
+/// chosen, and anything the reader of the facts should be told about the choice.
+type private Start = { Commit: string option; Ref: string; Was: string; Notes: string list }
+
+let private resolveSince (repo: string) (given: string option) (until: string) : Start =
     let before (date: string) = gitOut repo [ "rev-list"; "-1"; $"--before={date} 23:59:59"; until ]
     match given with
     | Some reference when isDate reference ->
         match before reference with
         | "" when isShallow repo -> stop $"history: this clone is shallow and does not reach {reference}; {SHALLOW_HINT}"
-        | "" -> first (), reference, "first commit"
-        | sha -> sha, reference, "given"
+        | "" -> { Commit = None; Ref = reference; Was = "before first commit"; Notes = [] }
+        | sha -> { Commit = Some sha; Ref = reference; Was = "given"; Notes = [] }
     | Some reference ->
         match commitOf repo reference with
-        | Some sha -> sha, reference, "given"
+        | Some sha -> { Commit = Some sha; Ref = reference; Was = "given"; Notes = [] }
         | None when isShallow repo -> stop $"history: this clone is shallow and does not reach {reference}; {SHALLOW_HINT}"
         | None -> stop $"history: \"since\" is {reference}, which is not a tag, a commit or a date here; {nearTags repo}"
     | None ->
-        let recorded =
-            let file = join [ repo; ".codebase-video"; "progress.json" ]
-            if exists file then
+        // A default start is looked up in tags and in the recorded end of the last video. A shallow clone may
+        // lack either, and would then quietly choose another start.
+        if isShallow repo then
+            stop $"history: this clone is shallow, so the start of the range cannot be chosen from it (a tag or the last video's commit may be missing); {SHALLOW_HINT}, or pass --since"
+        let file = join [ repo; ".codebase-video"; "progress.json" ]
+        let recorded, notes =
+            if not (exists file) then None, []
+            else
                 let last: obj = (readJson file)?until
-                if isNil last then None else commitOf repo (string last?commit)
-            else None
+                if isNil last || isNil last?commit then None, []
+                else
+                    let id = string last?commit
+                    match commitOf repo id with
+                    | Some sha when fst (git repo [ "merge-base"; "--is-ancestor"; sha; until ]) = 0 -> Some sha, []
+                    | Some _ ->
+                        stop $"history: the last progress video ended at {id} ({file}), which is not in the history of this range's end: the branch was rebuilt or this is another branch. Pass --since, or delete that file to start from the latest tag"
+                    | None ->
+                        None, [ $"The last progress video is recorded as ending at {id} ({file}), but this repository has no such commit, so that record was not used." ]
         match recorded with
-        | Some sha -> sha, shortOf repo sha, "last video"
+        | Some sha -> { Commit = Some sha; Ref = shortOf repo sha; Was = "last video"; Notes = notes }
         | None ->
             // The latest tag before `until`: not a tag that sits on `until` itself, which would leave nothing.
             let tagBefore =
@@ -169,19 +184,18 @@ let private resolveSince (repo: string) (given: string option) (until: string) :
                     | _ -> None
                 | _ -> None
             match tagBefore with
-            | Some tag -> (commitOf repo tag).Value, tag, "latest tag"
+            | Some tag -> { Commit = commitOf repo tag; Ref = tag; Was = "latest tag"; Notes = notes }
             | None ->
                 let date = daysBefore (dateOf repo until) 30
                 match before date with
-                | "" when isShallow repo -> stop $"history: this clone is shallow and does not reach 30 days back; {SHALLOW_HINT}"
-                | "" -> first (), "the first commit", "first commit"
-                | sha -> sha, date, "30 days"
+                | "" -> { Commit = None; Ref = "the beginning"; Was = "whole history"; Notes = notes }
+                | sha -> { Commit = Some sha; Ref = date; Was = "30 days"; Notes = notes }
 
-/// The commits of since..until, oldest first, with the files each touched.
-let private readCommits (repo: string) (since: string) (until: string) : Commit list =
+/// The commits of the range, oldest first, with the files each touched. Authors by .mailmap, where there is one.
+let private readCommits (repo: string) (range: string list) : Commit list =
     let out =
         gitOut repo
-            [ "log"; "--reverse"; "-M"; "--numstat"; "--format=%x01%h%x02%cs%x02%an%x02%P%x02%s%x02%b%x03"; $"{since}..{until}" ]
+            ([ "log"; "--reverse"; "-M"; "--numstat"; "--format=%x01%h%x02%cs%x02%aN%x02%P%x02%s%x02%b%x03" ] @ range)
     [ for chunk in out.Split '\u0001' do
           if chunk.Trim() <> "" then
               let cut = chunk.IndexOf '\u0003'
@@ -202,15 +216,24 @@ let private readCommits (repo: string) (since: string) (until: string) : Commit 
                 Body = head.[5].Trim()
                 Files = files } ]
 
-/// A commit message without the lines and addresses that name people: sign-offs, co-authors, reviewers, emails.
-/// (A name inside the message's own sentences stays; the briefs say not to repeat it.)
-let private TRAILER = regex @"^\s*(?:co-authored-by|signed-off-by|reviewed-by|acked-by|tested-by|reported-by|suggested-by|helped-by|authored-by|cc)\s*:.*$" "gim"
-let private EMAIL = regex @"<?[\w.+-]+@[\w-]+(?:\.[\w-]+)+>?" "g"
+/// A commit message without the lines and addresses that name people. (A name inside a message's own sentences
+/// stays; the briefs say not to repeat it.)
+/// In the body: every "Something-by:" line (co-authored, signed-off, reviewed, co-developed ...), reviewers, cc, author.
+let private TRAILER = regex @"^[ \t]*(?:[\w-]+[ -]by|reviewers?|b?cc|authors?|pair(?:ed)?(?:[ -]with)?|thanks(?:[ -]to)?)[ \t]*:.*$|^[ \t]*cc[ \t]+@.*$" "gim"
+/// An email address: its last label is letters, so "react@18.2.0" is not one, and "git@github.com:org/repo" is a
+/// clone address, not a person's.
+let private EMAIL = regex @"<?[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}\b>?(?!:)" "g"
+/// Whose branch a merge came from is in its subject.
+let private MERGE_PR = regex @"^(Merge pull request #\d+) from \S+" ""
+let private MERGE_BRANCH = regex @"^Merge (?:remote-tracking )?branch(?:es)? '.*$" ""
 
 [<Emit("$0.replace($1, $2)")>]
 let private replaceAll (s: string) (rx: obj) (by: string) : string = jsNative
 
-let private unnamed (message: string) : string = (replaceAll (replaceAll message TRAILER "") EMAIL "").Trim()
+let private unnamedBody (body: string) : string = (replaceAll (replaceAll body TRAILER "") EMAIL "").Trim()
+
+let private unnamedSubject (subject: string) : string =
+    (replaceAll (replaceAll (replaceAll subject MERGE_PR "$1") MERGE_BRANCH "Merge branch") EMAIL "").Trim()
 
 /// Which of these paths .gitattributes marks linguist-generated.
 let private generated (repo: string) (paths: string list) : Set<string> =
@@ -219,7 +242,7 @@ let private generated (repo: string) (paths: string list) : Set<string> =
         let r =
             childProcess?spawnSync (
                 "git",
-                [| "-C"; repo; "check-attr"; "linguist-generated"; "--stdin" |],
+                [| "-c"; "core.quotePath=false"; "-C"; repo; "check-attr"; "linguist-generated"; "--stdin" |],
                 createObj [ "encoding" ==> "utf8"; "input" ==> String.concat "\n" paths; "maxBuffer" ==> (1 <<< 28) ]
             )
         let out: string = if isNil r?stdout then "" else r?stdout
@@ -230,7 +253,14 @@ let private generated (repo: string) (paths: string list) : Set<string> =
                   line.Substring(0, mark) ]
         |> Set.ofList
 
-let private strings (o: obj) : string list = if isArray o then unbox<string[]> o |> Array.toList else []
+/// A list from the brief: a JSON list, or one string with commas ("shipped,people"), as `fill` reads it too.
+let private strings (o: obj) : string list =
+    if isArray o then unbox<string[]> o |> Array.toList
+    elif jsTypeof o = "string" then (unbox<string> o).Split ',' |> Array.map (fun s -> s.Trim()) |> Array.filter ((<>) "") |> Array.toList
+    else []
+
+/// The tree with nothing in it: what the whole history is compared with.
+let private EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 /// "1 day", "19 commits".
 let private count (n: int) (one: string) : string = if n = 1 then $"1 {one}" else $"{n} {one}s"
@@ -243,18 +273,46 @@ let private write (ws: string) : int =
     let people = strings brief?focus |> List.contains "people"
     let untilRef: string = if isNil brief?until then "HEAD" else brief?until
     let until = resolveUntil repo untilRef
-    let since, sinceRef, sinceWas = resolveSince repo (if isNil brief?since then None else Some(string brief?since)) until
-    if since = until then
+    let start = resolveSince repo (if isNil brief?since then None else Some(string brief?since)) until
+    let sinceRef, sinceWas = start.Ref, start.Was
+    match start.Commit with
+    | Some since when since = until ->
         stop $"history: no commits between {sinceRef} and {untilRef} (both are {shortOf repo until}); give an earlier \"since\""
-    if fst (git repo [ "merge-base"; "--is-ancestor"; since; until ]) <> 0 then
+    | Some since when fst (git repo [ "merge-base"; "--is-ancestor"; since; until ]) <> 0 ->
         if isShallow repo then stop $"history: this clone is shallow and does not reach {sinceRef}; {SHALLOW_HINT}"
         stop $"history: {sinceRef} is not an ancestor of {untilRef}: the range must run forward in one line of history"
-    let all = readCommits repo since until
+    | _ -> ()
+    // What git is asked for: the commits after the start, or every commit when the range is the whole history.
+    let range = match start.Commit with Some since -> [ $"{since}..{until}" ] | None -> [ until ]
+    // What the end is compared with, for what was added, deleted and renamed.
+    let since = defaultArg start.Commit EMPTY_TREE
+    // A shallow clone ends somewhere: a commit at that edge has no parent here, and git would count everything in
+    // it as added. If the range reaches the edge, its numbers would be wrong, so there are none.
+    if isShallow repo then
+        let edge =
+            let file = gitOut repo [ "rev-parse"; "--git-path"; "shallow" ]
+            let file = if path?isAbsolute (file) then file else join [ repo; file ]
+            if exists file then (readText file).Split '\n' |> Array.map (fun l -> l.Trim()) |> Array.filter ((<>) "") |> Set.ofArray else Set.empty
+        let inRange = (gitOut repo ([ "rev-list" ] @ range)).Split '\n' |> Array.filter ((<>) "")
+        match inRange |> Array.tryFind edge.Contains with
+        | Some sha ->
+            stop $"history: this clone is shallow and the range reaches its edge (commit {shortOf repo sha} has no parent here), so its numbers would be wrong; {SHALLOW_HINT}"
+        | None -> if start.Commit.IsNone then stop $"history: this clone is shallow and does not reach the first commit; {SHALLOW_HINT}"
+    let all = readCommits repo range
     if all.IsEmpty then stop $"history: no commits between {sinceRef} and {untilRef}"
 
     // What is left out of the numbers: lock files, generated files, and the brief's own globs.
     let touched = all |> List.collect (fun c -> c.Files |> List.map (fun (p, _, _) -> p)) |> List.distinct
-    let globs = (LOCKS @ strings brief?ignore) |> List.map globRx
+    // The brief's own globs, forgiven two common spellings: a leading "./", and a folder named without "/**".
+    let asked =
+        strings brief?ignore
+        |> List.map (fun g ->
+            let g = if g.StartsWith "./" then g.Substring 2 else g
+            if g.EndsWith "/" then g + "**"
+            elif not (g.Contains "*") && not (g.Contains "?") && touched |> List.exists (fun p -> p.StartsWith(g + "/")) then g + "/**"
+            else g)
+    let unmatched = asked |> List.filter (fun g -> not (touched |> List.exists (fun p -> matches p (globRx g))))
+    let globs = (LOCKS @ asked) |> List.map globRx
     let gen = generated repo touched
     let ignored (path: string) = gen.Contains path || globs |> List.exists (matches path)
     let kept (c: Commit) = c.Files |> List.filter (fun (p, _, _) -> not (ignored p))
@@ -308,7 +366,7 @@ let private write (ws: string) : int =
     // Tags reached by `until` and not by `since`.
     let tagsOf (sha: string) = (gitOut repo [ "tag"; "--merged"; sha ]).Split '\n' |> Array.filter ((<>) "") |> Set.ofArray
     let tags =
-        Set.difference (tagsOf until) (tagsOf since)
+        (match start.Commit with Some since -> Set.difference (tagsOf until) (tagsOf since) | None -> tagsOf until)
         |> Set.toList
         |> List.map (fun t -> t, shortOf repo (commitOf repo t).Value, dateOf repo (commitOf repo t).Value)
         |> List.sortBy (fun (t, _, d) -> d, t)
@@ -323,22 +381,31 @@ let private write (ws: string) : int =
     let unpublished =
         match publishedBranch with
         | Some branch ->
-            (gitOut repo [ "rev-list"; "--abbrev-commit"; $"{since}..{until}"; "--not"; branch ]).Split '\n'
+            (gitOut repo ([ "rev-list"; "--abbrev-commit" ] @ range @ [ "--not"; branch ])).Split '\n'
             |> Array.filter ((<>) "")
-            |> Array.map (fun sha -> shortOf repo sha)
             |> Array.rev
         | None -> [||]
 
     // A long range lists only the commits that stand out; the rest are in the counts.
     let partial = all.Length > LIST_ALL
     let listed = if partial then all |> List.filter (fun c -> c.Merge || tagged.Contains c.Id || c.Files.Length > WIDE) else all
-    let said (message: string) = if people then message else unnamed message
+    let saidSubject (subject: string) = if people then subject else unnamedSubject subject
+    let saidBody (body: string) = if people then body else unnamedBody body
     let commitJson (c: Commit) =
         createObj
-            ([ "id" ==> c.Id; "date" ==> c.Date; "subject" ==> said c.Subject; "body" ==> said c.Body; "merge" ==> c.Merge
+            ([ "id" ==> c.Id; "date" ==> c.Date; "subject" ==> saidSubject c.Subject; "body" ==> saidBody c.Body; "merge" ==> c.Merge
                "files" ==> (c.Files |> List.map (fun (p, _, _) -> p) |> List.toArray) ]
              @ (if people then [ "author" ==> c.Author ] else []))
-    let untilDate, sinceDate = dateOf repo until, dateOf repo since
+    // The start's commit and date: for the whole history, the first commit's.
+    let first = (gitOut repo [ "rev-list"; "--max-parents=0"; until ]).Split('\n') |> Array.last
+    let sinceCommit = defaultArg start.Commit first
+    let untilDate, sinceDate = dateOf repo until, dateOf repo sinceCommit
+    let notes =
+        start.Notes
+        @ (unmatched |> List.map (fun g -> $"The brief's \"ignore\" entry {g} matched no file of the range, so it left nothing out. A * does not cross folders; ** does."))
+        @ (if publishedBranch.IsNone then
+               [ "Which branch of this repository is the published one could not be determined (it has no remote, or the remote's default branch is not known here). Nothing in the range may be called published, released or shipped on the strength of these facts; say only that it is in the range." ]
+           else [])
     let keptFiles = all |> List.collect kept
     let totalAdded, totalRemoved = sum keptFiles
     let leftAdded, leftRemoved = sum left
@@ -347,8 +414,8 @@ let private write (ws: string) : int =
         createObj
             ([ "range"
                ==> createObj
-                       [ "since" ==> createObj [ "ref" ==> sinceRef; "commit" ==> shortOf repo since; "date" ==> sinceDate ]
-                         "until" ==> createObj [ "ref" ==> untilRef; "commit" ==> shortOf repo until; "date" ==> untilDate ]
+                       [ "since" ==> createObj [ "ref" ==> sinceRef; "commit" ==> shortOf repo sinceCommit; "date" ==> sinceDate; "included" ==> start.Commit.IsNone ]
+                         "until" ==> createObj [ "ref" ==> untilRef; "commit" ==> shortOf repo until; "sha" ==> until; "date" ==> untilDate ]
                          "sinceWas" ==> sinceWas
                          "days" ==> daysBetween sinceDate untilDate
                          "commits" ==> all.Length ]
@@ -362,6 +429,14 @@ let private write (ws: string) : int =
                ==> (match publishedBranch with
                     | Some branch -> createObj [ "branch" ==> branch; "missing" ==> unpublished.Length; "commits" ==> unpublished ]
                     | None -> null)
+               // what the brief asked for when this was made: `fill` refuses facts made for another range
+               "asked"
+               ==> createObj
+                       [ "since" ==> (if isNil brief?since then null else brief?since)
+                         "until" ==> (if isNil brief?until then null else brief?until)
+                         "focus" ==> (strings brief?focus |> List.toArray)
+                         "ignore" ==> (strings brief?ignore |> List.toArray) ]
+               "notes" ==> List.toArray notes
                "listed" ==> (if partial then "partial" else "all")
                "commits" ==> (listed |> List.map commitJson |> List.toArray)
                "areas" ==> List.toArray areas
@@ -402,12 +477,16 @@ let private write (ws: string) : int =
         | "last video" -> " The start is where the last progress video of this repository ended."
         | "latest tag" -> " No start was given: the range starts at the latest tag."
         | "30 days" -> " No start was given and the repository has no earlier tag: the range starts 30 days back."
-        | "first commit" -> " The start asked for is before the repository's first commit: the range starts at the first commit."
+        | "before first commit" -> " The start asked for is before the repository's first commit: the range is the whole history, the first commit included."
+        | "whole history" -> " No start was given, there is no earlier tag, and the repository is younger than 30 days: the range is the whole history, the first commit included."
         | _ -> ""
     line $"# History: {sinceRef} to {untilRef}"
     line ""
     let days, commits = count (daysBetween sinceDate untilDate) "day", count all.Length "commit"
-    line $"From {sinceRef} ({shortOf repo since}, {sinceDate}) to {untilRef} ({shortOf repo until}, {untilDate}): {days}, {commits}.{chosen}"
+    line $"From {sinceRef} ({shortOf repo sinceCommit}, {sinceDate}) to {untilRef} ({shortOf repo until}, {untilDate}): {days}, {commits}.{chosen}"
+    for note in notes do
+        line ""
+        line note
     line ""
     line "Every number in the video comes from this file or from history.json. Do not count anything yourself."
     line ""
@@ -469,9 +548,9 @@ let private write (ws: string) : int =
         line ""
     for c in listed do
         let who = if people then $", {c.Author}" else ""
-        line $"- {c.Id} ({c.Date}{who}) {said c.Subject} [{c.Files.Length} files]"
-        if said c.Body <> "" then
-            for b in (said c.Body).Split '\n' do
+        line $"- {c.Id} ({c.Date}{who}) {saidSubject c.Subject} [{c.Files.Length} files]"
+        if saidBody c.Body <> "" then
+            for b in (saidBody c.Body).Split '\n' do
                 if b.Trim() <> "" then line $"    {b.TrimEnd()}"
     writeText (join [ build; "history.md" ]) (String.concat "\n" md + "\n")
     printfn "history: %s to %s, %s, %s -> %s" sinceRef untilRef (count all.Length "commit") (count (daysBetween sinceDate untilDate) "day") (join [ build; "history.md" ])
@@ -487,7 +566,7 @@ let private done' (ws: string) : int =
     let out = join [ repo; ".codebase-video"; "progress.json" ]
     mkdirp (dirname out)
     let until: obj = history?range?until
-    writeText out (toJsonIndented (createObj [ "until" ==> createObj [ "commit" ==> until?commit; "date" ==> until?date ]; "video" ==> brief?name ]) 2 + "\n")
+    writeText out (toJsonIndented (createObj [ "until" ==> createObj [ "commit" ==> (if isNil until?sha then until?commit else until?sha); "date" ==> until?date ]; "video" ==> brief?name ]) 2 + "\n")
     printfn "history: the next progress video starts at %s (%s)" (string until?commit) out
     0
 

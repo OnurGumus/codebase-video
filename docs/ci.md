@@ -51,19 +51,21 @@ that starts with a skill's name runs that skill with the rest as its arguments:
 ```
 claude -p "/codebase-video:codebase-video --kind progress --since v1.4.0 --focus shipped,effort --yes" \
   --permission-mode dontAsk \
-  --allowedTools "Bash,Read,Write,Edit,Glob,Grep,Agent,Skill" \
+  --allowedTools "Bash(node *),Bash(git *),Bash(ffmpeg *),Bash(ffprobe *),Bash(mkdir *),Bash(ls *),Read,Write,Edit,Glob,Grep,Agent,Skill" \
   --max-budget-usd 40 \
   --output-format json
 ```
 
 - The skill runs shell commands (node, git, ffmpeg), reads the repository, writes inside
   `.codebase-video/`, and starts other agents, so it needs those tools allowed. `dontAsk` refuses anything not on
-  the list instead of waiting for an answer nobody will give. Narrow `Bash` to patterns such as `Bash(node *)`,
-  `Bash(git *)` and `Bash(ffmpeg *)` if your policy asks for it, and test that the run still finishes.
+  the list instead of waiting for an answer nobody will give. The shell is limited to the programs the skill uses:
+  the agents read commit messages and repository text that anyone with commit access wrote, and the job holds your
+  API key, so do not allow the whole shell. If a run stops because a command was refused, add that one program.
 - `--max-budget-usd` stops a run that goes wrong before it costs more than you meant.
 - Leave `--since` out and the range starts where this repository's last progress video ended, which is recorded in
-  `.codebase-video/progress.json`. Keep that file between runs (commit it, or cache it) for a job that runs on a
-  schedule; the folder's own `.gitignore` ignores everything, so add a line `!progress.json` to commit it.
+  `.codebase-video/progress.json`. Keep that file between runs for a job that runs on a schedule: the workflow
+  below caches it; to commit it instead, add a line `!progress.json` to the folder's `.gitignore`, which otherwise
+  ignores everything. Without the file, the range starts at the latest tag before the current commit.
 
 There is also an official GitHub Action, `anthropics/claude-code-action`, which takes a prompt and can install
 plugins ([GitHub Actions](https://code.claude.com/docs/en/github-actions)). Its inputs are described there; the
@@ -120,7 +122,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.claude/plugins/data/codebase-video-codebase-video
-          key: codebase-video-home-v1
+          key: codebase-video-home-0.8     # the plugin's version: change it when you update the plugin
+
+      - name: Where the last video ended
+        uses: actions/cache@v4
+        with:
+          path: .codebase-video/progress.json
+          key: codebase-video-progress-${{ github.run_id }}
+          restore-keys: codebase-video-progress-
 
       - name: Claude Code and the plugin
         env:
@@ -133,15 +142,27 @@ jobs:
           claude plugin install codebase-video@codebase-video
 
       - name: Make the video
+        shell: bash
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SINCE: ${{ github.event.inputs.since }}   # through the environment, never pasted into the script
         run: |
-          SINCE="${{ github.event.inputs.since }}"
+          set -o pipefail
+          # a tag, a commit or a date, and nothing else: this text becomes part of a prompt
+          if [ -n "$SINCE" ] && ! [[ "$SINCE" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "since: not a tag, a commit or a date"; exit 1
+          fi
           claude -p "/codebase-video:codebase-video --kind progress ${SINCE:+--since $SINCE} --focus shipped,effort --length short --yes" \
             --permission-mode dontAsk \
-            --allowedTools "Bash,Read,Write,Edit,Glob,Grep,Agent,Skill" \
+            --allowedTools "Bash(node *),Bash(git *),Bash(ffmpeg *),Bash(ffprobe *),Bash(mkdir *),Bash(ls *),Read,Write,Edit,Glob,Grep,Agent,Skill" \
             --max-budget-usd 40 \
             --output-format json | tee claude-run.json
+
+      - name: There is a video
+        shell: bash
+        run: |
+          # a run that stopped with a message can still exit 0: the job fails unless a video was made
+          ls .codebase-video/*/out/*.mp4
 
       - name: Keep the video and its report
         if: always()
@@ -167,5 +188,6 @@ With `--yes` the run stops, with a message, instead of asking:
 | `history: this clone is shallow` | fetch the full history (`fetch-depth: 0`) |
 | `history: no commits between` | the range is empty: nothing changed since the last video, or `--since` is too late |
 | `history: "since" is ...` | the tag, commit or date does not exist in this repository |
-| `the focus "goals" needs "goals"` | pass `--goals <file>` or drop `goals` from `--focus` |
+| `brief.json: the focus "goals" needs "goals"` | pass `--goals <file>` or drop `goals` from `--focus` |
+| `history: the last progress video ended at` | the recorded end is not in this branch's history: pass `--since` once |
 | a tool is missing | `setup` names it; install it in an earlier step |

@@ -1,15 +1,15 @@
 
 import { toString, Record, FSharpException } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { record_type, list_type, tuple_type, int32_type, bool_type, string_type, class_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { difference, toList as toList_1, ofArray as ofArray_1, ofList, empty as empty_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
+import { option_type, record_type, list_type, tuple_type, int32_type, bool_type, string_type, class_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { difference, toList as toList_1, ofArray as ofArray_1, ofList, empty as empty_2, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { int32ToString, disposeSafe, getEnumerator, compareArrays, createObj, stringHash, equals, defaultOf, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { tryFind, truncate as truncate_1, singleton as singleton_1, toArray, length, sortBy, sumBy, filter, exists as exists_1, map, collect as collect_1, contains, empty as empty_2, head as head_1, tail, isEmpty, append, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { eprint, dirname, toJsonIndented, writeText, mkdirp, childProcess, readJson, exists, join as join_1, runCapture } from "./Node.js";
+import { tryFind as tryFind_1, truncate as truncate_1, toArray, length, sortBy, sumBy, filter, exists as exists_1, map as map_1, collect as collect_1, contains, singleton, empty, head as head_1, tail, isEmpty, append, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { eprint, dirname, toJsonIndented, writeText, mkdirp, readText, path as path_1, childProcess, readJson, exists, join as join_1, runCapture } from "./Node.js";
 import { printf, toConsole, concat, join, split, substring, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { map as map_1, reverse, item, last as last_1, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { empty, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { last as last_1, reverse, tryFind, map, item, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { empty as empty_1, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
+import { value as value_2, defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { List_groupBy, List_countBy, List_distinctBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 
 class Stop extends FSharpException {
@@ -57,7 +57,7 @@ function Commit_$reflection() {
 }
 
 function git(repo, args) {
-    const patternInput = runCapture("git", append(ofArray(["-C", repo]), args));
+    const patternInput = runCapture("git", append(ofArray(["-c", "core.quotePath=false", "-C", repo]), args));
     return [patternInput[0], patternInput[1].trim()];
 }
 
@@ -195,29 +195,55 @@ function resolveUntil(repo, reference) {
     }
 }
 
+class Start extends Record {
+    constructor(Commit, Ref, Was, Notes) {
+        super();
+        this.Commit = Commit;
+        this.Ref = Ref;
+        this.Was = Was;
+        this.Notes = Notes;
+    }
+}
+
+function Start_$reflection() {
+    return record_type("History.Start", [], Start, () => [["Commit", option_type(string_type)], ["Ref", string_type], ["Was", string_type], ["Notes", list_type(string_type)]]);
+}
+
 function resolveSince(repo, given, until) {
-    const first = () => last_1(split(gitOut(repo, ofArray(["rev-list", "--max-parents=0", until])), ["\n"], undefined, 0));
+    let sha_3;
     const before = (date) => gitOut(repo, ofArray(["rev-list", "-1", concat("--before=", date, " 23:59:59"), until]));
     if (given == null) {
-        let recorded;
+        if (isShallow(repo)) {
+            stop(concat("history: this clone is shallow, so the start of the range cannot be chosen from it (a tag or the last video\'s commit may be missing); ", SHALLOW_HINT, ", or pass --since"));
+        }
         const file = join_1(ofArray([repo, ".codebase-video", "progress.json"]));
-        if (exists(file)) {
-            const last = readJson(file).until;
-            recorded = (((last == null)) ? undefined : commitOf(repo, toString(last.commit)));
+        let patternInput;
+        if (!exists(file)) {
+            patternInput = [undefined, empty()];
         }
         else {
-            recorded = undefined;
+            const last = readJson(file).until;
+            if (((last == null)) ? true : ((last.commit == null))) {
+                patternInput = [undefined, empty()];
+            }
+            else {
+                const id = toString(last.commit);
+                const matchValue_2 = commitOf(repo, id);
+                patternInput = ((matchValue_2 == null) ? [undefined, singleton(`The last progress video is recorded as ending at ${id} (${file}), but this repository has no such commit, so that record was not used.`)] : ((git(repo, ofArray(["merge-base", "--is-ancestor", matchValue_2, until]))[0] === 0) ? ((sha_3 = matchValue_2, [sha_3, empty()])) : stop(`history: the last progress video ended at ${id} (${file}), which is not in the history of this range's end: the branch was rebuilt or this is another branch. Pass --since, or delete that file to start from the latest tag`)));
+            }
         }
+        const recorded = patternInput[0];
+        const notes = patternInput[1];
         if (recorded == null) {
             let tagBefore;
-            const matchValue_2 = git(repo, ofArray(["describe", "--tags", "--abbrev=0", until]));
-            if (matchValue_2[0] === 0) {
-                if (!equals(commitOf(repo, matchValue_2[1]), until)) {
-                    tagBefore = matchValue_2[1];
+            const matchValue_3 = git(repo, ofArray(["describe", "--tags", "--abbrev=0", until]));
+            if (matchValue_3[0] === 0) {
+                if (!equals(commitOf(repo, matchValue_3[1]), until)) {
+                    tagBefore = matchValue_3[1];
                 }
                 else {
-                    const matchValue_3 = git(repo, ofArray(["describe", "--tags", "--abbrev=0", until + "^"]));
-                    tagBefore = ((matchValue_3[0] === 0) ? matchValue_3[1] : undefined);
+                    const matchValue_4 = git(repo, ofArray(["describe", "--tags", "--abbrev=0", until + "^"]));
+                    tagBefore = ((matchValue_4[0] === 0) ? matchValue_4[1] : undefined);
                 }
             }
             else {
@@ -225,27 +251,22 @@ function resolveSince(repo, given, until) {
             }
             if (tagBefore == null) {
                 const date_1 = new Date(Date.parse(dateOf(repo, until) + 'T00:00:00Z') - 30 * 86400000).toISOString().slice(0, 10);
-                const matchValue_4 = before(date_1);
-                if (matchValue_4 === "") {
-                    if (isShallow(repo)) {
-                        return stop(concat("history: this clone is shallow and does not reach 30 days back; ", SHALLOW_HINT));
-                    }
-                    else {
-                        return [first(), "the first commit", "first commit"];
-                    }
+                const matchValue_5 = before(date_1);
+                if (matchValue_5 === "") {
+                    return new Start(undefined, "the beginning", "whole history", notes);
                 }
                 else {
-                    return [matchValue_4, date_1, "30 days"];
+                    return new Start(matchValue_5, date_1, "30 days", notes);
                 }
             }
             else {
                 const tag_3 = tagBefore;
-                return [value_1(commitOf(repo, tag_3)), tag_3, "latest tag"];
+                return new Start(commitOf(repo, tag_3), tag_3, "latest tag", notes);
             }
         }
         else {
-            const sha_2 = recorded;
-            return [sha_2, shortOf(repo, sha_2), "last video"];
+            const sha_4 = recorded;
+            return new Start(sha_4, shortOf(repo, sha_4), "last video", notes);
         }
     }
     else if (isDate(given)) {
@@ -256,11 +277,11 @@ function resolveSince(repo, given, until) {
                 return stop(concat("history: this clone is shallow and does not reach ", reference_1, "; ", SHALLOW_HINT));
             }
             else {
-                return [first(), reference_1, "first commit"];
+                return new Start(undefined, reference_1, "before first commit", empty());
             }
         }
         else {
-            return [matchValue, reference_1, "given"];
+            return new Start(matchValue, reference_1, "given", empty());
         }
     }
     else {
@@ -275,13 +296,13 @@ function resolveSince(repo, given, until) {
             }
         }
         else {
-            return [matchValue_1, reference_2, "given"];
+            return new Start(matchValue_1, reference_2, "given", empty());
         }
     }
 }
 
-function readCommits(repo, since, until) {
-    const out = gitOut(repo, ofArray(["log", "--reverse", "-M", "--numstat", "--format=%x01%h%x02%cs%x02%an%x02%P%x02%s%x02%b%x03", concat(since, "..", until)]));
+function readCommits(repo, range) {
+    const out = gitOut(repo, append(ofArray(["log", "--reverse", "-M", "--numstat", "--format=%x01%h%x02%cs%x02%aN%x02%P%x02%s%x02%b%x03"]), range));
     return toList(delay(() => collect((chunk) => {
         if (chunk.trim() !== "") {
             const cut = chunk.indexOf("\u0003") | 0;
@@ -300,36 +321,44 @@ function readCommits(repo, since, until) {
                             return parse(s, 511, false, 32) | 0;
                         }
                     };
-                    return singleton([newPath(path), n(added), n(removed)]);
+                    return singleton_1([newPath(path), n(added), n(removed)]);
                 }
                 else {
-                    return empty();
+                    return empty_1();
                 }
             }, split(substring(chunk, cut + 1), ["\n"], undefined, 0))));
-            return singleton(new Commit(item(0, head), item(1, head), item(2, head), item(3, head).trim().indexOf(" ") >= 0, item(4, head), item(5, head).trim(), files));
+            return singleton_1(new Commit(item(0, head), item(1, head), item(2, head), item(3, head).trim().indexOf(" ") >= 0, item(4, head), item(5, head).trim(), files));
         }
         else {
-            return empty();
+            return empty_1();
         }
     }, split(out, ["\u0001"], undefined, 0))));
 }
 
-const TRAILER = new RegExp("^\\s*(?:co-authored-by|signed-off-by|reviewed-by|acked-by|tested-by|reported-by|suggested-by|helped-by|authored-by|cc)\\s*:.*$", "gim");
+const TRAILER = new RegExp("^[ \\t]*(?:[\\w-]+[ -]by|reviewers?|b?cc|authors?|pair(?:ed)?(?:[ -]with)?|thanks(?:[ -]to)?)[ \\t]*:.*$|^[ \\t]*cc[ \\t]+@.*$", "gim");
 
-const EMAIL = new RegExp("<?[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+>?", "g");
+const EMAIL = new RegExp("<?[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)*\\.[A-Za-z]{2,}\\b>?(?!:)", "g");
 
-function unnamed(message) {
-    return ((message.replace(TRAILER, "")).replace(EMAIL, "")).trim();
+const MERGE_PR = new RegExp("^(Merge pull request #\\d+) from \\S+", "");
+
+const MERGE_BRANCH = new RegExp("^Merge (?:remote-tracking )?branch(?:es)? \'.*$", "");
+
+function unnamedBody(body) {
+    return ((body.replace(TRAILER, "")).replace(EMAIL, "")).trim();
+}
+
+function unnamedSubject(subject) {
+    return (((subject.replace(MERGE_PR, "$1")).replace(MERGE_BRANCH, "Merge branch")).replace(EMAIL, "")).trim();
 }
 
 function generated(repo, paths) {
     if (isEmpty(paths)) {
-        return empty_1({
+        return empty_2({
             Compare: (x, y) => (comparePrimitives(x, y) | 0),
         });
     }
     else {
-        const r = childProcess.spawnSync("git", ["-C", repo, "check-attr", "linguist-generated", "--stdin"], {
+        const r = childProcess.spawnSync("git", ["-c", "core.quotePath=false", "-C", repo, "check-attr", "linguist-generated", "--stdin"], {
             encoding: "utf8",
             input: join("\n", paths),
             maxBuffer: 1 << 28,
@@ -337,7 +366,7 @@ function generated(repo, paths) {
         const out = ((r.stdout == null)) ? "" : r.stdout;
         return ofList(toList(delay(() => collect((line) => {
             const mark = line.lastIndexOf(": linguist-generated: ") | 0;
-            return ((mark > 0) && ((substring(line, mark + 22).trim() === "true") ? true : (substring(line, mark + 22).trim() === "set"))) ? singleton(substring(line, 0, mark)) : empty();
+            return ((mark > 0) && ((substring(line, mark + 22).trim() === "true") ? true : (substring(line, mark + 22).trim() === "set"))) ? singleton_1(substring(line, 0, mark)) : empty_1();
         }, split(out, ["\n"], undefined, 0)))), {
             Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
         });
@@ -345,13 +374,19 @@ function generated(repo, paths) {
 }
 
 function strings(o) {
+    let array_2;
     if (Array.isArray(o)) {
         return ofArray(o);
     }
+    else if ((typeof o) === "string") {
+        return ofArray((array_2 = map((s) => s.trim(), split(o, [","], undefined, 0)), array_2.filter((y) => ("" !== y))));
+    }
     else {
-        return empty_2();
+        return empty();
     }
 }
+
+const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 function count(n, one) {
     if (n === 1) {
@@ -363,7 +398,7 @@ function count(n, one) {
 }
 
 function write(ws) {
-    let array_3;
+    let array_1, array_3, matchValue_6, since_6, array_8;
     const brief = readJson(join_1(ofArray([ws, "brief.json"])));
     const repo = ((brief.repo == null)) ? stop("history: brief.json has no \"repo\"") : brief.repo;
     if (git(repo, ofArray(["rev-parse", "--git-dir"]))[0] !== 0) {
@@ -375,28 +410,85 @@ function write(ws) {
     });
     const untilRef = ((brief.until == null)) ? "HEAD" : brief.until;
     const until = resolveUntil(repo, untilRef);
-    const patternInput = resolveSince(repo, ((brief.since == null)) ? undefined : toString(brief.since), until);
-    const sinceWas = patternInput[2];
-    const sinceRef = patternInput[1];
-    const since = patternInput[0];
-    if (since === until) {
-        stop(`history: no commits between ${sinceRef} and ${untilRef} (both are ${shortOf(repo, until)}); give an earlier "since"`);
-    }
-    if (git(repo, ofArray(["merge-base", "--is-ancestor", since, until]))[0] !== 0) {
-        if (isShallow(repo)) {
-            stop(concat("history: this clone is shallow and does not reach ", sinceRef, "; ", SHALLOW_HINT));
+    const start = resolveSince(repo, ((brief.since == null)) ? undefined : toString(brief.since), until);
+    const sinceWas = start.Was;
+    const sinceRef = start.Ref;
+    const matchValue_2 = start.Commit;
+    let matchResult, since_2, since_3;
+    if (matchValue_2 != null) {
+        if (matchValue_2 === until) {
+            matchResult = 0;
+            since_2 = matchValue_2;
         }
-        stop(`history: ${sinceRef} is not an ancestor of ${untilRef}: the range must run forward in one line of history`);
+        else if (git(repo, ofArray(["merge-base", "--is-ancestor", matchValue_2, until]))[0] !== 0) {
+            matchResult = 1;
+            since_3 = matchValue_2;
+        }
+        else {
+            matchResult = 2;
+        }
     }
-    const all = readCommits(repo, since, until);
+    else {
+        matchResult = 2;
+    }
+    switch (matchResult) {
+        case 0: {
+            stop(`history: no commits between ${sinceRef} and ${untilRef} (both are ${shortOf(repo, until)}); give an earlier "since"`);
+            break;
+        }
+        case 1: {
+            if (isShallow(repo)) {
+                stop(concat("history: this clone is shallow and does not reach ", sinceRef, "; ", SHALLOW_HINT));
+            }
+            stop(`history: ${sinceRef} is not an ancestor of ${untilRef}: the range must run forward in one line of history`);
+            break;
+        }
+    }
+    let range;
+    const matchValue_3 = start.Commit;
+    range = ((matchValue_3 == null) ? singleton(until) : singleton(concat(matchValue_3, "..", until)));
+    const since_5 = defaultArg(start.Commit, EMPTY_TREE);
+    if (isShallow(repo)) {
+        let edge;
+        const file = gitOut(repo, ofArray(["rev-parse", "--git-path", "shallow"]));
+        const file_1 = (path_1.isAbsolute(file)) ? file : join_1(ofArray([repo, file]));
+        edge = (exists(file_1) ? ofArray_1((array_1 = map((l) => l.trim(), split(readText(file_1), ["\n"], undefined, 0)), array_1.filter((y_1) => ("" !== y_1))), {
+            Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+        }) : empty_2({
+            Compare: (x_3, y_3) => (comparePrimitives(x_3, y_3) | 0),
+        }));
+        const matchValue_4 = tryFind((value_1) => FSharpSet__Contains(edge, value_1), (array_3 = split(gitOut(repo, append(singleton("rev-list"), range)), ["\n"], undefined, 0), array_3.filter((y_4) => ("" !== y_4))));
+        if (matchValue_4 == null) {
+            if (start.Commit == null) {
+                stop(concat("history: this clone is shallow and does not reach the first commit; ", SHALLOW_HINT));
+            }
+        }
+        else {
+            stop(concat("history: this clone is shallow and the range reaches its edge (commit ", shortOf(repo, matchValue_4), " has no parent here), so its numbers would be wrong; ", SHALLOW_HINT));
+        }
+    }
+    const all = readCommits(repo, range);
     if (isEmpty(all)) {
         stop(concat("history: no commits between ", sinceRef, " and ", untilRef));
     }
-    const touched = List_distinct(collect_1((c) => map((tupledArg) => tupledArg[0], c.Files), all), {
-        Equals: (x_1, y_1) => (x_1 === y_1),
-        GetHashCode: (x_1) => (stringHash(x_1) | 0),
+    const touched = List_distinct(collect_1((c) => map_1((tupledArg) => tupledArg[0], c.Files), all), {
+        Equals: (x_5, y_5) => (x_5 === y_5),
+        GetHashCode: (x_5) => (stringHash(x_5) | 0),
     });
-    const globs = map(globRx, append(LOCKS, strings(brief.ignore)));
+    const asked = map_1((g) => {
+        const g_1 = g.startsWith("./") ? substring(g, 2) : g;
+        if (g_1.endsWith("/")) {
+            return g_1 + "**";
+        }
+        else if ((!(g_1.indexOf("*") >= 0) && !(g_1.indexOf("?") >= 0)) && exists_1((p_1) => p_1.startsWith(g_1 + "/"), touched)) {
+            return g_1 + "/**";
+        }
+        else {
+            return g_1;
+        }
+    }, strings(brief.ignore));
+    const unmatched = filter((g_2) => !exists_1((p_2) => (globRx(g_2).test(p_2)), touched), asked);
+    const globs = map_1(globRx, append(LOCKS, asked));
     const gen = generated(repo, touched);
     const ignored = (path) => {
         if (FSharpSet__Contains(gen, path)) {
@@ -409,128 +501,128 @@ function write(ws) {
     const kept = (c_1) => filter((tupledArg_1) => !ignored(tupledArg_1[0]), c_1.Files);
     const left = collect_1((c_2) => filter((tupledArg_2) => ignored(tupledArg_2[0]), c_2.Files), all);
     const status = toList(delay(() => collect((line) => {
-        const matchValue = ofArray(split(line, ["\t"], undefined, 0));
-        let matchResult, p_5, p_6, a_3, b_3, r_3;
-        if (!isEmpty(matchValue)) {
-            switch (head_1(matchValue)) {
+        const matchValue_5 = ofArray(split(line, ["\t"], undefined, 0));
+        let matchResult_1, p_7, p_8, a_3, b_3, r_3;
+        if (!isEmpty(matchValue_5)) {
+            switch (head_1(matchValue_5)) {
                 case "A": {
-                    if (!isEmpty(tail(matchValue))) {
-                        if (!isEmpty(tail(tail(matchValue)))) {
-                            if (isEmpty(tail(tail(tail(matchValue))))) {
-                                if (head_1(matchValue).startsWith("R") && !ignored(head_1(tail(tail(matchValue))))) {
-                                    matchResult = 2;
-                                    a_3 = head_1(tail(matchValue));
-                                    b_3 = head_1(tail(tail(matchValue)));
-                                    r_3 = head_1(matchValue);
+                    if (!isEmpty(tail(matchValue_5))) {
+                        if (!isEmpty(tail(tail(matchValue_5)))) {
+                            if (isEmpty(tail(tail(tail(matchValue_5))))) {
+                                if (head_1(matchValue_5).startsWith("R") && !ignored(head_1(tail(tail(matchValue_5))))) {
+                                    matchResult_1 = 2;
+                                    a_3 = head_1(tail(matchValue_5));
+                                    b_3 = head_1(tail(tail(matchValue_5)));
+                                    r_3 = head_1(matchValue_5);
                                 }
                                 else {
-                                    matchResult = 3;
+                                    matchResult_1 = 3;
                                 }
                             }
                             else {
-                                matchResult = 3;
+                                matchResult_1 = 3;
                             }
                         }
-                        else if (!ignored(head_1(tail(matchValue)))) {
-                            matchResult = 0;
-                            p_5 = head_1(tail(matchValue));
+                        else if (!ignored(head_1(tail(matchValue_5)))) {
+                            matchResult_1 = 0;
+                            p_7 = head_1(tail(matchValue_5));
                         }
                         else {
-                            matchResult = 3;
+                            matchResult_1 = 3;
                         }
                     }
                     else {
-                        matchResult = 3;
+                        matchResult_1 = 3;
                     }
                     break;
                 }
                 case "D": {
-                    if (!isEmpty(tail(matchValue))) {
-                        if (!isEmpty(tail(tail(matchValue)))) {
-                            if (isEmpty(tail(tail(tail(matchValue))))) {
-                                if (head_1(matchValue).startsWith("R") && !ignored(head_1(tail(tail(matchValue))))) {
-                                    matchResult = 2;
-                                    a_3 = head_1(tail(matchValue));
-                                    b_3 = head_1(tail(tail(matchValue)));
-                                    r_3 = head_1(matchValue);
+                    if (!isEmpty(tail(matchValue_5))) {
+                        if (!isEmpty(tail(tail(matchValue_5)))) {
+                            if (isEmpty(tail(tail(tail(matchValue_5))))) {
+                                if (head_1(matchValue_5).startsWith("R") && !ignored(head_1(tail(tail(matchValue_5))))) {
+                                    matchResult_1 = 2;
+                                    a_3 = head_1(tail(matchValue_5));
+                                    b_3 = head_1(tail(tail(matchValue_5)));
+                                    r_3 = head_1(matchValue_5);
                                 }
                                 else {
-                                    matchResult = 3;
+                                    matchResult_1 = 3;
                                 }
                             }
                             else {
-                                matchResult = 3;
+                                matchResult_1 = 3;
                             }
                         }
-                        else if (!ignored(head_1(tail(matchValue)))) {
-                            matchResult = 1;
-                            p_6 = head_1(tail(matchValue));
+                        else if (!ignored(head_1(tail(matchValue_5)))) {
+                            matchResult_1 = 1;
+                            p_8 = head_1(tail(matchValue_5));
                         }
                         else {
-                            matchResult = 3;
+                            matchResult_1 = 3;
                         }
                     }
                     else {
-                        matchResult = 3;
+                        matchResult_1 = 3;
                     }
                     break;
                 }
                 default:
-                    if (!isEmpty(tail(matchValue))) {
-                        if (!isEmpty(tail(tail(matchValue)))) {
-                            if (isEmpty(tail(tail(tail(matchValue))))) {
-                                if (head_1(matchValue).startsWith("R") && !ignored(head_1(tail(tail(matchValue))))) {
-                                    matchResult = 2;
-                                    a_3 = head_1(tail(matchValue));
-                                    b_3 = head_1(tail(tail(matchValue)));
-                                    r_3 = head_1(matchValue);
+                    if (!isEmpty(tail(matchValue_5))) {
+                        if (!isEmpty(tail(tail(matchValue_5)))) {
+                            if (isEmpty(tail(tail(tail(matchValue_5))))) {
+                                if (head_1(matchValue_5).startsWith("R") && !ignored(head_1(tail(tail(matchValue_5))))) {
+                                    matchResult_1 = 2;
+                                    a_3 = head_1(tail(matchValue_5));
+                                    b_3 = head_1(tail(tail(matchValue_5)));
+                                    r_3 = head_1(matchValue_5);
                                 }
                                 else {
-                                    matchResult = 3;
+                                    matchResult_1 = 3;
                                 }
                             }
                             else {
-                                matchResult = 3;
+                                matchResult_1 = 3;
                             }
                         }
                         else {
-                            matchResult = 3;
+                            matchResult_1 = 3;
                         }
                     }
                     else {
-                        matchResult = 3;
+                        matchResult_1 = 3;
                     }
             }
         }
         else {
-            matchResult = 3;
+            matchResult_1 = 3;
         }
-        switch (matchResult) {
+        switch (matchResult_1) {
             case 0:
-                return singleton(["added", p_5, ""]);
+                return singleton_1(["added", p_7, ""]);
             case 1:
-                return singleton(["deleted", p_6, ""]);
+                return singleton_1(["deleted", p_8, ""]);
             case 2:
-                return singleton(["renamed", b_3, a_3]);
+                return singleton_1(["renamed", b_3, a_3]);
             default: {
-                return empty();
+                return empty_1();
             }
         }
-    }, split(gitOut(repo, ofArray(["diff", "--name-status", "-M", since, until])), ["\n"], undefined, 0))));
+    }, split(gitOut(repo, ofArray(["diff", "--name-status", "-M", since_5, until])), ["\n"], undefined, 0))));
     const of$0027 = (kind) => filter((tupledArg_3) => (tupledArg_3[0] === kind), status);
     const sum = (files) => [sumBy((tupledArg_4) => (tupledArg_4[1] | 0), files, {
         GetZero: () => 0,
-        Add: (x_2, y_2) => ((x_2 + y_2) | 0),
+        Add: (x_6, y_6) => ((x_6 + y_6) | 0),
     }), sumBy((tupledArg_5) => (tupledArg_5[2] | 0), files, {
         GetZero: () => 0,
-        Add: (x_3, y_3) => ((x_3 + y_3) | 0),
+        Add: (x_7, y_7) => ((x_7 + y_7) | 0),
     })];
-    const areas = sortBy((a_7) => [op_UnaryNegation_Int32(a_7.commits), a_7.area], map((tupledArg_7) => {
+    const areas = sortBy((a_7) => [op_UnaryNegation_Int32(a_7.commits), a_7.area], map_1((tupledArg_7) => {
         const area = tupledArg_7[0];
-        const rows_1 = map((tuple_1) => tuple_1[1], tupledArg_7[1]);
-        const commits = List_distinctBy((c_5) => c_5.Id, map((tupledArg_8) => tupledArg_8[0], rows_1), {
-            Equals: (x_5, y_5) => (x_5 === y_5),
-            GetHashCode: (x_5) => (stringHash(x_5) | 0),
+        const rows_1 = map_1((tuple_1) => tuple_1[1], tupledArg_7[1]);
+        const commits = List_distinctBy((c_5) => c_5.Id, map_1((tupledArg_8) => tupledArg_8[0], rows_1), {
+            Equals: (x_9, y_9) => (x_9 === y_9),
+            GetHashCode: (x_9) => (stringHash(x_9) | 0),
         });
         const count_1 = (kind_1) => (length(filter((tupledArg_9) => {
             if (tupledArg_9[0] === kind_1) {
@@ -540,90 +632,83 @@ function write(ws) {
                 return false;
             }
         }, status)) | 0);
-        return createObj(append(ofArray([["area", area], ["commits", length(commits)], ["files", length(List_distinct(map((tupledArg_10) => tupledArg_10[1], rows_1), {
-            Equals: (x_6, y_6) => (x_6 === y_6),
-            GetHashCode: (x_6) => (stringHash(x_6) | 0),
+        return createObj(append(ofArray([["area", area], ["commits", length(commits)], ["files", length(List_distinct(map_1((tupledArg_10) => tupledArg_10[1], rows_1), {
+            Equals: (x_10, y_10) => (x_10 === y_10),
+            GetHashCode: (x_10) => (stringHash(x_10) | 0),
         }))], ["added", count_1("added")], ["deleted", count_1("deleted")], ["renamed", count_1("renamed")], ["linesAdded", sumBy((tupledArg_11) => (tupledArg_11[2] | 0), rows_1, {
             GetZero: () => 0,
-            Add: (x_7, y_7) => ((x_7 + y_7) | 0),
+            Add: (x_11, y_11) => ((x_11 + y_11) | 0),
         })], ["linesRemoved", sumBy((tupledArg_12) => (tupledArg_12[3] | 0), rows_1, {
             GetZero: () => 0,
-            Add: (x_8, y_8) => ((x_8 + y_8) | 0),
-        })]]), people ? singleton_1(["people", toArray(map((tupledArg_13) => ({
+            Add: (x_12, y_12) => ((x_12 + y_12) | 0),
+        })]]), people ? singleton(["people", toArray(map_1((tupledArg_13) => ({
             name: tupledArg_13[0],
             commits: tupledArg_13[1],
         }), sortBy((tuple_2) => tuple_2[0], List_countBy((c_6) => c_6.Author, commits, {
-            Equals: (x_9, y_9) => (x_9 === y_9),
-            GetHashCode: (x_9) => (stringHash(x_9) | 0),
+            Equals: (x_13, y_13) => (x_13 === y_13),
+            GetHashCode: (x_13) => (stringHash(x_13) | 0),
         }), {
-            Compare: (x_10, y_10) => (comparePrimitives(x_10, y_10) | 0),
-        })))]) : empty_2()));
-    }, List_groupBy((tuple) => tuple[0], collect_1((c_3) => map((tupledArg_6) => {
-        const p_7 = tupledArg_6[0];
-        return [areaOf(p_7), [c_3, p_7, tupledArg_6[1], tupledArg_6[2]]];
+            Compare: (x_14, y_14) => (comparePrimitives(x_14, y_14) | 0),
+        })))]) : empty()));
+    }, List_groupBy((tuple) => tuple[0], collect_1((c_3) => map_1((tupledArg_6) => {
+        const p_9 = tupledArg_6[0];
+        return [areaOf(p_9), [c_3, p_9, tupledArg_6[1], tupledArg_6[2]]];
     }, kept(c_3)), all), {
-        Equals: (x_4, y_4) => (x_4 === y_4),
-        GetHashCode: (x_4) => (stringHash(x_4) | 0),
+        Equals: (x_8, y_8) => (x_8 === y_8),
+        GetHashCode: (x_8) => (stringHash(x_8) | 0),
     })), {
-        Compare: (x_11, y_11) => (compareArrays(x_11, y_11) | 0),
+        Compare: (x_15, y_15) => (compareArrays(x_15, y_15) | 0),
     });
-    const mostChanged = truncate_1(TOP_FILES, sortBy((tupledArg_18) => [op_UnaryNegation_Int32(tupledArg_18[1]), op_UnaryNegation_Int32(tupledArg_18[2] + tupledArg_18[3]), tupledArg_18[0]], map((tupledArg_15) => {
+    const mostChanged = truncate_1(TOP_FILES, sortBy((tupledArg_18) => [op_UnaryNegation_Int32(tupledArg_18[1]), op_UnaryNegation_Int32(tupledArg_18[2] + tupledArg_18[3]), tupledArg_18[0]], map_1((tupledArg_15) => {
         const rows_2 = tupledArg_15[1];
         return [tupledArg_15[0], length(rows_2), sumBy((tupledArg_16) => (tupledArg_16[1][0] | 0), rows_2, {
             GetZero: () => 0,
-            Add: (x_13, y_13) => ((x_13 + y_13) | 0),
+            Add: (x_17, y_17) => ((x_17 + y_17) | 0),
         }), sumBy((tupledArg_17) => (tupledArg_17[1][1] | 0), rows_2, {
             GetZero: () => 0,
-            Add: (x_14, y_14) => ((x_14 + y_14) | 0),
+            Add: (x_18, y_18) => ((x_18 + y_18) | 0),
         })];
-    }, List_groupBy((tuple_3) => tuple_3[0], collect_1((c_7) => map((tupledArg_14) => [tupledArg_14[0], [tupledArg_14[1], tupledArg_14[2]]], kept(c_7)), all), {
-        Equals: (x_12, y_12) => (x_12 === y_12),
-        GetHashCode: (x_12) => (stringHash(x_12) | 0),
+    }, List_groupBy((tuple_3) => tuple_3[0], collect_1((c_7) => map_1((tupledArg_14) => [tupledArg_14[0], [tupledArg_14[1], tupledArg_14[2]]], kept(c_7)), all), {
+        Equals: (x_16, y_16) => (x_16 === y_16),
+        GetHashCode: (x_16) => (stringHash(x_16) | 0),
     })), {
-        Compare: (x_15, y_15) => (compareArrays(x_15, y_15) | 0),
+        Compare: (x_19, y_19) => (compareArrays(x_19, y_19) | 0),
     }));
-    const tagsOf = (sha) => {
-        let array_1;
-        return ofArray_1((array_1 = split(gitOut(repo, ofArray(["tag", "--merged", sha])), ["\n"], undefined, 0), array_1.filter((y_16) => ("" !== y_16))), {
-            Compare: (x_17, y_17) => (comparePrimitives(x_17, y_17) | 0),
+    const tagsOf = (sha_1) => {
+        let array_6;
+        return ofArray_1((array_6 = split(gitOut(repo, ofArray(["tag", "--merged", sha_1])), ["\n"], undefined, 0), array_6.filter((y_20) => ("" !== y_20))), {
+            Compare: (x_21, y_21) => (comparePrimitives(x_21, y_21) | 0),
         });
     };
-    const tags = sortBy((tupledArg_19) => [tupledArg_19[2], tupledArg_19[0]], map((t) => [t, shortOf(repo, value_1(commitOf(repo, t))), dateOf(repo, value_1(commitOf(repo, t)))], toList_1(difference(tagsOf(until), tagsOf(since)))), {
-        Compare: (x_18, y_18) => (compareArrays(x_18, y_18) | 0),
+    const tags = sortBy((tupledArg_19) => [tupledArg_19[2], tupledArg_19[0]], map_1((t) => [t, shortOf(repo, value_2(commitOf(repo, t))), dateOf(repo, value_2(commitOf(repo, t)))], toList_1((matchValue_6 = start.Commit, (matchValue_6 == null) ? tagsOf(until) : ((since_6 = matchValue_6, difference(tagsOf(until), tagsOf(since_6))))))), {
+        Compare: (x_22, y_22) => (compareArrays(x_22, y_22) | 0),
     });
-    const tagged = ofList(map((tupledArg_20) => tupledArg_20[1], tags), {
-        Compare: (x_19, y_19) => (comparePrimitives(x_19, y_19) | 0),
+    const tagged = ofList(map_1((tupledArg_20) => tupledArg_20[1], tags), {
+        Compare: (x_23, y_23) => (comparePrimitives(x_23, y_23) | 0),
     });
     let publishedBranch;
-    const matchValue_1 = git(repo, ofArray(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]));
-    let matchResult_1;
-    if (matchValue_1[0] === 0) {
-        if (matchValue_1[1] !== "") {
-            matchResult_1 = 0;
+    const matchValue_7 = git(repo, ofArray(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]));
+    let matchResult_2;
+    if (matchValue_7[0] === 0) {
+        if (matchValue_7[1] !== "") {
+            matchResult_2 = 0;
         }
         else {
-            matchResult_1 = 1;
+            matchResult_2 = 1;
         }
     }
     else {
-        matchResult_1 = 1;
+        matchResult_2 = 1;
     }
-    switch (matchResult_1) {
+    switch (matchResult_2) {
         case 0: {
-            publishedBranch = matchValue_1[1];
+            publishedBranch = matchValue_7[1];
             break;
         }
         default:
-            publishedBranch = tryFind((r_12) => (commitOf(repo, r_12) != null), ofArray(["origin/main", "origin/master"]));
+            publishedBranch = tryFind_1((r_12) => (commitOf(repo, r_12) != null), ofArray(["origin/main", "origin/master"]));
     }
-    let unpublished;
-    if (publishedBranch == null) {
-        unpublished = [];
-    }
-    else {
-        const branch = publishedBranch;
-        unpublished = reverse(map_1((sha_1) => shortOf(repo, sha_1), (array_3 = split(gitOut(repo, ofArray(["rev-list", "--abbrev-commit", concat(since, "..", until), "--not", branch])), ["\n"], undefined, 0), array_3.filter((y_20) => ("" !== y_20)))));
-    }
+    const unpublished = (publishedBranch == null) ? [] : reverse((array_8 = split(gitOut(repo, append(ofArray(["rev-list", "--abbrev-commit"]), append(range, ofArray(["--not", publishedBranch])))), ["\n"], undefined, 0), array_8.filter((y_24) => ("" !== y_24))));
     const partial = length(all) > LIST_ALL;
     const listed = partial ? filter((c_8) => {
         if (c_8.Merge ? true : FSharpSet__Contains(tagged, c_8.Id)) {
@@ -633,16 +718,26 @@ function write(ws) {
             return length(c_8.Files) > WIDE;
         }
     }, all) : all;
-    const said = (message) => {
+    const saidSubject = (subject) => {
         if (people) {
-            return message;
+            return subject;
         }
         else {
-            return unnamed(message);
+            return unnamedSubject(subject);
         }
     };
+    const saidBody = (body) => {
+        if (people) {
+            return body;
+        }
+        else {
+            return unnamedBody(body);
+        }
+    };
+    const sinceCommit = defaultArg(start.Commit, last_1(split(gitOut(repo, ofArray(["rev-list", "--max-parents=0", until])), ["\n"], undefined, 0)));
     const untilDate = dateOf(repo, until);
-    const sinceDate = dateOf(repo, since);
+    const sinceDate = dateOf(repo, sinceCommit);
+    const notes = append(start.Notes, append(map_1((g_3) => concat("The brief\'s \"ignore\" entry ", g_3, " matched no file of the range, so it left nothing out. A * does not cross folders; ** does."), unmatched), (publishedBranch == null) ? singleton("Which branch of this repository is the published one could not be determined (it has no remote, or the remote\'s default branch is not known here). Nothing in the range may be called published, released or shipped on the strength of these facts; say only that it is in the range.") : empty()));
     const keptFiles = collect_1(kept, all);
     const patternInput_2 = sum(keptFiles);
     const totalRemoved = patternInput_2[1] | 0;
@@ -650,29 +745,31 @@ function write(ws) {
     const patternInput_3 = sum(left);
     const leftRemoved = patternInput_3[1] | 0;
     const leftAdded = patternInput_3[0] | 0;
-    const pathsOf = (kind_2) => toArray(map((tupledArg_22) => tupledArg_22[1], of$0027(kind_2)));
+    const pathsOf = (kind_2) => toArray(map_1((tupledArg_22) => tupledArg_22[1], of$0027(kind_2)));
     const json = createObj(append(ofArray([["range", {
         since: {
             ref: sinceRef,
-            commit: shortOf(repo, since),
+            commit: shortOf(repo, sinceCommit),
             date: sinceDate,
+            included: start.Commit == null,
         },
         until: {
             ref: untilRef,
             commit: shortOf(repo, until),
+            sha: until,
             date: untilDate,
         },
         sinceWas: sinceWas,
         days: Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000),
         commits: length(all),
     }], ["totals", {
-        files: length(List_distinct(map((tupledArg_23) => tupledArg_23[0], keptFiles), {
-            Equals: (x_21, y_21) => (x_21 === y_21),
-            GetHashCode: (x_21) => (stringHash(x_21) | 0),
+        files: length(List_distinct(map_1((tupledArg_23) => tupledArg_23[0], keptFiles), {
+            Equals: (x_25, y_25) => (x_25 === y_25),
+            GetHashCode: (x_25) => (stringHash(x_25) | 0),
         })),
         linesAdded: totalAdded,
         linesRemoved: totalRemoved,
-    }], ["tags", toArray(map((tupledArg_24) => ({
+    }], ["tags", toArray(map_1((tupledArg_24) => ({
         tag: tupledArg_24[0],
         commit: tupledArg_24[1],
         date: tupledArg_24[2],
@@ -680,8 +777,13 @@ function write(ws) {
         branch: publishedBranch,
         missing: unpublished.length,
         commits: unpublished,
-    }], ["listed", partial ? "partial" : "all"], ["commits", toArray(map((c_9) => createObj(append(ofArray([["id", c_9.Id], ["date", c_9.Date], ["subject", said(c_9.Subject)], ["body", said(c_9.Body)], ["merge", c_9.Merge], ["files", toArray(map((tupledArg_21) => tupledArg_21[0], c_9.Files))]]), people ? singleton_1(["author", c_9.Author]) : empty_2())), listed))], ["areas", toArray(areas)], ["files", {
-        mostChanged: toArray(map((tupledArg_25) => ({
+    }], ["asked", {
+        since: ((brief.since == null)) ? defaultOf() : brief.since,
+        until: ((brief.until == null)) ? defaultOf() : brief.until,
+        focus: toArray(strings(brief.focus)),
+        ignore: toArray(strings(brief.ignore)),
+    }], ["notes", toArray(notes)], ["listed", partial ? "partial" : "all"], ["commits", toArray(map_1((c_9) => createObj(append(ofArray([["id", c_9.Id], ["date", c_9.Date], ["subject", saidSubject(c_9.Subject)], ["body", saidBody(c_9.Body)], ["merge", c_9.Merge], ["files", toArray(map_1((tupledArg_21) => tupledArg_21[0], c_9.Files))]]), people ? singleton(["author", c_9.Author]) : empty())), listed))], ["areas", toArray(areas)], ["files", {
+        mostChanged: toArray(map_1((tupledArg_25) => ({
             path: tupledArg_25[0],
             commits: tupledArg_25[1],
             linesAdded: tupledArg_25[2],
@@ -689,27 +791,27 @@ function write(ws) {
         }), mostChanged)),
         added: pathsOf("added"),
         deleted: pathsOf("deleted"),
-        renamed: toArray(map((tupledArg_26) => ({
+        renamed: toArray(map_1((tupledArg_26) => ({
             from: tupledArg_26[2],
             to: tupledArg_26[1],
         }), of$0027("renamed"))),
     }], ["ignored", {
-        files: toArray(List_distinct(map((tupledArg_27) => tupledArg_27[0], left), {
-            Equals: (x_22, y_22) => (x_22 === y_22),
-            GetHashCode: (x_22) => (stringHash(x_22) | 0),
+        files: toArray(List_distinct(map_1((tupledArg_27) => tupledArg_27[0], left), {
+            Equals: (x_26, y_26) => (x_26 === y_26),
+            GetHashCode: (x_26) => (stringHash(x_26) | 0),
         })),
         commits: length(filter((c_10) => exists_1((tupledArg_28) => ignored(tupledArg_28[0]), c_10.Files), all)),
         linesAdded: leftAdded,
         linesRemoved: leftRemoved,
-    }]]), people ? singleton_1(["people", toArray(map((tupledArg_29) => ({
+    }]]), people ? singleton(["people", toArray(map_1((tupledArg_29) => ({
         name: tupledArg_29[0],
         commits: tupledArg_29[1],
     }), sortBy((tuple_4) => tuple_4[0], List_countBy((c_11) => c_11.Author, all, {
-        Equals: (x_23, y_23) => (x_23 === y_23),
-        GetHashCode: (x_23) => (stringHash(x_23) | 0),
+        Equals: (x_27, y_27) => (x_27 === y_27),
+        GetHashCode: (x_27) => (stringHash(x_27) | 0),
     }), {
-        Compare: (x_24, y_24) => (comparePrimitives(x_24, y_24) | 0),
-    })))]) : empty_2()));
+        Compare: (x_28, y_28) => (comparePrimitives(x_28, y_28) | 0),
+    })))]) : empty()));
     const build = join_1(ofArray([ws, "build"]));
     mkdirp(build);
     writeText(join_1(ofArray([build, "history.json"])), toJsonIndented(json, 2) + "\n");
@@ -717,20 +819,31 @@ function write(ws) {
     const line_1 = (s) => {
         void (md.push(s));
     };
-    const chosen = (sinceWas === "last video") ? " The start is where the last progress video of this repository ended." : ((sinceWas === "latest tag") ? " No start was given: the range starts at the latest tag." : ((sinceWas === "30 days") ? " No start was given and the repository has no earlier tag: the range starts 30 days back." : ((sinceWas === "first commit") ? " The start asked for is before the repository\'s first commit: the range starts at the first commit." : "")));
+    const chosen = (sinceWas === "last video") ? " The start is where the last progress video of this repository ended." : ((sinceWas === "latest tag") ? " No start was given: the range starts at the latest tag." : ((sinceWas === "30 days") ? " No start was given and the repository has no earlier tag: the range starts 30 days back." : ((sinceWas === "before first commit") ? " The start asked for is before the repository\'s first commit: the range is the whole history, the first commit included." : ((sinceWas === "whole history") ? " No start was given, there is no earlier tag, and the repository is younger than 30 days: the range is the whole history, the first commit included." : ""))));
     line_1(concat("# History: ", sinceRef, " to ", untilRef));
     line_1("");
-    const matchValue_4 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
-    const matchValue_5 = count(length(all), "commit");
-    line_1(`From ${sinceRef} (${shortOf(repo, since)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_4}, ${matchValue_5}.${chosen}`);
+    const matchValue_10 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
+    const matchValue_11 = count(length(all), "commit");
+    line_1(`From ${sinceRef} (${shortOf(repo, sinceCommit)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_10}, ${matchValue_11}.${chosen}`);
+    const enumerator = getEnumerator(notes);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const note = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            line_1("");
+            line_1(note);
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
     line_1("");
     line_1("Every number in the video comes from this file or from history.json. Do not count anything yourself.");
     line_1("");
     line_1(`Totals: ${json.totals.files} files changed, ${totalAdded} lines added, ${totalRemoved} lines removed. Lines and files are sums over the range's commits; added, deleted and renamed compare its two ends.`);
     if (!isEmpty(left)) {
-        const names = List_distinct(map((tupledArg_30) => tupledArg_30[0], left), {
-            Equals: (x_25, y_25) => (x_25 === y_25),
-            GetHashCode: (x_25) => (stringHash(x_25) | 0),
+        const names = List_distinct(map_1((tupledArg_30) => tupledArg_30[0], left), {
+            Equals: (x_29, y_29) => (x_29 === y_29),
+            GetHashCode: (x_29) => (stringHash(x_29) | 0),
         });
         line_1("");
         const sample = join(", ", truncate_1(5, names));
@@ -757,15 +870,15 @@ function write(ws) {
         line_1("None.");
     }
     else {
-        const enumerator = getEnumerator(tags);
+        const enumerator_1 = getEnumerator(tags);
         try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
+                const forLoopVar = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
                 line_1(`- ${forLoopVar[0]} (${forLoopVar[1]}, ${forLoopVar[2]})`);
             }
         }
         finally {
-            disposeSafe(enumerator);
+            disposeSafe(enumerator_1);
         }
     }
     line_1("");
@@ -773,15 +886,15 @@ function write(ws) {
     line_1("");
     line_1("| area | commits | files | added | deleted | renamed | lines + | lines - |");
     line_1("|---|---|---|---|---|---|---|---|");
-    const enumerator_1 = getEnumerator(areas);
+    const enumerator_2 = getEnumerator(areas);
     try {
-        while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            const a_13 = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+        while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
+            const a_13 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
             line_1(`| ${a_13.area} | ${a_13.commits} | ${a_13.files} | ${a_13.added} | ${a_13.deleted} | ${a_13.renamed} | ${a_13.linesAdded} | ${a_13.linesRemoved} |`);
         }
     }
     finally {
-        disposeSafe(enumerator_1);
+        disposeSafe(enumerator_2);
     }
     if (people) {
         line_1("");
@@ -789,32 +902,32 @@ function write(ws) {
         line_1("");
         line_1("By area, who committed there and how many commits. No ranking is meant by the order.");
         line_1("");
-        const enumerator_2 = getEnumerator(areas);
+        const enumerator_3 = getEnumerator(areas);
         try {
-            while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-                const a_14 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const who = join(", ", map_1((p_20) => (`${p_20.name} (${p_20.commits})`), a_14.people));
+            while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
+                const a_14 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const who = join(", ", map((p_22) => (`${p_22.name} (${p_22.commits})`), a_14.people));
                 line_1(`- ${a_14.area}: ${who}`);
             }
         }
         finally {
-            disposeSafe(enumerator_2);
+            disposeSafe(enumerator_3);
         }
     }
     line_1("");
     line_1("## Files");
     line_1("");
-    line_1(concat("Most changed (by commits): ", join(", ", map((tupledArg_31) => (((tupledArg_31[0] + " (") + int32ToString(tupledArg_31[1])) + ")"), mostChanged)), "."));
-    const list_74 = (title, paths) => {
+    line_1(concat("Most changed (by commits): ", join(", ", map_1((tupledArg_31) => (((tupledArg_31[0] + " (") + int32ToString(tupledArg_31[1])) + ")"), mostChanged)), "."));
+    const list_81 = (title, paths) => {
         if (!isEmpty(paths)) {
             line_1("");
             const shown = join(", ", truncate_1(40, paths)) + ((length(paths) > 40) ? ", ..." : "");
             line_1(`${title} (${length(paths)}): ${shown}`);
         }
     };
-    list_74("Added", map((tupledArg_32) => tupledArg_32[1], of$0027("added")));
-    list_74("Deleted", map((tupledArg_33) => tupledArg_33[1], of$0027("deleted")));
-    list_74("Renamed", map((tupledArg_34) => ((tupledArg_34[2] + " -> ") + tupledArg_34[1]), of$0027("renamed")));
+    list_81("Added", map_1((tupledArg_32) => tupledArg_32[1], of$0027("added")));
+    list_81("Deleted", map_1((tupledArg_33) => tupledArg_33[1], of$0027("deleted")));
+    list_81("Renamed", map_1((tupledArg_34) => ((tupledArg_34[2] + " -> ") + tupledArg_34[1]), of$0027("renamed")));
     line_1("");
     line_1("## Commits, oldest first");
     line_1("");
@@ -822,13 +935,13 @@ function write(ws) {
         line_1(`The range holds ${length(all)} commits. Only the ${length(listed)} that are tagged, are merges or touch more than ${WIDE} files are listed; the rest are in the counts above. Read the others with git when a theme needs them.`);
         line_1("");
     }
-    const enumerator_3 = getEnumerator(listed);
+    const enumerator_4 = getEnumerator(listed);
     try {
-        while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
-            const c_12 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            line_1(`- ${c_12.Id} (${c_12.Date}${people ? concat(", ", c_12.Author) : ""}) ${said(c_12.Subject)} [${length(c_12.Files)} files]`);
-            if (said(c_12.Body) !== "") {
-                const arr = split(said(c_12.Body), ["\n"], undefined, 0);
+        while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
+            const c_12 = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            line_1(`- ${c_12.Id} (${c_12.Date}${people ? concat(", ", c_12.Author) : ""}) ${saidSubject(c_12.Subject)} [${length(c_12.Files)} files]`);
+            if (saidBody(c_12.Body) !== "") {
+                const arr = split(saidBody(c_12.Body), ["\n"], undefined, 0);
                 for (let idx = 0; idx <= (arr.length - 1); idx++) {
                     const b_6 = item(idx, arr);
                     if (b_6.trim() !== "") {
@@ -839,7 +952,7 @@ function write(ws) {
         }
     }
     finally {
-        disposeSafe(enumerator_3);
+        disposeSafe(enumerator_4);
     }
     writeText(join_1(ofArray([build, "history.md"])), join("\n", md) + "\n");
     const arg_2 = count(length(all), "commit");
@@ -861,7 +974,7 @@ function done$0027(ws) {
     const until = history.range.until;
     writeText(out, toJsonIndented({
         until: {
-            commit: until.commit,
+            commit: ((until.sha == null)) ? until.commit : until.sha,
             date: until.date,
         },
         video: brief.name,

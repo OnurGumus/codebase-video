@@ -1,7 +1,7 @@
 
-import { tail, head, isEmpty, append, empty, map as map_1, tryFind, contains, find, exists as exists_1, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { tail, head, isEmpty, append, map as map_1, tryFind, contains, find, exists as exists_1, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { join as join_1, split, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { basename, writeText, dirname, mkdirp, path, readText, exists, pluginRoot, join, readJson, fs } from "./Node.js";
+import { basename, writeText, dirname, mkdirp, toJson, path, readText, exists, pluginRoot, join, readJson, fs } from "./Node.js";
 import { Py_flush, Py_print, Py_fail, Py_str, Py_reprStr, Py_get } from "./Check.js";
 import { comparePrimitives, int32ToString, stringHash, defaultOf, equals } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
@@ -33,6 +33,7 @@ function realpath(p) {
 }
 
 export function run(ws) {
+    let asked, same, listed;
     const ws_1 = realpath(ws);
     const cfg = readJson(join(ofArray([ws_1, "brief.json"])));
     const here = join(ofArray([pluginRoot, "briefs"]));
@@ -66,32 +67,43 @@ export function run(ws) {
     const historyPath = join(ofArray([ws_1, "build", "history.json"]));
     const goals = optional("goals", "");
     const goalsPath = (goals === "") ? "" : (path.resolve(optional("repo", ws_1), goals));
-    const problem = ((kind !== "teach") && (kind !== "progress")) ? concat("brief.json: \"kind\" is ", Py_reprStr(kind), "; use teach or progress") : (!progress ? undefined : (!exists(historyPath) ? "fill: run \"history\" first (build/history.json is missing)" : (exists_1((f) => !exists_1((arg) => (f === arg[0]), FOCUS), focus) ? concat("brief.json: \"focus\" holds ", Py_reprStr(find((f_1) => !exists_1((arg_1) => (f_1 === arg_1[0]), FOCUS), focus)), "; use shipped, effort, goals, people") : ((contains("goals", focus, {
-        Equals: (x, y_2) => (x === y_2),
-        GetHashCode: (x) => (stringHash(x) | 0),
-    }) && (goals === "")) ? "brief.json: the focus \"goals\" needs \"goals\": the path of a goals or roadmap file" : ((contains("goals", focus, {
+    const problem = ((kind !== "teach") && (kind !== "progress")) ? concat("brief.json: \"kind\" is ", Py_reprStr(kind), "; use teach or progress") : (!progress ? undefined : (!exists(historyPath) ? "fill: run \"history\" first (build/history.json is missing)" : (((asked = readJson(historyPath).asked, (same = ((key) => (toJson(Py_get(cfg, key)) === toJson(asked[key]))), (listed = ((key_1, fallback_1) => {
+        let matchValue_3, array_5;
+        if (equals((matchValue_3 = Py_get(cfg, key_1), equals(matchValue_3, defaultOf()) ? fallback_1 : ((Array.isArray(matchValue_3)) ? ofArray(matchValue_3) : ofArray((array_5 = map((s_1) => s_1.trim(), split(Py_str(matchValue_3), [","], undefined, 0)), array_5.filter((y) => ("" !== y)))))), ofArray(asked[key_1]))) {
+            return true;
+        }
+        else if (equals(Py_get(cfg, key_1), defaultOf())) {
+            return asked[key_1].length === 0;
+        }
+        else {
+            return false;
+        }
+    }), (((((asked == null)) ? true : !same("since")) ? true : !same("until")) ? true : !listed("focus", empty())) ? true : !listed("ignore", empty()))))) ? "fill: build/history.json was made for another \"since\", \"until\", \"focus\" or \"ignore\" than brief.json has now; run \"history\" again" : (exists_1((f) => !exists_1((arg) => (f === arg[0]), FOCUS), focus) ? concat("brief.json: \"focus\" holds ", Py_reprStr(find((f_1) => !exists_1((arg_1) => (f_1 === arg_1[0]), FOCUS), focus)), "; use shipped, effort, goals, people") : ((contains("goals", focus, {
         Equals: (x_1, y_3) => (x_1 === y_3),
         GetHashCode: (x_1) => (stringHash(x_1) | 0),
-    }) && !exists(goalsPath)) ? concat("brief.json: the goals file ", goalsPath, " does not exist") : undefined)))));
-    const matchValue_3 = required("name");
-    const matchValue_4 = required("subject");
-    const matchValue_5 = required("repo");
-    const matchValue_6 = required("colours");
-    const matchValue_7 = tryFind((arg_2) => (lengthName === arg_2[0]), lengths);
+    }) && (goals === "")) ? "brief.json: the focus \"goals\" needs \"goals\": the path of a goals or roadmap file" : ((contains("goals", focus, {
+        Equals: (x_2, y_4) => (x_2 === y_4),
+        GetHashCode: (x_2) => (stringHash(x_2) | 0),
+    }) && !exists(goalsPath)) ? concat("brief.json: the goals file ", goalsPath, " does not exist") : undefined))))));
+    const matchValue_4 = required("name");
+    const matchValue_5 = required("subject");
+    const matchValue_6 = required("repo");
+    const matchValue_7 = required("colours");
+    const matchValue_8 = tryFind((arg_2) => (lengthName === arg_2[0]), lengths);
     let matchResult, e, e_1, colours, length, name, repo, subject;
     if (problem == null) {
-        const copyOfStruct = matchValue_3;
+        const copyOfStruct = matchValue_4;
         if (copyOfStruct.tag === 0) {
-            const copyOfStruct_1 = matchValue_4;
+            const copyOfStruct_1 = matchValue_5;
             if (copyOfStruct_1.tag === 0) {
-                const copyOfStruct_2 = matchValue_5;
+                const copyOfStruct_2 = matchValue_6;
                 if (copyOfStruct_2.tag === 0) {
-                    const copyOfStruct_3 = matchValue_6;
+                    const copyOfStruct_3 = matchValue_7;
                     if (copyOfStruct_3.tag === 0) {
-                        if (matchValue_7 != null) {
+                        if (matchValue_8 != null) {
                             matchResult = 3;
                             colours = copyOfStruct_3.fields[0];
-                            length = matchValue_7[1];
+                            length = matchValue_8[1];
                             name = copyOfStruct.fields[0];
                             repo = copyOfStruct_2.fields[0];
                             subject = copyOfStruct_1.fields[0];
@@ -142,11 +154,11 @@ export function run(ws) {
                 const h = readJson(historyPath).range;
                 const point = (p) => (`${p.ref} (${p.commit}, ${p.date})`);
                 let how;
-                const matchValue_9 = toString(h.sinceWas);
-                how = ((matchValue_9 === "last video") ? " The start is where the last progress video of this repository ended." : ((matchValue_9 === "latest tag") ? " No start was given, so the range starts at the latest tag." : ((matchValue_9 === "30 days") ? " No start was given and there is no earlier tag, so the range starts 30 days back." : ((matchValue_9 === "first commit") ? " The start asked for is before the first commit, so the range starts at the first commit." : ""))));
-                const matchValue_10 = plural(h.days, "day");
-                const matchValue_11 = plural(h.commits, "commit");
-                range = ofArray([["SINCE", point(h.since)], ["UNTIL", point(h.until)], ["RANGE", `from ${point(h.since)} to ${point(h.until)}: ${matchValue_10}, ${matchValue_11}.${how}`], ["HISTORY", join(ofArray([ws_1, "build", "history.md"]))], ["GOALS", (goalsPath === "") ? "no goals file was given" : goalsPath], ["FOCUS", join_1("\n", map_1((f_2) => ("- " + find((arg_3) => (f_2 === arg_3[0]), FOCUS)[1]), focus))]]);
+                const matchValue_10 = toString(h.sinceWas);
+                how = ((matchValue_10 === "last video") ? " The start is where the last progress video of this repository ended." : ((matchValue_10 === "latest tag") ? " No start was given, so the range starts at the latest tag." : ((matchValue_10 === "30 days") ? " No start was given and there is no earlier tag, so the range starts 30 days back." : ((matchValue_10 === "before first commit") ? " The start asked for is before the first commit, so the range is the whole history, the first commit included." : ((matchValue_10 === "whole history") ? " No start was given, there is no earlier tag and the repository is younger than 30 days, so the range is the whole history, the first commit included." : "")))));
+                const matchValue_11 = plural(h.days, "day");
+                const matchValue_12 = plural(h.commits, "commit");
+                range = ofArray([["SINCE", point(h.since)], ["UNTIL", point(h.until)], ["RANGE", `from ${point(h.since)} to ${point(h.until)}: ${matchValue_11}, ${matchValue_12}.${how}`], ["HISTORY", join(ofArray([ws_1, "build", "history.md"]))], ["GOALS", (goalsPath === "") ? "no goals file was given" : goalsPath], ["FOCUS", join_1("\n", map_1((f_2) => ("- " + find((arg_3) => (f_2 === arg_3[0]), FOCUS)[1]), focus))]]);
             }
             let kindNotes;
             const file = join(ofArray([pluginRoot, "briefs", concat("kind.", kind, ".md")]));
@@ -159,10 +171,10 @@ export function run(ws) {
                 Py_print(concat("hints: ", hintsPath, " added to every brief"));
             }
             const known = ofList(map_1((tuple_6) => tuple_6[0], vals), {
-                Compare: (x_2, y_6) => (comparePrimitives(x_2, y_6) | 0),
+                Compare: (x_3, y_7) => (comparePrimitives(x_3, y_7) | 0),
             });
             const table = ofList_1(vals, {
-                Compare: (x_3, y_7) => (comparePrimitives(x_3, y_7) | 0),
+                Compare: (x_4, y_8) => (comparePrimitives(x_4, y_8) | 0),
             });
             const fill = (jobs_1_mut) => {
                 fill:
@@ -171,8 +183,8 @@ export function run(ws) {
                     if (!isEmpty(jobs_1)) {
                         const file_1 = head(jobs_1)[0];
                         const template = readText(file_1);
-                        const matchValue_12 = tryFind_1((k_2) => !FSharpSet__Contains(known, k_2), Array.from(template.matchAll(/\{\{([A-Z_]+)\}\}/g), m => m[1]));
-                        if (matchValue_12 == null) {
+                        const matchValue_13 = tryFind_1((k_2) => !FSharpSet__Contains(known, k_2), Array.from(template.matchAll(/\{\{([A-Z_]+)\}\}/g), m => m[1]));
+                        if (matchValue_13 == null) {
                             const out = join(ofArray([ws_1, "build", head(jobs_1)[1]]));
                             mkdirp(dirname(out));
                             writeText(out, (template.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => ((k_4) => FSharpMap__get_Item(table, k_4))(k))) + hintsBlock);
@@ -181,7 +193,7 @@ export function run(ws) {
                             continue fill;
                         }
                         else {
-                            const k_3 = matchValue_12;
+                            const k_3 = matchValue_13;
                             return Py_fail(concat(basename(file_1), ": unknown placeholder ", Py_reprStr(("{{" + k_3) + "}}"))) | 0;
                         }
                     }

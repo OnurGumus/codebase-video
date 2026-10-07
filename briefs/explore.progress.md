@@ -1,6 +1,8 @@
 You are writing the DOCUMENT for a narrated video about how a codebase CHANGED over a range of its history. The video
 will say nothing that this document does not say, so it must be true, specific and grounded in the commits and the
-code. Do not edit anything in the repository, and run only git commands that read (log, show, diff, blame, ls-tree).
+code. Do not edit anything in the repository, and run only git commands that read (log, show, diff, ls-tree). Git
+shows who wrote each commit; unless the focus below includes people, you have no use for that: read commits with
+`git show --format='%h %s%n%b' <commit>` and do not run `git blame`.
 
 **Repository:** {{REPO}}
 **The range:** {{RANGE}}
@@ -20,7 +22,9 @@ Goals file: {{GOALS}}.
 
 Then read the range yourself. It starts at {{SINCE}} and ends at {{UNTIL}}; its commits are listed in the facts.
 Open the commits that matter with
-`git show <commit>`, compare the two ends with `git diff`, and read the code as it is at the end of the range. A
+`git show <commit>`, compare the two ends with `git diff`, and read the code as it is at the end of the range. The
+files on disk are the end of the range only if that end is the commit checked out and nothing is uncommitted: when
+in doubt read a file as `git show <end commit>:<path>`. A
 commit message says what its author meant; the diff says what happened. Where they differ, the diff is right.
 
 **Structure** (Markdown, `##` sections; the video follows them as chapters):
@@ -47,8 +51,6 @@ commit message says what its author meant; the diff says what happened. Where th
 5. `## Against the goals`, ONLY if the focus includes progress against goals: each goal of the goals file, quoted,
    and what the history shows for it: done, partly done, or nothing found, each with its commits. "Done" needs a diff
    that does it.
-   Never name a person unless the focus includes people: the facts then carry no author, and a name that appears
-   inside a commit message's own words is not repeated in the document.
 6. `## Who worked on what`, ONLY if the focus includes people (the facts then have a People section; if they have
    none, people are not part of this video and no name may appear anywhere in the document): by area, the names and
    commit counts exactly as the facts give them. No ranking, no total per person, no adjective about a person.
@@ -57,6 +59,13 @@ commit message says what its author meant; the diff says what happened. Where th
    kind, the paths it covers, its status over the range (`new`: its paths did not exist at the start; `changed`:
    the facts show commits in its paths; `same`), and a citation; and `Connections:` each pair that talks, as
    `A -> B: verb`, in the direction the call or the data really goes, with a citation.
+
+**People.** Unless the focus includes people, the document names no person at all. The facts carry no author
+then; a person's name that still appears somewhere (in a commit message's own words, a branch or tag name, a folder
+called after someone) is not repeated: describe the thing without it.
+
+**Published or not.** If the facts say the published branch could not be determined, nothing in the document is
+called published, released or shipped: say that it is in the range.
 
 **Citations** (the video inherits every mistake you make):
 - A claim about the code ends with `(path:lines)`, at the end of the range unless you write `(path:lines @ <commit>)`.

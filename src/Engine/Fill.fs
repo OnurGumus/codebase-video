@@ -85,6 +85,9 @@ let private placeholders (template: string) : string[] = jsNative
 [<Emit("Array.isArray($0)")>]
 let private isArray (o: obj) : bool = jsNative
 
+[<Emit("($0 == null)")>]
+let private isNil (o: obj) : bool = jsNative
+
 let private plural (n: int) (one: string) : string = if n = 1 then $"1 {one}" else $"{n} {one}s"
 
 let private TEMPLATES = [ "explore"; "verify"; "writer"; "narration-audit"; "builder"; "visual-audit"; "reaudit" ]
@@ -115,10 +118,23 @@ let run (ws: string) : int =
     let historyPath = join [ ws; "build"; "history.json" ]
     let goals = optional "goals" ""
     let goalsPath = if goals = "" then "" else path?resolve (optional "repo" ws, goals)
+    // The facts were made for one brief: a brief changed since would be filled with the old range.
+    let stale () =
+        let asked: obj = (readJson historyPath)?asked
+        let same (key: string) = toJson (Py.get cfg key) = toJson (asked?(key))
+        let listed (key: string) (fallback: string list) =
+            let now =
+                match Py.get cfg key with
+                | null -> fallback
+                | v when isArray v -> unbox<string[]> v |> Array.toList
+                | v -> (Py.str v).Split ',' |> Array.map (fun s -> s.Trim()) |> Array.filter ((<>) "") |> Array.toList
+            now = (unbox<string[]> (asked?(key)) |> Array.toList) || (Py.get cfg key = null && (unbox<string[]> (asked?(key))).Length = 0)
+        isNil asked || not (same "since") || not (same "until") || not (listed "focus" []) || not (listed "ignore" [])
     let problem =
         if kind <> "teach" && kind <> "progress" then Some $"""brief.json: "kind" is {Py.reprStr kind}; use teach or progress"""
         elif not progress then None
         elif not (exists historyPath) then Some """fill: run "history" first (build/history.json is missing)"""
+        elif stale () then Some """fill: build/history.json was made for another "since", "until", "focus" or "ignore" than brief.json has now; run "history" again"""
         elif focus |> List.exists (fun f -> not (List.exists (fst >> (=) f) FOCUS)) then
             Some $"""brief.json: "focus" holds {Py.reprStr (focus |> List.find (fun f -> not (List.exists (fst >> (=) f) FOCUS)))}; use shipped, effort, goals, people"""
         elif List.contains "goals" focus && goals = "" then Some """brief.json: the focus "goals" needs "goals": the path of a goals or roadmap file"""
@@ -142,7 +158,8 @@ let run (ws: string) : int =
                     | "last video" -> " The start is where the last progress video of this repository ended."
                     | "latest tag" -> " No start was given, so the range starts at the latest tag."
                     | "30 days" -> " No start was given and there is no earlier tag, so the range starts 30 days back."
-                    | "first commit" -> " The start asked for is before the first commit, so the range starts at the first commit."
+                    | "before first commit" -> " The start asked for is before the first commit, so the range is the whole history, the first commit included."
+                    | "whole history" -> " No start was given, there is no earlier tag and the repository is younger than 30 days, so the range is the whole history, the first commit included."
                     | _ -> ""
                 let days, commits = plural (unbox h?days) "day", plural (unbox h?commits) "commit"
                 [ "SINCE", point h?since

@@ -38,7 +38,8 @@ base brief says. In addition, for each part whose status in the document is `new
 touched: for a progress video they need not be joined by arrows, and they light up together. Use `"inside"` on a
 scene only when it is about the inside of one part.
 
-**Shipped or not:** what the document says is on a branch and not yet published is "in progress on a branch", in
+**Shipped or not:** if the document says the published branch could not be determined, call nothing published,
+released or shipped. Otherwise, what the document says is on a branch and not yet published is "in progress on a branch", in
 every sentence and on the title card, never "shipped" and never "now it does". Say it once plainly where the theme
 begins.
 

@@ -21,10 +21,12 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
   "Progress videos" below for what differs.
 
 The invocation may carry flags; plain words work too, and count as giving the setting they name ("a progress video
-since the last release" gives kind `progress` and `since` the latest tag; "since Monday" gives `since` that date).
+since the last release" gives kind `progress` and leaves `since` out, so the engine takes the latest tag before
+the current commit; "since Monday" gives `since` that date).
 A setting given, by flag or in words, is never asked about. `--focus` replaces the default focus, it does not add
-to it. Check the flags first, before setup and before creating anything: an unknown flag or value, or the focus
-`goals` with no `--goals` file, stops the run there with a message.
+to it. Check the flags first, before setup and before creating anything: an unknown flag or value stops the run
+there with a message, and so, with `--yes`, does the focus `goals` with no `--goals` file (without `--yes`, ask for
+the file).
 
 | Flag | Meaning | Default |
 |---|---|---|
@@ -38,7 +40,7 @@ to it. Check the flags first, before setup and before creating anything: an unkn
 | `--until <tag, commit or date>` | progress: where it ends | `HEAD` |
 | `--focus shipped,effort,goals,people` | progress: what to bring out | `shipped,effort` |
 | `--goals <file>` | progress: a goals or roadmap file; needed by the focus `goals` | none |
-| `--ignore "<glob>"` | progress: paths to leave out of the numbers (repeatable) | lock files and generated files |
+| `--ignore "<glob>"` | progress: paths to leave out of the numbers (repeatable). `*` stays inside one folder, `**` crosses folders: `engine/cli/**` | lock files and generated files |
 | `--yes` | never ask: take the default for everything not given | off |
 
 **Asking.** Without `--yes`, ask for what the invocation did not give, in one short exchange. For a teach video
@@ -48,7 +50,8 @@ is off unless chosen), the length, and the goals file if `goals` was chosen. The
 you most curious about?" and the preview offer belong to teach videos only.
 
 With `--yes`, ask nothing at all and offer nothing (no preview, no captions, no saving of hints or glossary terms):
-take every default, and list each default you took in `out/REPORT.md`, with the cost in agent tasks. A teach video
+take every default, and list each default you took in `out/REPORT.md`, with the cost in agent tasks. Each audit
+gets one round of fixes and no second audit of the same kind; what a round leaves open goes in the report. A teach video
 then covers the core features the explorer finds, and the report names any it left out. With `--yes`, a problem that
 needs a person (a range with no commits, a reference that does not exist, a missing tool) stops the run with its
 message; it never becomes a question. If the workspace exists by then, write the message to `out/REPORT.md` too.
@@ -156,7 +159,8 @@ A progress video follows the same steps with these differences. Workspace as for
    default `["shipped", "effort"]`), and `since`, `until`, `goals`, `ignore` only where given (leave `since` out to
    get its default; `care` and `visual` are optional as for any video). `subject` says the range in words ("What changed in <repo> since
    version 0.5"). `colours` as for any video.
-2. **History** (no agent): `CV history`. It resolves the range and writes `WS/build/history.md` and `history.json`:
+2. **History** (no agent): `CV history`, again whenever `since`, `until`, `focus` or `ignore` changes in the brief
+   (`fill` refuses facts made for another range). It resolves the range and writes `WS/build/history.md` and `history.json`:
    the commits, tags, work per area, files added, deleted and renamed. Every number in the video comes from there.
    If it fails, it says why (a reference that does not exist, no commits in the range, a shallow clone): in an
    interactive run tell the user and ask for the missing piece; with `--yes` stop. Then `CV fill`.
@@ -165,7 +169,7 @@ A progress video follows the same steps with these differences. Workspace as for
    says so. The explorer reads the facts and the commits, never counts, and attributes every reason to a commit
    message. The fact-checker compares each claim with the diff, not the message.
 4. **Scene plan**, **build**, **visual audit**, **re-audit**, **render**: as steps 6 to 10. One builder for a `short`
-   video. The builder's and auditors' briefs carry the picture rules for this kind (counters, bars and a timeline
+   video. The builder's and auditors' briefs carry the picture rules for this kind (totals, bars and a timeline
    for the overview; the map with "new" and "changed" badges; before and after as two code cards).
 5. **Record it**: after a successful render, `CV history --done`. The next progress video of this repository then
    starts where this one ended.

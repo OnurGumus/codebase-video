@@ -339,7 +339,8 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
                         "runs" ==> moduleRuns
                         "chapters" ==> chapterList
                         "map" ==> (if showsMap then timing?map else null)
-                        "kind" ==> (if showsMap && not (isNil timing?kind) then timing?kind else null)
+                        // the video's kind: it decides the recap card's mark as well as how the map is lit
+                        "kind" ==> (if isNil timing?kind then null else timing?kind)
                         "chapterPath" ==> (if showsMap then chapterPath else null)
                         "zero" ==> far 0.0
                         "title" ==> title
