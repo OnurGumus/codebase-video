@@ -1,6 +1,6 @@
 ---
 name: codebase-video
-description: Make a narrated video that teaches a codebase (or one flow in it) - explore the repo, write a teaching document grounded in file:line citations, fact-check it against the code, then script, build, audit and render the video locally (Kokoro voice, headless Chrome, ffmpeg). Use when the user asks for a video, walkthrough or onboarding tour of a repository.
+description: Make a narrated video about a codebase - one that teaches how it works (or one flow in it), or a progress video that shows what changed since a past commit, tag or date. Explores the repo, writes a document grounded in file:line and commit citations, fact-checks it, then scripts, builds, audits and renders the video locally (Kokoro voice, headless Chrome, ffmpeg). Use when the user asks for a video, walkthrough or onboarding tour of a repository, or for a video of its progress, its changes, or what shipped since a release. Runs without questions when given flags and --yes (for CI).
 user-invocable: true
 ---
 
@@ -13,6 +13,45 @@ is uploaded. The repository is read by Claude Code's agents the same way any Cla
 The quality comes from separating roles and auditing every step with a fresh agent: one agent writes, another checks
 against the code, others build the visuals in parallel, others audit them, and a frame-by-frame scan catches what
 eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, filled per video by the engine's `fill` step.
+
+## Two kinds of video, and flags
+
+- **teach** (the default): how the codebase works. Everything below describes it.
+- **progress**: how the codebase changed between a past point and now, for someone following the project. See
+  "Progress videos" below for what differs.
+
+The invocation may carry flags; plain words work too ("a progress video since the last release"). A flag given is
+never asked about.
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--kind teach\|progress` | which kind | `teach` |
+| `--repo <path>` | the repository | the current directory |
+| `--name <name>` | the workspace and output name, kebab-case | from the subject |
+| `--length short\|tour\|deep` | length | `tour` for teach; `short` for progress (which has no `deep`) |
+| `--audience "<who>"` | the audience | teach: a developer joining the team; progress: someone following this project's progress who does not read its code every day |
+| `--captions` | draw captions into the picture | off |
+| `--since <tag, commit or date>` | progress: where the range starts | where the last progress video of this repository ended; else the latest tag; else 30 days back |
+| `--until <tag, commit or date>` | progress: where it ends | `HEAD` |
+| `--focus shipped,effort,goals,people` | progress: what to bring out | `shipped,effort` |
+| `--goals <file>` | progress: a goals or roadmap file; needed by the focus `goals` | none |
+| `--ignore "<glob>"` | progress: paths to leave out of the numbers (repeatable) | lock files and generated files |
+| `--yes` | never ask: take the default for everything not given | off |
+
+**Asking.** Without `--yes`, ask for what the invocation did not give, in one short exchange, as described below.
+With `--yes`, ask nothing at all: take every default, and list each default you took in `out/REPORT.md`. With
+`--yes`, a problem that needs a person (the focus `goals` with no goals file, a range with no commits, a missing
+tool) stops the run with its message; it never becomes a question. This is how the skill runs in CI
+(`docs/ci.md` in the plugin).
+
+**People.** The focus `people` is never on unless asked for by name. Without it the history facts hold no author
+names, and no person may be named in the document, the narration or on screen. With it, the video may say which
+people committed in which area and how many commits, and nothing else: no ranking, no totals per person, no judgment.
+
+**The run report.** Every run, of either kind, ends by writing `WS/out/REPORT.md`: the kind (and for a progress
+video the range); each setting used and whether it was given or a default; the chapters with their start times; what
+each audit found and what was fixed; anything left unverified or imperfect; and the output files. Give the user its
+path with the video's. In CI it is what a person reads before the video goes to anyone.
 
 ## Before you start
 
@@ -90,12 +129,37 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
    `CV report`) and checks stills. Route fixes to the builders; then look at stills of the changed frames yourself.
 10. **Render**: `CV video` (several minutes the first time; the machine must stay awake: on macOS wrap it in
     `caffeinate -is`). Output: `WS/out/<name>.mp4` (+ webm, poster jpg, captions vtt, chapters vtt). Look at a few
-    frames of the mp4 (`ffmpeg -ss <t> -i ... -frames:v 1`), then give the user the path, the length, the chapters, what
-    the audits caught, and anything left unverified.
+    frames of the mp4 (`ffmpeg -ss <t> -i ... -frames:v 1`), write `WS/out/REPORT.md` (see "The run report"), then give
+    the user the path, the length, the chapters, what the audits caught, and anything left unverified.
     A fix after the render is cheap: the video is kept as one piece per scene in `WS/build/segments/`, and `CV video`
     draws again only the scenes that changed (a module fix: that module's scenes; a narration fix, after
     `CV narrate`: that chapter). The rest is reused and the files are joined in seconds. The last line says how many
     scenes were reused. `CV video --full` draws everything again; use it only if a reused scene looks wrong.
+
+## Progress videos
+
+A progress video follows the same steps with these differences. Workspace as for any video.
+
+1. **Brief.** `brief.json` also has `"kind": "progress"`, and `since`, `until`, `focus`, `goals`, `ignore` where
+   given (leave `since` out to get its default). `subject` says the range in words ("What changed in <repo> since
+   version 0.5"). `colours` as for any video.
+2. **History** (no agent): `CV history`. It resolves the range and writes `WS/build/history.md` and `history.json`:
+   the commits, tags, work per area, files added, deleted and renamed. Every number in the video comes from there.
+   If it fails, it says why (a reference that does not exist, no commits in the range, a shallow clone): in an
+   interactive run tell the user and ask for the missing piece; with `--yes` stop. Then `CV fill`.
+3. **Explore**, **verify**, **script**, **narration audit**: as steps 2 to 5 above, each with its filled brief. For
+   these four the brief is a progress brief that builds on the general one (`brief-<name>-base.txt` beside it), and
+   says so. The explorer reads the facts and the commits, never counts, and attributes every reason to a commit
+   message. The fact-checker compares each claim with the diff, not the message.
+4. **Scene plan**, **build**, **visual audit**, **re-audit**, **render**: as steps 6 to 10. One builder for a `short`
+   video. The builder's and auditors' briefs carry the picture rules for this kind (counters, bars and a timeline
+   for the overview; the map with "new" and "changed" badges; before and after as two code cards).
+5. **Record it**: after a successful render, `CV history --done`. The next progress video of this repository then
+   starts where this one ended.
+6. Write `WS/out/REPORT.md` and give the user the video, the report and the range it covers.
+
+A short progress video is about 9 agent tasks. Tell the user that a progress video reports what changed and what the
+commit messages claim; it does not judge whether the team is on track unless given a goals file to compare with.
 
 ## Sharing on GitHub (short videos)
 
