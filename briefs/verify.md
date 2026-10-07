@@ -11,11 +11,14 @@ Check, line by line:
 3. Every name, signature, default value, config key, error message, command and file path: exactly as in the code?
 4. Every flow: follow the real call chain yourself. Is a hop missing, out of order, or attributed to the wrong function?
    Does an error really go where the document says? Read function bodies, not names.
-5. Every `(inferred)` claim and `> Note:`: confirm it from the code, or say it stays unverified.
-6. Where it is cheap and safe, RUN things instead of reading them: the build, the test suite or one test, a tiny
+5. The worked example in `## The core mechanism`: recompute every value in its trace and its closing table yourself
+   from the code (by hand, or with a tiny script that calls the real functions). Does each layer really call the
+   next? Does the trace stop above the layer where the value is finally computed or written? Say so if it does.
+6. Every `(inferred)` claim and `> Note:`: confirm it from the code, or say it stays unverified.
+7. Where it is cheap and safe, RUN things instead of reading them: the build, the test suite or one test, a tiny
    script that calls the public API. Use only local, read-only commands: no network calls to production services,
    no publishing, no writes outside a scratch directory, no credentials. Say what you ran and what it printed.
-7. Then read the whole document once more as a newcomer: anything misleading, vague or missing that a newcomer would
+8. Then read the whole document once more as a newcomer: anything misleading, vague or missing that a newcomer would
    trip on? Any secret, key, token or internal hostname that slipped in?
 {{CARE}}
 

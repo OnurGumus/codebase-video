@@ -36,9 +36,19 @@ set it}, and `scenes`.
   parts talk to each other.
 - Target {{MINUTES}}: {{WORDS}}. File paths, identifiers and flags cost several spoken words each. Plan the cut before
   you write: follow one flow end to end rather than skimming all of them, and say in `intro-path` what is left for later.
+- The chapter on the document's `## The core mechanism` section is the heart of the video: give it about a quarter
+  of the running time and keep every layer of its worked example, down to the last one. When the draft runs long,
+  cut a whole flow or area and say so in `intro-path`; never thin the core mechanism, and never cut the bottom layer
+  of its trace: the small helper where the value is finally computed or written is the answer to the question the
+  viewer came with.
 
 **Narration rules:**
 - Objective first: say where each chapter is going before diving in. Define every term at first use, in a few words.
+- Show it happen: a principle is not an explanation. Each time the narration states how something works ("a frame is
+  a pure function of time", "state is rebuilt from its events"), the next sentences walk the document's worked
+  example through it with its real values, one step a sentence, to the last step the document gives ("at twelve
+  point one seconds the progress is zero point three, so the opacity written to the element is zero point three").
+  A viewer who asks "but how does that actually happen?" should hear the answer before the chapter ends.
 - Concepts before mechanics: introduce the general ideas the code builds on (the document's "ideas it builds on"
   section) in general terms first, then say how this codebase maps them onto its parts, before any code or diagram
   that relies on them. Never let a configuration or registration card (e.g. a call that registers an aggregate)

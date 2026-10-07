@@ -22,12 +22,22 @@ file, not by guessing from names.
    `Parts:` the 2 to 7 main parts, each with a short name (12 characters at most), its kind (a caller, an entry
    point, an internal module, a data store, an external service ...) and a citation; and `Connections:` each pair
    that talks, as `A -> B: verb` in the direction the call or the data really goes, with a citation.
-4. One `##` section per key flow (two or three flows for a tour, four to six for a deep dive), each traced end to end:
+4. `## The core mechanism`: the one idea (two at most) that everything else in this codebase rests on: the thing a
+   curious developer, told what the code does, asks next: "but how does that actually happen?" (for a renderer, how a
+   time becomes a pixel; for an event-sourced service, how a command becomes stored state; for a compiler, how a node
+   becomes an instruction). Name it in one sentence. Then follow ONE concrete example all the way down, with its
+   real values at every step, through the real functions, layer by layer, until it reaches something the reader
+   already knows (a value written to the screen, a row in a table, a byte on the wire). Do not stop at the function
+   that sounds like the answer: open what it calls, down to the small helpers a tour would skip, because the bottom
+   layer is where the question is answered. Show each layer's code. Close the section with a table of the example's
+   values at three or four inputs or moments (the input, each intermediate value, what finally comes out).
+5. One `##` section per key flow (one or two flows for a tour, three to five for a deep dive), each traced end to end:
    the entry point, every hop in order, the data that moves, the decision points, where errors go, where it ends.
-   Pick the flows a newcomer touches first. Show the real code at each important hop.
-5. `## Conventions and gotchas`: patterns the code repeats (naming, error handling, configuration, tests), and the
+   Pick the flows a newcomer touches first. Show the real code at each important hop. Where a flow passes through
+   the core mechanism, point back to that section instead of repeating it.
+6. `## Conventions and gotchas`: patterns the code repeats (naming, error handling, configuration, tests), and the
    traps a newcomer falls into, each shown with an example from the code.
-6. `## Where to start`: how to build and run it, run the tests, and two or three concrete first exercises
+7. `## Where to start`: how to build and run it, run the tests, and two or three concrete first exercises
    ("add a field to X: touch A, B, C") whose answers the document gives.
 
 **Rules (the video inherits every mistake you make):**
@@ -45,5 +55,6 @@ file, not by guessing from names.
 - No secrets: never copy keys, tokens, passwords, internal hostnames or customer data into the document, even if they
   are in the repo; write `<redacted>` and mention it in your report.
 
-When done, report: the sections with their line ranges, the flows you chose and why, every `(inferred)` claim, every
+When done, report: the sections with their line ranges, the core mechanism you chose, why it is the core, and the
+layer its trace ends on, the flows you chose and why, every `(inferred)` claim, every
 `> Note:` you wrote, anything you redacted, and what you deliberately left out.

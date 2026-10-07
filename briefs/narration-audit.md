@@ -42,6 +42,12 @@ L. The map (`"map"` at the top of `script.json`; KIT.md, "The shared map"): ever
    lists that end the document's `## The map` section and against the code: a part the document does not have, a
    wrong kind, an arrow pointing against the call or the data, a wrong verb. Each bridge scene's `"path"` against the
    order its chapter's flow reaches the parts. Each scene's `"inside"` against what the scene is about.
+M. Depth: for each chapter, write the two or three "but how does that actually happen?" questions a curious
+   developer would still have after hearing it, and for each say whether a later sentence answers it (quote it) or
+   nothing does. An unanswered question about the core mechanism (the document's `## The core mechanism` section)
+   is a must-fix: give the sentences that answer it, taken from the document's worked example, and name what to cut
+   to make room (a flow or an area, never a pause). Also flag a principle stated without its worked example, a trace
+   that stops above the document's last layer, and a core-mechanism chapter with well under a quarter of the video.
 
 For each finding give replacement wording. Keep each scene's sentence count where you can. Rank must-fix / should-fix /
 nit. Also list what you checked and found correct. Do not pad. Write the report to `build/audit-narration.md` (or

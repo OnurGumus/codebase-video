@@ -21,7 +21,8 @@ Find:
 5. text a phone viewer cannot read, overlaps, clipped text, labels overflowing boxes, more than ~25 words at once,
    anything on screen for under ~3 s, a stage holding only its heading for over ~4 s;
 6. a term shown before the video has explained it;
-7. a visual gag that adds or bends a claim;
+7. a visual gag that adds or bends a claim; in a watch-it-happen scene, a value on screen that is not the document's
+   worked example, or a demonstration that is not in the state its numbers say at that moment (measure it);
 8. diagrams that teach a false structure: arrow directions against who calls or writes to whom in the code, a missing
    hop, a dependency the code does not have; in a sequence diagram also the order of the messages against the order
    the code makes the calls, and a reply drawn as a call or the other way round; on a chapter's opening map, the

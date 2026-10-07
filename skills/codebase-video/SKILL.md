@@ -32,6 +32,9 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
     request reaches the database");
   - length: `short` (3-5 min, an overview or promo), `tour` (6-10 min, default) or `deep` (20-28 min);
   - audience (default: "a developer joining the team");
+  - which part should go deepest: ask "what are you most curious about?". The default is the codebase's core
+    mechanism, which the explorer identifies. Put the answer in `brief.json` `care` ("go deepest on ..."). A video
+    that tours everything evenly answers nobody's "but how does it actually work?";
   - optionally a **preview** first (see "Preview" below): the checked document and the narrated script, no
     visuals. Offer it when the user is trying the plugin for the first time or is unsure about the cost.
   Tell them the cost honestly: a tour runs about 12 agent tasks, a deep dive about 30; most of it is auditing.
@@ -76,7 +79,9 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
 6. **Scene plan** (one agent): ask it to write `WS/build/narration-vs-lesson.md` from the final script and document:
    per scene what must be shown and what must not, cued on exact spoken phrases (checked against `build/timing.json`),
    the EXACT code for every card copied from the repository with real indentation, every think silence's allowed
-   content, and a split of the module keys among parallel builders by screen time (2 for a tour, 3-4 for deep).
+   content, a "watch it happen" scene for the core mechanism (the thing itself changing on screen with the worked
+   example's values beside it, each value cued on the word that says it), and a split of the module keys among
+   parallel builders by screen time (2 for a tour, 3-4 for deep).
 7. **Build** (parallel agents, one per part): each gets `brief-builder.txt` plus its module keys. Never let two builders
    own the same module.
 8. **Visual audit** (fresh agents, one per builder part, in parallel): `brief-visual-audit.txt` plus the part. Route each
@@ -140,6 +145,10 @@ uses for the parts of the shared map; builders use the same table for everything
 ## Rules that keep the videos right (learned the hard way)
 
 - No new claims: every sentence and label traces to the verified document, and through its citation to the code.
+- Depth before breadth: the core mechanism is followed to its bottom layer with one worked example and real values,
+  and shown happening on screen. A principle alone is not an explanation. When the video runs long, cut an area,
+  never the bottom of the core mechanism (the first engine-internals video cut the three helpers that turn a time
+  into an opacity, and left the viewer's main question unanswered).
 - Code on screen is the repository's own, verbatim, real indentation, cuts marked; never simplified or renamed.
 - Arrows point the way calls and data really go; never skip a hop the code has.
 - Things appear on the words that say them; nothing under 3 s; no stage holds only a heading for over 4 s.

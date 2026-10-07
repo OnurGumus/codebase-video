@@ -31,6 +31,12 @@ exists) says per scene what to show, the exact code to show, and what not to sho
 - Concept scenes: draw the general idea first (e.g. two account boxes, each with its own event list), then the
   mapping onto this codebase's parts (each account box becomes an actor with a mailbox, keyed by its ID), reusing the
   same shapes later in the flow diagrams.
+- Watch-it-happen scenes (the plan marks them; every video has at least one, for the core mechanism): show the
+  mechanism itself working, not a diagram about it. Put the real thing on screen, changing (for a renderer, an
+  element fading or growing; for a reducer, a state value being replaced), drawn with `K.custom` purely from t, and
+  beside it the values the narration reads out, each appearing on its word (a K.table or K.board of the document's
+  worked example: input, each intermediate value, the result). The numbers are the document's, never ones you
+  choose, and the thing on screen must be in the state the numbers say at that moment.
 - Intuition scenes (a plain example before the code): draw the example with its real values as a small picture
   (input → function → output), and reuse the same picture's shapes when the code appears, so the viewer can map one
   onto the other.
