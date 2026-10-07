@@ -314,6 +314,14 @@ function readCommits(repo, since, until) {
     }, split(out, ["\u0001"], undefined, 0))));
 }
 
+const TRAILER = new RegExp("^\\s*(?:co-authored-by|signed-off-by|reviewed-by|acked-by|tested-by|reported-by|suggested-by|helped-by|authored-by|cc)\\s*:.*$", "gim");
+
+const EMAIL = new RegExp("<?[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+>?", "g");
+
+function unnamed(message) {
+    return ((message.replace(TRAILER, "")).replace(EMAIL, "")).trim();
+}
+
 function generated(repo, paths) {
     if (isEmpty(paths)) {
         return empty_1({
@@ -589,6 +597,14 @@ function write(ws) {
             return length(c_8.Files) > WIDE;
         }
     }, all) : all;
+    const said = (message) => {
+        if (people) {
+            return message;
+        }
+        else {
+            return unnamed(message);
+        }
+    };
     const untilDate = dateOf(repo, until);
     const sinceDate = dateOf(repo, since);
     const keptFiles = collect_1(kept, all);
@@ -624,7 +640,7 @@ function write(ws) {
         tag: tupledArg_24[0],
         commit: tupledArg_24[1],
         date: tupledArg_24[2],
-    }), tags))], ["listed", partial ? "partial" : "all"], ["commits", toArray(map((c_9) => createObj(append(ofArray([["id", c_9.Id], ["date", c_9.Date], ["subject", c_9.Subject], ["body", c_9.Body], ["merge", c_9.Merge], ["files", toArray(map((tupledArg_21) => tupledArg_21[0], c_9.Files))]]), people ? singleton_1(["author", c_9.Author]) : empty_2())), listed))], ["areas", toArray(areas)], ["files", {
+    }), tags))], ["listed", partial ? "partial" : "all"], ["commits", toArray(map((c_9) => createObj(append(ofArray([["id", c_9.Id], ["date", c_9.Date], ["subject", said(c_9.Subject)], ["body", said(c_9.Body)], ["merge", c_9.Merge], ["files", toArray(map((tupledArg_21) => tupledArg_21[0], c_9.Files))]]), people ? singleton_1(["author", c_9.Author]) : empty_2())), listed))], ["areas", toArray(areas)], ["files", {
         mostChanged: toArray(map((tupledArg_25) => ({
             path: tupledArg_25[0],
             commits: tupledArg_25[1],
@@ -754,9 +770,9 @@ function write(ws) {
     try {
         while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
             const c_12 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            line_1(`- ${c_12.Id} (${c_12.Date}${people ? concat(", ", c_12.Author) : ""}) ${c_12.Subject} [${length(c_12.Files)} files]`);
-            if (c_12.Body !== "") {
-                const arr = split(c_12.Body, ["\n"], undefined, 0);
+            line_1(`- ${c_12.Id} (${c_12.Date}${people ? concat(", ", c_12.Author) : ""}) ${said(c_12.Subject)} [${length(c_12.Files)} files]`);
+            if (said(c_12.Body) !== "") {
+                const arr = split(said(c_12.Body), ["\n"], undefined, 0);
                 for (let idx = 0; idx <= (arr.length - 1); idx++) {
                     const b_6 = item(idx, arr);
                     if (b_6.trim() !== "") {

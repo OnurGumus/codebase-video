@@ -202,6 +202,16 @@ let private readCommits (repo: string) (since: string) (until: string) : Commit 
                 Body = head.[5].Trim()
                 Files = files } ]
 
+/// A commit message without the lines and addresses that name people: sign-offs, co-authors, reviewers, emails.
+/// (A name inside the message's own sentences stays; the briefs say not to repeat it.)
+let private TRAILER = regex @"^\s*(?:co-authored-by|signed-off-by|reviewed-by|acked-by|tested-by|reported-by|suggested-by|helped-by|authored-by|cc)\s*:.*$" "gim"
+let private EMAIL = regex @"<?[\w.+-]+@[\w-]+(?:\.[\w-]+)+>?" "g"
+
+[<Emit("$0.replace($1, $2)")>]
+let private replaceAll (s: string) (rx: obj) (by: string) : string = jsNative
+
+let private unnamed (message: string) : string = (replaceAll (replaceAll message TRAILER "") EMAIL "").Trim()
+
 /// Which of these paths .gitattributes marks linguist-generated.
 let private generated (repo: string) (paths: string list) : Set<string> =
     if paths.IsEmpty then Set.empty
@@ -306,9 +316,10 @@ let private write (ws: string) : int =
     // A long range lists only the commits that stand out; the rest are in the counts.
     let partial = all.Length > LIST_ALL
     let listed = if partial then all |> List.filter (fun c -> c.Merge || tagged.Contains c.Id || c.Files.Length > WIDE) else all
+    let said (message: string) = if people then message else unnamed message
     let commitJson (c: Commit) =
         createObj
-            ([ "id" ==> c.Id; "date" ==> c.Date; "subject" ==> c.Subject; "body" ==> c.Body; "merge" ==> c.Merge
+            ([ "id" ==> c.Id; "date" ==> c.Date; "subject" ==> said c.Subject; "body" ==> said c.Body; "merge" ==> c.Merge
                "files" ==> (c.Files |> List.map (fun (p, _, _) -> p) |> List.toArray) ]
              @ (if people then [ "author" ==> c.Author ] else []))
     let untilDate, sinceDate = dateOf repo until, dateOf repo since
@@ -426,9 +437,9 @@ let private write (ws: string) : int =
         line ""
     for c in listed do
         let who = if people then $", {c.Author}" else ""
-        line $"- {c.Id} ({c.Date}{who}) {c.Subject} [{c.Files.Length} files]"
-        if c.Body <> "" then
-            for b in c.Body.Split '\n' do
+        line $"- {c.Id} ({c.Date}{who}) {said c.Subject} [{c.Files.Length} files]"
+        if said c.Body <> "" then
+            for b in (said c.Body).Split '\n' do
                 if b.Trim() <> "" then line $"    {b.TrimEnd()}"
     writeText (join [ build; "history.md" ]) (String.concat "\n" md + "\n")
     printfn "history: %s to %s, %d commits, %d days -> %s" sinceRef untilRef all.Length (daysBetween sinceDate untilDate) (join [ build; "history.md" ])

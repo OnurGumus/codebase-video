@@ -44,6 +44,8 @@ commit message says what its author meant; the diff says what happened. Where th
 5. `## Against the goals`, ONLY if the focus includes progress against goals: each goal of the goals file, quoted,
    and what the history shows for it: done, partly done, or nothing found, each with its commits. "Done" needs a diff
    that does it.
+   Never name a person unless the focus includes people: the facts then carry no author, and a name that appears
+   inside a commit message's own words is not repeated in the document.
 6. `## Who worked on what`, ONLY if the focus includes people (the facts then have a People section; if they have
    none, people are not part of this video and no name may appear anywhere in the document): by area, the names and
    commit counts exactly as the facts give them. No ranking, no total per person, no adjective about a person.

@@ -20,14 +20,17 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
 - **progress**: how the codebase changed between a past point and now, for someone following the project. See
   "Progress videos" below for what differs.
 
-The invocation may carry flags; plain words work too ("a progress video since the last release"). A flag given is
-never asked about.
+The invocation may carry flags; plain words work too, and count as giving the setting they name ("a progress video
+since the last release" gives kind `progress` and `since` the latest tag; "since Monday" gives `since` that date).
+A setting given, by flag or in words, is never asked about. `--focus` replaces the default focus, it does not add
+to it. Check the flags first, before setup and before creating anything: an unknown flag or value, or the focus
+`goals` with no `--goals` file, stops the run there with a message.
 
 | Flag | Meaning | Default |
 |---|---|---|
 | `--kind teach\|progress` | which kind | `teach` |
 | `--repo <path>` | the repository | the current directory |
-| `--name <name>` | the workspace and output name, kebab-case | from the subject |
+| `--name <name>` | the workspace and output name, kebab-case | teach: two or three words of the subject (`request-flow`); progress: `progress-` and the start as given (`progress-v0-5-2`), or `progress-` and today's date when no start was given |
 | `--length short\|tour\|deep` | length | `tour` for teach; `short` for progress (which has no `deep`) |
 | `--audience "<who>"` | the audience | teach: a developer joining the team; progress: someone following this project's progress who does not read its code every day |
 | `--captions` | draw captions into the picture | off |
@@ -38,14 +41,23 @@ never asked about.
 | `--ignore "<glob>"` | progress: paths to leave out of the numbers (repeatable) | lock files and generated files |
 | `--yes` | never ask: take the default for everything not given | off |
 
-**Asking.** Without `--yes`, ask for what the invocation did not give, in one short exchange, as described below.
-With `--yes`, ask nothing at all: take every default, and list each default you took in `out/REPORT.md`. With
-`--yes`, a problem that needs a person (the focus `goals` with no goals file, a range with no commits, a missing
-tool) stops the run with its message; it never becomes a question. This is how the skill runs in CI
-(`docs/ci.md` in the plugin).
+**Asking.** Without `--yes`, ask for what the invocation did not give, in one short exchange. For a teach video
+that is the scope conversation in "Before you start". For a progress video it is only these, each with its default
+shown: where the range starts, what to bring out (the four focuses; say that `people` names who committed where and
+is off unless chosen), the length, and the goals file if `goals` was chosen. The list of core features, "what are
+you most curious about?" and the preview offer belong to teach videos only.
+
+With `--yes`, ask nothing at all and offer nothing (no preview, no captions, no saving of hints or glossary terms):
+take every default, and list each default you took in `out/REPORT.md`, with the cost in agent tasks. A teach video
+then covers the core features the explorer finds, and the report names any it left out. With `--yes`, a problem that
+needs a person (a range with no commits, a reference that does not exist, a missing tool) stops the run with its
+message; it never becomes a question. If the workspace exists by then, write the message to `out/REPORT.md` too.
+This is how the skill runs in CI (`docs/ci.md` in the plugin).
 
 **People.** The focus `people` is never on unless asked for by name. Without it the history facts hold no author
-names, and no person may be named in the document, the narration or on screen. With it, the video may say which
+names (the step also removes sign-off and co-author lines and email addresses from commit messages), and no person
+may be named in the document, the narration or on screen: a name that survives inside a commit message's own text
+("thanks to ...") is not repeated. With it, the video may say which
 people committed in which area and how many commits, and nothing else: no ranking, no totals per person, no judgment.
 
 **The run report.** Every run, of either kind, ends by writing `WS/out/REPORT.md`: the kind (and for a progress
@@ -140,8 +152,9 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
 
 A progress video follows the same steps with these differences. Workspace as for any video.
 
-1. **Brief.** `brief.json` also has `"kind": "progress"`, and `since`, `until`, `focus`, `goals`, `ignore` where
-   given (leave `since` out to get its default). `subject` says the range in words ("What changed in <repo> since
+1. **Brief.** `brief.json` also has `"kind": "progress"` and `"focus"` (always, as a list: the one chosen or the
+   default `["shipped", "effort"]`), and `since`, `until`, `goals`, `ignore` only where given (leave `since` out to
+   get its default; `care` and `visual` are optional as for any video). `subject` says the range in words ("What changed in <repo> since
    version 0.5"). `colours` as for any video.
 2. **History** (no agent): `CV history`. It resolves the range and writes `WS/build/history.md` and `history.json`:
    the commits, tags, work per area, files added, deleted and renamed. Every number in the video comes from there.
