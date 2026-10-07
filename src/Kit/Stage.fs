@@ -288,6 +288,219 @@ let private now () : float = jsNative
 [<Emit("requestAnimationFrame($0)")>]
 let private requestFrame (_f: float -> unit) : unit = jsNative
 
+// ── Presenting: ?present ─────────────────────────────────────────────────────────────────────────────────
+// The video as a click-through deck, for someone who gives it in their own voice: a step per sentence (the
+// steps of src/Shared/Steps.fs, the same the `present` step makes slides of). A step plays from where the last
+// one held to a moment just after its sentence, then holds, so every transition between sentences plays and
+// each hold shows what its sentence said. Unlike render(t), the deck runs on the real clock.
+
+/// What the presenter can ask for.
+type private Command =
+    | Next
+    | Back
+    | First
+    | Last
+    | Replay
+    | ToggleNotes
+    | SpeakerNotes
+    | FullScreen
+
+/// The command a key asks for: arrows, space and Enter, and the Page keys a presentation clicker sends.
+let private (|Command|_|) (key: string) : Command option =
+    match key with
+    | "ArrowRight" | "ArrowDown" | "PageDown" | " " | "Enter" -> Some Next
+    | "ArrowLeft" | "ArrowUp" | "PageUp" | "Backspace" -> Some Back
+    | "Home" -> Some First
+    | "End" -> Some Last
+    | "r" | "R" -> Some Replay
+    | "n" | "N" -> Some ToggleNotes
+    | "s" | "S" -> Some SpeakerNotes
+    | "f" | "F" -> Some FullScreen
+    | _ -> None
+
+let private KEYS = "→ space or click: next · ←: back · R: replay · S: speaker notes · N: notes on the slide · F: full screen"
+
+/// A step being played: video time From to Until, from clock time Began (ms).
+type private Playback = { From: float; Until: float; Began: float }
+
+type private Deck =
+    { /// the step on screen; -1: the opening frame, before anything has played
+      Current: int
+      Playing: Playback option
+      /// the notes shown on the slide (N)
+      Overlay: bool
+      /// the speaker-notes window (S)
+      Notes: obj option }
+
+type private Msg =
+    | Do of Command
+    /// an animation frame of this playback; one of an earlier playback is ignored
+    | Tick of Playback
+
+/// The deck after a command (FullScreen and SpeakerNotes act on the page, outside the state).
+let private command (steps: Steps.Step[]) (clock: float) (deck: Deck) (c: Command) : Deck =
+    let play i =
+        { deck with
+            Current = i
+            Playing = Some { From = (if i = 0 then 0.0 else steps.[i - 1].Hold); Until = steps.[i].Hold; Began = clock } }
+    let holdAt i = { deck with Current = i; Playing = None }
+    match c with
+    | Next when deck.Playing.IsSome -> holdAt deck.Current
+    | Next when deck.Current + 1 < steps.Length -> play (deck.Current + 1)
+    | Back when deck.Current >= 0 -> holdAt (deck.Current - 1)
+    | First -> holdAt -1
+    | Last -> holdAt (steps.Length - 1)
+    | Replay when deck.Current >= 0 -> play deck.Current
+    | ToggleNotes -> { deck with Overlay = not deck.Overlay }
+    | _ -> deck
+
+/// Where the video is in a playback at clock time `clock`; None once it has reached its hold.
+let private playhead (p: Playback) (clock: float) : float option =
+    let t = p.From + (clock - p.Began) / 1000.0
+    if t < p.Until then Some t else None
+
+/// What the notes say: where we are, the sentence to say now, and the next one.
+let private notesOf (steps: Steps.Step[]) (deck: Deck) : string * string * string =
+    let say i =
+        if i >= steps.Length then "(the end)"
+        elif steps.[i].Text = "" then "(no narration)"
+        else steps.[i].Text
+    match deck.Current with
+    | -1 -> $"{steps.Length} steps", "Press → or click to start.", say 0
+    | i ->
+        let chapter = steps.[i].Chapter |> Option.map ((+) " · ") |> Option.defaultValue ""
+        $"Step {i + 1} of {steps.Length}{chapter}", say i, say (i + 1)
+
+[<Emit("window.open($0, $1, $2)")>]
+let private openWindow (_url: string) (_name: string) (_features: string) : obj = jsNative
+
+let private NOTES_PAGE =
+    "<style>body{margin:0;padding:28px 36px;background:#0f1420;color:#eef1f7;font:22px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}"
+    + "#pos{color:#8ab8ff;font-weight:700;font-size:18px;letter-spacing:.04em}#now{font-size:40px;font-weight:600;margin:18px 0 26px;line-height:1.3}"
+    + "#next{color:#a9b3c6;font-size:26px}#next:before{content:'Next: ';color:#5d6a82}#keys{position:fixed;bottom:16px;color:#5d6a82;font-size:16px}</style>"
+    + $"""<div id="pos"></div><div id="now"></div><div id="next"></div><div id="keys">{KEYS}</div>"""
+
+let private isOpen (w: obj option) = w |> Option.exists (fun w -> not (w?closed))
+
+/// Calls `post` with the command of each key pressed in a document.
+let private listenForKeys (target: obj) (post: Command -> unit) =
+    target?addEventListener ("keydown", (fun (e: KeyboardEvent) ->
+        match e.key with
+        | Command c ->
+            e.preventDefault ()
+            post c
+        | _ -> ()))
+
+/// The speaker-notes window, opened (or brought forward) for a second screen; its keys work too.
+let private speakerNotes (current: obj option) (post: Command -> unit) : obj option =
+    if isOpen current then
+        current |> Option.iter (fun w -> w?focus ())
+        current
+    else
+        match openWindow "" "cv-notes" "width=1000,height=600" with
+        | null -> None // blocked
+        | w ->
+            w?document?title <- "Speaker notes"
+            w?document?body?innerHTML <- NOTES_PAGE
+            listenForKeys w?document post
+            Some w
+
+let private toggleFullScreen () =
+    if truthy document?fullscreenElement then document?exitFullscreen () |> ignore
+    else document.documentElement?requestFullscreen () |> ignore
+
+/// Fits the 1920 x 1080 stage to the window, now and on every resize.
+let private fitToWindow () =
+    let stage = document.getElementById "stage"
+    for el in [ document.documentElement; document.body ] do
+        el.style.width <- "100vw"
+        el.style.height <- "100vh"
+    document.body.style.background <- "#000"
+    stage?style?transformOrigin <- "0 0"
+    let fit () =
+        let w, h = window.innerWidth, window.innerHeight
+        let s = System.Math.Min(w / 1920.0, h / 1080.0)
+        stage?style?transform <- $"translate({(w - 1920.0 * s) / 2.0}px, {(h - 1080.0 * s) / 2.0}px) scale({s})"
+    fit ()
+    window.addEventListener ("resize", (fun _ -> fit ()))
+
+/// The notes on the slide (N), for rehearsing on one screen.
+let private overlayBox () : HTMLElement =
+    let box = document.createElement "div"
+    box?style?cssText <-
+        "position:fixed;left:0;right:0;bottom:0;padding:14px 28px;background:#000c;color:#eef1f7;"
+        + "font:26px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;white-space:pre-line"
+    document.body.appendChild box |> ignore
+    box
+
+/// The timing's scenes as the records Steps cuts.
+let private stepScenes () : Steps.Scene list =
+    [ for sc in timing.scenes ->
+          { Steps.Scene.Ends = sc.``end``
+            Chapter = if truthy sc.chapter then Some sc.chapter else None
+            Sentences =
+              [ for s in (if truthy sc.sentences then sc.sentences else [||]) ->
+                    ({ Start = s.start; End = s.``end``; Text = s.text }: Steps.Sentence) ]
+            Breaks = [] } ]
+
+/// Plays the clip as a deck. One agent owns the deck's state: keys, clicks and animation frames are messages to it,
+/// so they are handled one at a time, in order.
+let private present (frame: float -> unit) =
+    let steps = Steps.cut timing.duration (stepScenes ()) |> List.toArray
+    setCaptions false
+    document.title <- "presenting - " + document.title
+    fitToWindow ()
+    let overlay = overlayBox ()
+
+    /// Puts a deck on screen: the frame when it holds, and the notes.
+    let show (deck: Deck) =
+        if deck.Playing.IsNone then frame (if deck.Current < 0 then 0.0 else steps.[deck.Current].Hold)
+        let pos, now, next = notesOf steps deck
+        overlay?style?display <- if deck.Current < 0 || deck.Overlay then "block" else "none"
+        overlay.textContent <- if deck.Current < 0 then $"{now}\n{KEYS}" else $"{now}\nNext: {next}"
+        if isOpen deck.Notes then
+            let d = deck.Notes.Value?document
+            d?getElementById("pos")?textContent <- pos
+            d?getElementById("now")?textContent <- now
+            d?getElementById("next")?textContent <- next
+
+    let agent =
+        MailboxProcessor.Start(fun inbox ->
+            let post c = inbox.Post(Do c)
+            let tickLater p = requestFrame (fun _ -> inbox.Post(Tick p))
+            /// Draws the playback's next frame, or ends it at its hold.
+            let advance (p: Playback) (deck: Deck) =
+                match playhead p (now ()) with
+                | Some t ->
+                    frame t
+                    tickLater p
+                    deck
+                | None -> { deck with Playing = None }
+            let rec loop (deck: Deck) =
+                async {
+                    let! msg = inbox.Receive()
+                    let next =
+                        match msg with
+                        | Do FullScreen ->
+                            toggleFullScreen ()
+                            deck
+                        | Do SpeakerNotes -> { deck with Notes = speakerNotes deck.Notes post }
+                        | Do c -> command steps (now ()) deck c
+                        | Tick p when deck.Playing = Some p -> advance p deck
+                        | Tick _ -> deck
+                    match msg, next.Playing with
+                    | Do _, Some p when next.Playing <> deck.Playing -> tickLater p // a playback starts
+                    | _ -> ()
+                    if next <> deck then show next
+                    return! loop next
+                }
+            let start = { Current = -1; Playing = None; Overlay = false; Notes = None }
+            show start
+            loop start)
+
+    listenForKeys (box document) (fun c -> agent.Post(Do c))
+    document.body.addEventListener ("click", (fun _ -> agent.Post(Do Next)))
+
 /// Installs the frame: window.DURATION, window.render (render plus captions) and window.ready, which the
 /// renderer awaits right after load.
 let play (render: float -> unit) =
@@ -304,9 +517,11 @@ let play (render: float -> unit) =
 
     // ?preview plays the clip in real time with its narration, for a look before rendering.
     // ?t=12.5 freezes on one moment.
+    // ?present plays it as a click-through deck (see present).
     let q = searchParams ()
     if q?has ("t") then ready?``then`` (fun () -> frame (toNumber (q?get ("t")))) |> ignore
-    if q?has ("preview") then
+    if q?has ("present") then ready?``then`` (fun () -> present frame) |> ignore
+    elif q?has ("preview") then
         ready?``then`` (fun () ->
             let a = audio "build/narration.wav"
             let start () =

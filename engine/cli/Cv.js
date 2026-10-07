@@ -8,14 +8,15 @@ import { requireReady, run as run_1 } from "./Setup.js";
 import { run as run_2 } from "./Check.js";
 import { run as run_3 } from "./Render.js";
 import { run as run_4, chapters } from "./Video.js";
-import { run as run_5 } from "./Scan.js";
-import { run as run_6 } from "./ScanReport.js";
-import { run as run_7 } from "./Fill.js";
-import { run as run_8 } from "./History.js";
-import { run as run_9 } from "./ApplyFixes.js";
+import { run as run_5 } from "./Present.js";
+import { run as run_6 } from "./Scan.js";
+import { run as run_7 } from "./ScanReport.js";
+import { run as run_8 } from "./Fill.js";
+import { run as run_9 } from "./History.js";
+import { run as run_10 } from "./ApplyFixes.js";
 
 export function usage() {
-    eprint("usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|scan|report|fill|fix|history [...]");
+    eprint("usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|present|scan|report|fill|fix|history [...]");
     return exit(2);
 }
 
@@ -63,7 +64,7 @@ export function upgradeClip(ws) {
 }
 
 export function main() {
-    let pr, pr_1, pr_2, pr_3, pr_4;
+    let pr, pr_1, pr_2, pr_3, pr_4, pr_5;
     let matchResult, rest, step, wsArg;
     if (!isEmpty(argv)) {
         if (head(argv) === "setup") {
@@ -143,28 +144,32 @@ export function main() {
                     finish((pr_2 = ensureTiming(ws), pr_2.then(() => run_4(ws, rest))));
                     break;
                 }
+                case "present": {
+                    finish((pr_3 = ensureTiming(ws), pr_3.then(() => run_5(ws, rest))));
+                    break;
+                }
                 case "all": {
-                    finish((pr_3 = run(ws), pr_3.then(() => run_4(ws, rest))));
+                    finish((pr_4 = run(ws), pr_4.then(() => run_4(ws, rest))));
                     break;
                 }
                 case "scan": {
-                    finish((pr_4 = ensureTiming(ws), pr_4.then(() => run_5(ws, rest))));
+                    finish((pr_5 = ensureTiming(ws), pr_5.then(() => run_6(ws, rest))));
                     break;
                 }
                 case "report": {
-                    finish(Promise.resolve(run_6(ws, rest)));
+                    finish(Promise.resolve(run_7(ws, rest)));
                     break;
                 }
                 case "fill": {
-                    finish(Promise.resolve(run_7(ws)));
+                    finish(Promise.resolve(run_8(ws)));
                     break;
                 }
                 case "history": {
-                    finish(Promise.resolve(run_8(ws, rest)));
+                    finish(Promise.resolve(run_9(ws, rest)));
                     break;
                 }
                 case "fix": {
-                    finish(Promise.resolve(run_9(ws, rest)));
+                    finish(Promise.resolve(run_10(ws, rest)));
                     break;
                 }
                 default:

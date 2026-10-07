@@ -57,14 +57,14 @@ let private PROGRESS_LENGTHS =
     [ "short",
       [ "MINUTES", "3-5 minutes, hard cap 5.5"
         "WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
-        "CHAPTERS", "an \"At a glance\" chapter, 2-3 theme chapters and an \"In flight\" chapter"
+        "CHAPTERS", "an \"At a glance\" chapter, 2 theme chapters and an \"In flight\" chapter"
         "SCENES", "1-3 content scenes per chapter, each 15-40 s"
         "THINKS", "no pause-and-think scene"
         "DOC", "150-300 lines" ]
       "tour",
       [ "MINUTES", "6-10 minutes, hard cap 11"
         "WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
-        "CHAPTERS", "an \"At a glance\" chapter, 4-6 theme chapters and an \"In flight\" chapter"
+        "CHAPTERS", "an \"At a glance\" chapter, 3-4 theme chapters and an \"In flight\" chapter"
         "SCENES", "2-3 content scenes per chapter, each 20-45 s"
         "THINKS", "no pause-and-think scene"
         "DOC", "300-500 lines" ] ]

@@ -156,6 +156,13 @@ at the top of this page. Edit your README on github.com and drag the `.mp4` into
 you want the words drawn into the picture itself, for example for a README, where the player starts muted, ask for
 "captions in the video". They are off unless you ask.
 
+**Can I present it in my own voice?** Yes. Ask for "a deck to present it myself". You get a PowerPoint file
+(`.pptx`, which Keynote, Google Slides and LibreOffice also open) with one slide per sentence and that sentence as
+the speaker note, the script with a timestamp on each line, subtitles (`.srt`), and the video without its sound. You
+can ask for the slides to move: each slide then plays its part of the animation as it opens (in PowerPoint and
+Keynote; other apps show a still). Or ask for the click-through version: the animated video in your browser, where
+each click plays the next step and waits for you.
+
 **Do I need Python or .NET?** No.
 
 **Does the voice need an account or a key?** No. The voice runs on your computer.

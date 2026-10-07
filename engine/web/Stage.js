@@ -1,12 +1,17 @@
 
-import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { record_type, lambda_type, float64_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { Union, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { obj_type, bool_type, option_type, int32_type, union_type, record_type, lambda_type, float64_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { max, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { join, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { equals, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { collect, indexed, tryFind, tryPick, unfold, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { disposeSafe, getEnumerator, equals, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { delay, toList, exists, collect, indexed, tryFind, tryPick, unfold, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { some, value as value_4, toArray, defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { cut, Scene, Sentence } from "./Shared/Steps.js";
+import { toArray as toArray_1, empty } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { receive, post as post_1, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
+import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 
 export class Ease extends Record {
     constructor(linear, out, in$, inOut, back) {
@@ -316,6 +321,382 @@ function captions(t) {
     }
 }
 
+class Command extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Next", "Back", "First", "Last", "Replay", "ToggleNotes", "SpeakerNotes", "FullScreen"];
+    }
+    static Next = new Command(0, []);
+    static Back = new Command(1, []);
+    static First = new Command(2, []);
+    static Last = new Command(3, []);
+    static Replay = new Command(4, []);
+    static ToggleNotes = new Command(5, []);
+    static SpeakerNotes = new Command(6, []);
+    static FullScreen = new Command(7, []);
+}
+
+function Command_$reflection() {
+    return union_type("Stage.Command", [], Command, () => [[], [], [], [], [], [], [], []]);
+}
+
+function $007CCommand$007C_$007C(key) {
+    switch (key) {
+        case "ArrowRight":
+        case "ArrowDown":
+        case "PageDown":
+        case " ":
+        case "Enter":
+            return Command.Next;
+        case "ArrowLeft":
+        case "ArrowUp":
+        case "PageUp":
+        case "Backspace":
+            return Command.Back;
+        case "Home":
+            return Command.First;
+        case "End":
+            return Command.Last;
+        case "r":
+        case "R":
+            return Command.Replay;
+        case "n":
+        case "N":
+            return Command.ToggleNotes;
+        case "s":
+        case "S":
+            return Command.SpeakerNotes;
+        case "f":
+        case "F":
+            return Command.FullScreen;
+        default:
+            return undefined;
+    }
+}
+
+const KEYS = "→ space or click: next · ←: back · R: replay · S: speaker notes · N: notes on the slide · F: full screen";
+
+class Playback extends Record {
+    constructor(From, Until, Began) {
+        super();
+        this.From = From;
+        this.Until = Until;
+        this.Began = Began;
+    }
+}
+
+function Playback_$reflection() {
+    return record_type("Stage.Playback", [], Playback, () => [["From", float64_type], ["Until", float64_type], ["Began", float64_type]]);
+}
+
+class Deck extends Record {
+    constructor(Current, Playing, Overlay, Notes) {
+        super();
+        this.Current = (Current | 0);
+        this.Playing = Playing;
+        this.Overlay = Overlay;
+        this.Notes = Notes;
+    }
+}
+
+function Deck_$reflection() {
+    return record_type("Stage.Deck", [], Deck, () => [["Current", int32_type], ["Playing", option_type(Playback_$reflection())], ["Overlay", bool_type], ["Notes", option_type(obj_type)]]);
+}
+
+class Msg extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Do", "Tick"];
+    }
+}
+
+function Msg_$reflection() {
+    return union_type("Stage.Msg", [], Msg, () => [[["Item", Command_$reflection()]], [["Item", Playback_$reflection()]]]);
+}
+
+function command(steps, clock, deck, c) {
+    const play_1 = (i) => (new Deck(i, new Playback((i === 0) ? 0 : item(i - 1, steps).Hold, item(i, steps).Hold, clock), deck.Overlay, deck.Notes));
+    const holdAt = (i_1) => (new Deck(i_1, undefined, deck.Overlay, deck.Notes));
+    let matchResult;
+    switch (c.tag) {
+        case 0: {
+            if (deck.Playing != null) {
+                matchResult = 0;
+            }
+            else if ((deck.Current + 1) < steps.length) {
+                matchResult = 1;
+            }
+            else {
+                matchResult = 7;
+            }
+            break;
+        }
+        case 1: {
+            if (deck.Current >= 0) {
+                matchResult = 2;
+            }
+            else {
+                matchResult = 7;
+            }
+            break;
+        }
+        case 2: {
+            matchResult = 3;
+            break;
+        }
+        case 3: {
+            matchResult = 4;
+            break;
+        }
+        case 4: {
+            if (deck.Current >= 0) {
+                matchResult = 5;
+            }
+            else {
+                matchResult = 7;
+            }
+            break;
+        }
+        case 5: {
+            matchResult = 6;
+            break;
+        }
+        default:
+            matchResult = 7;
+    }
+    switch (matchResult) {
+        case 0:
+            return holdAt(deck.Current);
+        case 1:
+            return play_1(deck.Current + 1);
+        case 2:
+            return holdAt(deck.Current - 1);
+        case 3:
+            return holdAt(-1);
+        case 4:
+            return holdAt(steps.length - 1);
+        case 5:
+            return play_1(deck.Current);
+        case 6:
+            return new Deck(deck.Current, deck.Playing, !deck.Overlay, deck.Notes);
+        default:
+            return deck;
+    }
+}
+
+function playhead(p, clock) {
+    const t = p.From + ((clock - p.Began) / 1000);
+    if (t < p.Until) {
+        return t;
+    }
+    else {
+        return undefined;
+    }
+}
+
+function notesOf(steps, deck) {
+    let option_1;
+    const say = (i) => {
+        if (i >= steps.length) {
+            return "(the end)";
+        }
+        else if (item(i, steps).Text === "") {
+            return "(no narration)";
+        }
+        else {
+            return item(i, steps).Text;
+        }
+    };
+    const matchValue = deck.Current | 0;
+    if (matchValue === -1) {
+        return [`${steps.length} steps`, "Press → or click to start.", say(0)];
+    }
+    else {
+        const i_1 = matchValue | 0;
+        const chapter = defaultArg((option_1 = item(i_1, steps).Chapter, (option_1 != null) ? (" · " + option_1) : undefined), "");
+        return [`Step ${i_1 + 1} of ${steps.length}${chapter}`, say(i_1), say(i_1 + 1)];
+    }
+}
+
+const NOTES_PAGE = "<style>body{margin:0;padding:28px 36px;background:#0f1420;color:#eef1f7;font:22px/1.4 -apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif}#pos{color:#8ab8ff;font-weight:700;font-size:18px;letter-spacing:.04em}#now{font-size:40px;font-weight:600;margin:18px 0 26px;line-height:1.3}#next{color:#a9b3c6;font-size:26px}#next:before{content:\'Next: \';color:#5d6a82}#keys{position:fixed;bottom:16px;color:#5d6a82;font-size:16px}</style>" + concat("<div id=\"pos\"></div><div id=\"now\"></div><div id=\"next\"></div><div id=\"keys\">", KEYS, "</div>");
+
+function isOpen(w) {
+    return exists((w_1) => !w_1.closed, toArray(w));
+}
+
+function listenForKeys(target, post) {
+    return target.addEventListener("keydown", ((e) => {
+        const matchValue = e.key;
+        const activePatternResult = $007CCommand$007C_$007C(matchValue);
+        if (activePatternResult != null) {
+            const c = activePatternResult;
+            e.preventDefault();
+            post(c);
+        }
+    }));
+}
+
+function speakerNotes(current, post) {
+    if (isOpen(current)) {
+        const option_1 = current;
+        if (option_1 != null) {
+            const w = value_4(option_1);
+            w.focus();
+        }
+        return current;
+    }
+    else {
+        const matchValue = window.open("", "cv-notes", "width=1000,height=600");
+        if (equals(matchValue, defaultOf())) {
+            return undefined;
+        }
+        else {
+            const w_1 = matchValue;
+            w_1.document.title = "Speaker notes";
+            w_1.document.body.innerHTML = NOTES_PAGE;
+            listenForKeys(w_1.document, post);
+            return some(w_1);
+        }
+    }
+}
+
+function toggleFullScreen() {
+    if (!!(document.fullscreenElement)) {
+        document.exitFullscreen();
+    }
+    else {
+        document.documentElement.requestFullscreen();
+    }
+}
+
+function fitToWindow() {
+    let el_3;
+    const stage = document.getElementById("stage");
+    const enumerator = getEnumerator([document.documentElement, document.body]);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const el = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            el.style.width = "100vw";
+            el.style.height = "100vh";
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
+    ((el_3 = document.body, el_3.style)).background = "#000";
+    stage.style.transformOrigin = "0 0";
+    const fit = () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const s = min(w / 1920, h / 1080);
+        stage.style.transform = (`translate(${(w - (1920 * s)) / 2}px, ${(h - (1080 * s)) / 2}px) scale(${s})`);
+    };
+    fit();
+    window.addEventListener("resize", (_arg) => {
+        fit();
+    });
+}
+
+function overlayBox() {
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;left:0;right:0;bottom:0;padding:14px 28px;background:#000c;color:#eef1f7;font:26px/1.35 -apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;white-space:pre-line";
+    document.body.appendChild(box);
+    return box;
+}
+
+function stepScenes() {
+    return toList(delay(() => map((sc) => (new Scene(sc.end, (!!(sc.chapter)) ? sc.chapter : undefined, toList(delay(() => map((s) => (new Sentence(s.start, s.end, s.text)), (!!(sc.sentences)) ? sc.sentences : []))), empty())), timing.scenes)));
+}
+
+function present(frame) {
+    const steps = toArray_1(cut(timing.duration, stepScenes()));
+    setCaptions(false);
+    document.title = ("presenting - " + document.title);
+    fitToWindow();
+    const overlay = overlayBox();
+    const show_1 = (deck) => {
+        if (deck.Playing == null) {
+            frame((deck.Current < 0) ? 0 : item(deck.Current, steps).Hold);
+        }
+        const patternInput = notesOf(steps, deck);
+        const now = patternInput[1];
+        const next = patternInput[2];
+        overlay.style.display = (((deck.Current < 0) ? true : deck.Overlay) ? "block" : "none");
+        overlay.textContent = ((deck.Current < 0) ? concat(now, "\n", KEYS) : concat(now, "\nNext: ", next));
+        if (isOpen(deck.Notes)) {
+            const d = value_4(deck.Notes).document;
+            (d.getElementById("pos")).textContent = patternInput[0];
+            (d.getElementById("now")).textContent = now;
+            (d.getElementById("next")).textContent = next;
+        }
+    };
+    const agent = start_1((inbox) => {
+        const tickLater = (p) => {
+            requestAnimationFrame((_arg) => {
+                post_1(inbox, new Msg(/* Tick */ 1, [p]));
+            });
+        };
+        const loop = (deck_2) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg_1) => {
+            let matchValue_1, p_5;
+            const msg = _arg_1;
+            let next_1;
+            if (msg.tag === 1) {
+                if (equals(deck_2.Playing, msg.fields[0])) {
+                    const p_1 = msg.fields[0];
+                    const deck_1 = deck_2;
+                    const matchValue = playhead(p_1, performance.now());
+                    if (matchValue == null) {
+                        next_1 = (new Deck(deck_1.Current, undefined, deck_1.Overlay, deck_1.Notes));
+                    }
+                    else {
+                        frame(matchValue);
+                        tickLater(p_1);
+                        next_1 = deck_1;
+                    }
+                }
+                else {
+                    next_1 = deck_2;
+                }
+            }
+            else {
+                switch (msg.fields[0].tag) {
+                    case 7: {
+                        toggleFullScreen();
+                        next_1 = deck_2;
+                        break;
+                    }
+                    case 6: {
+                        next_1 = (new Deck(deck_2.Current, deck_2.Playing, deck_2.Overlay, speakerNotes(deck_2.Notes, (c) => {
+                            post_1(inbox, new Msg(/* Do */ 0, [c]));
+                        })));
+                        break;
+                    }
+                    default:
+                        next_1 = command(steps, performance.now(), deck_2, msg.fields[0]);
+                }
+            }
+            return singleton.Combine((matchValue_1 = next_1.Playing, (msg.tag === 0) ? ((matchValue_1 != null) ? ((!equals(next_1.Playing, deck_2.Playing)) ? ((p_5 = matchValue_1, (tickLater(p_5), singleton.Zero()))) : (singleton.Zero())) : (singleton.Zero())) : (singleton.Zero())), singleton.Delay(() => singleton.Combine(!equals(next_1, deck_2) ? ((show_1(next_1), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.ReturnFrom(loop(next_1))))));
+        }));
+        const start = new Deck(-1, undefined, false, undefined);
+        show_1(start);
+        return loop(start);
+    });
+    listenForKeys(document, (c_2) => {
+        post_1(agent, new Msg(/* Do */ 0, [c_2]));
+    });
+    document.body.addEventListener("click", (_arg_2) => {
+        post_1(agent, new Msg(/* Do */ 0, [Command.Next]));
+    });
+}
+
 /**
  * Installs the frame: window.DURATION, window.render (render plus captions) and window.ready, which the
  * renderer awaits right after load.
@@ -338,7 +719,12 @@ export function play(render) {
             frame(Number(q.get("t")));
         });
     }
-    if (q.has("preview")) {
+    if (q.has("present")) {
+        ready.then(() => {
+            present(frame);
+        });
+    }
+    else if (q.has("preview")) {
         ready.then(() => {
             const a = new Audio("build/narration.wav");
             document.body.addEventListener("click", (_arg_1) => {

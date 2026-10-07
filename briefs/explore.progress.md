@@ -39,6 +39,8 @@ commit message says what its author meant; the diff says what happened. Where th
    - the code as it is at the end of the range, at the one or two places that matter;
    - where behaviour changed, the code before and after (the same lines at both ends);
    - why, as the commit messages say it: always "the commit message says ...", never as your own statement.
+   When the range holds more themes than that, keep the ones that matter most to the project's users and name each
+   of the others in one line at the end of `## At a glance`: fewer themes told with room beat many squeezed in.
    Leave out a theme that a later commit in the range undid: work that did not last has not shipped. If it is worth
    telling, tell it as tried and withdrawn.
 4. `## In flight and at risk`: first, if the facts say that commits of the range are not on the published branch,
