@@ -4,18 +4,18 @@ import { concat, split, trimStart, trimEnd, padLeft, replicate, padRight, replac
 import { max as max_1, min as min_1, compare, arrayHash, equalArrays, stringHash, equals, defaultOf, int32ToString, comparePrimitives, disposeSafe, getEnumerator, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { StringBuilder_$ctor_Z721C83C5, StringBuilder__Append_244C7CD6, StringBuilder__Append_Z721C83C5, StringBuilder_$ctor } from "./fable_modules/fable-library-js.5.19.0/System.Text.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
-import { Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { class_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { Union, Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { union_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { pairwise as pairwise_1, sumBy as sumBy_1, pick, tryPick, iterateIndexed as iterateIndexed_1, last as last_1, setItem, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { item as item_1, tryFindIndex, sortBy, find, sum, tryFind, truncate, concat as concat_1, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, singleton, collect, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { truncate as truncate_1, filter as filter_1, delay, toList as toList_1, findIndex, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { pairwise as pairwise_1, fold as fold_1, sumBy as sumBy_1, pick, tryPick, indexed, last as last_1, setItem, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_1, truncate, cons, pairwise, tryPick as tryPick_1, indexed as indexed_1, fold, mapFold, concat as concat_1, sumBy, exists as exists_1, contains, zip, toArray, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { empty as empty_1, singleton as singleton_1, collect, append, delay, toList, findIndex, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { max, parse as parse_1, isInfinity, isNegativeInfinity, isPositiveInfinity, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { load as load_1, uses as uses_1, apply } from "./Glossary.js";
-import { List_groupBy, List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
-import { toList, FSharpSet__Contains, ofSeq as ofSeq_1 } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { addToSet } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
+import { List_groupBy, List_distinctBy, List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
+import { toList as toList_1, FSharpSet__Contains, ofSeq as ofSeq_1 } from "./fable_modules/fable-library-js.5.19.0/Set.js";
+import { empty as empty_2, FSharpMap__ContainsKey, tryFind, add, FSharpMap__get_Item, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 
@@ -807,32 +807,24 @@ export function shown(s) {
 
 const WPS = 2.4;
 
-class Findings extends Record {
-    constructor(Errors, Warnings, Read) {
+class Finding extends Union {
+    constructor(tag, fields) {
         super();
-        this.Errors = Errors;
-        this.Warnings = Warnings;
-        this.Read = Read;
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Error", "Warning"];
     }
 }
 
-function Findings_$reflection() {
-    return record_type("Check.Findings", [], Findings, () => [["Errors", array_type(string_type)], ["Warnings", array_type(string_type)], ["Read", class_type("Fable.Core.JS.Map`2", [string_type, array_type(string_type)])]]);
-}
-
-function Findings__err_Z721C83C5(f, s) {
-    void (f.Errors.push(s));
-}
-
-function Findings__warn_Z721C83C5(f, s) {
-    void (f.Warnings.push(s));
+function Finding_$reflection() {
+    return union_type("Check.Finding", [], Finding, () => [[["Item", string_type]], [["Item", string_type]]]);
 }
 
 function idOf(s) {
     return s.id;
 }
-
-let glossary = undefined;
 
 function rawSay(s) {
     const matchValue = Py_get(s, "say");
@@ -844,13 +836,8 @@ function rawSay(s) {
     }
 }
 
-function say(s) {
-    if (glossary == null) {
-        return rawSay(s);
-    }
-    else {
-        return apply(glossary, rawSay(s));
-    }
+function say(glossary, s) {
+    return apply(glossary, rawSay(s));
 }
 
 function prefix(sid) {
@@ -865,15 +852,12 @@ function sentencesOf(s) {
     return Py_list(s, "sentences");
 }
 
-function load(f, clip) {
+function load(clip) {
     const scriptPath = join_1(ofArray([clip, "script.json"]));
     const script = readJson(scriptPath);
     const timingPath = join_1(ofArray([clip, "build", "timing.json"]));
     const timing = exists(timingPath) ? some(readJson(timingPath)) : undefined;
-    if ((timing != null) && (mtime(timingPath) < mtime(scriptPath))) {
-        Findings__warn_Z721C83C5(f, "build/timing.json is older than script.json: run `node engine/cli/Cv.js <clip> narrate` (cue checks use the old timing)");
-    }
-    return [script, timing];
+    return [((timing != null) && (mtime(timingPath) < mtime(scriptPath))) ? singleton(new Finding(/* Warning */ 1, ["build/timing.json is older than script.json: run `node engine/cli/Cv.js <clip> narrate` (cue checks use the old timing)"])) : empty(), script, timing];
 }
 
 const sceneIdRx = Py_rx("[a-z0-9]+(-[a-z0-9]+)*");
@@ -894,148 +878,74 @@ const readToken = Py_rx("\\d[\\d,.]*\\s*(?:%|×|x\\b|ms\\b|µs\\b|ns\\b|GB|TB|PB
 
 const smallNumber = Py_rx("\\d{1,2}");
 
-function checkScript(f, script) {
-    const scenes = Py_list(script, "scenes");
-    const ids = map_3(idOf, scenes);
-    const enumerator = getEnumerator(filter((x_1) => (length_1(filter((y_1) => (x_1 === y_1), ids)) > 1), List_distinct(ids, {
-        Equals: (x, y) => (x === y),
-        GetHashCode: (x) => (stringHash(x) | 0),
-    })));
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            Findings__err_Z721C83C5(f, concat("scene id ", Py_reprStr(enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]()), " is used twice"));
+function checkSentence(sid, i, sent) {
+    const findings = toList(delay(() => append(collect((m) => (!Py_fullmatch(breakForm, Py_M__get_Value(m)) ? singleton_1(new Finding(/* Error */ 0, [`${sid}[${i}]: ${Py_reprStr(Py_M__get_Value(m))} is not a break marker ([pause], [pause 2], [think], [think 4], [rest], [rest 0.5]); the voice would read it`])) : empty_1()), Py_finditer(breakLike, sent)), delay(() => append(collect((m_1) => {
+        let secs;
+        const matchValue = Py_M__Group_Z524259A4(m_1, 1);
+        let matchResult, secs_1;
+        if (matchValue != null) {
+            if ((secs = matchValue, !((0.15 <= parse_1(secs)) && (parse_1(secs) <= 1)))) {
+                matchResult = 0;
+                secs_1 = matchValue;
+            }
+            else {
+                matchResult = 1;
+            }
         }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    const enumerator_1 = getEnumerator(scenes);
-    try {
-        while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            const s_1 = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const sid = idOf(s_1);
-            const say_1 = say(s_1);
-            if (!Py_fullmatch(sceneIdRx, sid)) {
-                Findings__err_Z721C83C5(f, concat(sid, ": scene ids are lowercase words joined by \'-\' (the part before the first \'-\' names the module)"));
-            }
-            const enumerator_2 = getEnumerator(Py_finditer(PRONOUNCE, say_1));
-            try {
-                while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-                    const m = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    const shownText = Py_M__G_Z524259A4(m, 1);
-                    const after = substring(say_1, m.End, min(2, say_1.length - m.End));
-                    if (Py_found(endsSentence, shownText) && (Py_matchStart(nextStarts, after + " ") != null)) {
-                        Findings__err_Z721C83C5(f, `${sid}: [${shownText}](...) ends a sentence inside the brackets; move the '${last_1(Array.from(shownText))}' outside, or the next sentence merges into this one`);
-                    }
-                }
-            }
-            finally {
-                disposeSafe(enumerator_2);
-            }
-            iterateIndexed((i_1, sent) => {
-                const enumerator_3 = getEnumerator(Py_finditer(breakLike, sent));
-                try {
-                    while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
-                        const m_1 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                        if (!Py_fullmatch(breakForm, Py_M__get_Value(m_1))) {
-                            Findings__err_Z721C83C5(f, `${sid}[${i_1}]: ${Py_reprStr(Py_M__get_Value(m_1))} is not a break marker ([pause], [pause 2], [think], [think 4], [rest], [rest 0.5]); the voice would read it`);
-                        }
-                    }
-                }
-                finally {
-                    disposeSafe(enumerator_3);
-                }
-                const enumerator_4 = getEnumerator(Py_finditer(REST, sent));
-                try {
-                    while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
-                        let secs;
-                        const matchValue_2 = Py_M__Group_Z524259A4(enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"](), 1);
-                        let matchResult, secs_1;
-                        if (matchValue_2 != null) {
-                            if ((secs = matchValue_2, !((0.15 <= parse_1(secs)) && (parse_1(secs) <= 1)))) {
-                                matchResult = 0;
-                                secs_1 = matchValue_2;
-                            }
-                            else {
-                                matchResult = 1;
-                            }
-                        }
-                        else {
-                            matchResult = 1;
-                        }
-                        switch (matchResult) {
-                            case 0: {
-                                Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: [rest ${secs_1}] - a rest is 0.15 to 1 s; for a longer silence end the sentence and use [pause]`);
-                                break;
-                            }
-                        }
-                    }
-                }
-                finally {
-                    disposeSafe(enumerator_4);
-                }
-                if (Py_found(restEdge, sent)) {
-                    Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: a [rest] goes between two items inside a sentence, not at its start or end`);
-                }
-                const enumerator_5 = getEnumerator(breaks(sent));
-                try {
-                    while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
-                        const forLoopVar = enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                        const secs_2 = forLoopVar[1];
-                        if (!((0.5 <= secs_2) && (secs_2 <= 12))) {
-                            Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: [${forLoopVar[0]} ${Py_g(secs_2)}] - keep breaks between 0.5 and 12 s`);
-                        }
-                    }
-                }
-                finally {
-                    disposeSafe(enumerator_5);
-                }
-                const words = length_1(Py_words(shown(sent))) | 0;
-                if (words > 32) {
-                    Findings__warn_Z721C83C5(f, `${sid}[${i_1}]: ${words} words in one sentence (one caption); split it`);
-                }
-                const enumerator_6 = getEnumerator(Py_finditer(readToken, Py_sub(foreignAny, (_arg_2) => "", Py_sub(PRONOUNCE, (_arg_1) => "", Py_sub(REST, (_arg) => "", sent)))));
-                try {
-                    while (enumerator_6["System.Collections.IEnumerator.MoveNext"]()) {
-                        const tok = Py_strip(Py_M__get_Value(enumerator_6["System.Collections.Generic.IEnumerator`1.get_Current"]()));
-                        if ((tok !== "") && !Py_fullmatch(smallNumber, tok)) {
-                            if (!f.Read.has(tok)) {
-                                f.Read.set(tok, []);
-                            }
-                            void (f.Read.get(tok).push(`${sid}[${i_1}]`));
-                        }
-                    }
-                }
-                finally {
-                    disposeSafe(enumerator_6);
-                }
-            }, sentences(say_1));
+        else {
+            matchResult = 1;
         }
-    }
-    finally {
-        disposeSafe(enumerator_1);
-    }
+        switch (matchResult) {
+            case 0:
+                return singleton_1(new Finding(/* Warning */ 1, [`${sid}[${i}]: [rest ${secs_1}] - a rest is 0.15 to 1 s; for a longer silence end the sentence and use [pause]`]));
+            default: {
+                return empty_1();
+            }
+        }
+    }, Py_finditer(REST, sent)), delay(() => append(Py_found(restEdge, sent) ? singleton_1(new Finding(/* Warning */ 1, [`${sid}[${i}]: a [rest] goes between two items inside a sentence, not at its start or end`])) : empty_1(), delay(() => append(collect((matchValue_1) => {
+        const secs_2 = matchValue_1[1];
+        return !((0.5 <= secs_2) && (secs_2 <= 12)) ? singleton_1(new Finding(/* Warning */ 1, [`${sid}[${i}]: [${matchValue_1[0]} ${Py_g(secs_2)}] - keep breaks between 0.5 and 12 s`])) : empty_1();
+    }, breaks(sent)), delay(() => {
+        const words = length_1(Py_words(shown(sent))) | 0;
+        return (words > 32) ? singleton_1(new Finding(/* Warning */ 1, [`${sid}[${i}]: ${words} words in one sentence (one caption); split it`])) : empty_1();
+    }))))))))));
+    const plain = Py_sub(foreignAny, (_arg_2) => "", Py_sub(PRONOUNCE, (_arg_1) => "", Py_sub(REST, (_arg) => "", sent)));
+    return [findings, toList(delay(() => collect((m_2) => {
+        const tok = Py_strip(Py_M__get_Value(m_2));
+        return ((tok !== "") && !Py_fullmatch(smallNumber, tok)) ? singleton_1([tok, `${sid}[${i}]`]) : empty_1();
+    }, Py_finditer(readToken, plain))))];
 }
 
-function checkLong(f, clip, script) {
+function checkScene(glossary, s) {
+    const sid = idOf(s);
+    const narration = say(glossary, s);
+    const own = toList(delay(() => append(!Py_fullmatch(sceneIdRx, sid) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": scene ids are lowercase words joined by \'-\' (the part before the first \'-\' names the module)")])) : empty_1(), delay(() => collect((m) => {
+        const shownText = Py_M__G_Z524259A4(m, 1);
+        const after = substring(narration, m.End, min(2, narration.length - m.End));
+        return (Py_found(endsSentence, shownText) && (Py_matchStart(nextStarts, after + " ") != null)) ? singleton_1(new Finding(/* Error */ 0, [`${sid}: [${shownText}](...) ends a sentence inside the brackets; move the '${last_1(Array.from(shownText))}' outside, or the next sentence merges into this one`])) : empty_1();
+    }, Py_finditer(PRONOUNCE, narration))))));
+    const sentenceNotes = mapIndexed((i, sent) => checkSentence(sid, i, sent), sentences(narration));
+    return [append_1(own, collect_1((tuple) => tuple[0], sentenceNotes)), collect_1((tuple_1) => tuple_1[1], sentenceNotes)];
+}
+
+function checkScript(glossary, script) {
+    const scenes = Py_list(script, "scenes");
+    const ids = map_3(idOf, scenes);
+    const twice = toList(delay(() => map_2((i) => (new Finding(/* Error */ 0, [concat("scene id ", Py_reprStr(i), " is used twice")])), filter((x_1) => (length_1(filter((y_1) => (x_1 === y_1), ids)) > 1), List_distinct(ids, {
+        Equals: (x, y) => (x === y),
+        GetHashCode: (x) => (stringHash(x) | 0),
+    })))));
+    const perScene = map_3((s_1) => checkScene(glossary, s_1), scenes);
+    return [append_1(twice, collect_1((tuple) => tuple[0], perScene)), collect_1((tuple_1) => tuple_1[1], perScene)];
+}
+
+function checkLong(clip, script) {
     const scenes = Py_list(script, "scenes");
     const whys = filter((arg) => isWhy(idOf(arg)), scenes);
     if (isEmpty(whys)) {
-        return false;
+        return [false, empty()];
     }
     else {
-        const enumerator = getEnumerator(whys);
-        try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const s_1 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                if (!Py_truthy(Py_get(s_1, "chapter"))) {
-                    Findings__err_Z721C83C5(f, concat(idOf(s_1), ": a bridge scene needs \"chapter\": \"Title\" (the frame shows it on the title card)"));
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator);
-        }
         const prefixes = map_3((arg_1) => prefix(idOf(arg_1)), scenes);
         const card = Py_get(script, "card");
         const cardHas = (k) => {
@@ -1046,51 +956,30 @@ function checkLong(f, clip, script) {
                 return false;
             }
         };
-        if (((idOf(head(scenes)) !== "title") ? true : !cardHas("course")) ? true : !cardHas("lesson")) {
-            Findings__err_Z721C83C5(f, "a long video opens with a scene \"title\" and a top-level \"card\": {\"course\", \"lesson\", \"sub\"}, so the viewer knows the course and lesson before anything else");
-        }
-        if (!contains("intro", prefixes, {
-            Equals: (x, y) => (x === y),
-            GetHashCode: (x) => (stringHash(x) | 0),
-        })) {
-            Findings__warn_Z721C83C5(f, "no intro scene: a long video should open by stating its goal");
-        }
-        if (!contains("outro", prefixes, {
-            Equals: (x_1, y_1) => (x_1 === y_1),
-            GetHashCode: (x_1) => (stringHash(x_1) | 0),
-        })) {
-            Findings__warn_Z721C83C5(f, "no outro scene: a long video should close on its goal");
-        }
         const arr = toArray(scenes);
-        iterateIndexed_1((k_1, s_3) => {
-            if (isWhy(idOf(s_3)) && ((((k_1 + 1) >= arr.length) ? true : isWhy(idOf(item(k_1 + 1, arr)))) ? true : (prefix(idOf(item(k_1 + 1, arr))) === "outro"))) {
-                Findings__err_Z721C83C5(f, concat(idOf(s_3), ": chapter has no content scenes"));
-            }
-        }, arr);
-        const enumerator_1 = getEnumerator(List_distinct(map_3((tuple) => tuple[0], filter((tupledArg) => {
-            const s_4 = tupledArg[1];
-            if (!isWhy(idOf(s_4)) && (idOf(s_4) !== "title")) {
-                return !Py_truthy(Py_get(s_4, "recap"));
+        const keys = List_distinct(map_3((tuple) => tuple[0], filter((tupledArg) => {
+            const s_2 = tupledArg[1];
+            if (!isWhy(idOf(s_2)) && (idOf(s_2) !== "title")) {
+                return !Py_truthy(Py_get(s_2, "recap"));
             }
             else {
                 return false;
             }
         }, zip(prefixes, scenes))), {
+            Equals: (x, y) => (x === y),
+            GetHashCode: (x) => (stringHash(x) | 0),
+        });
+        return [true, toList(delay(() => append(collect((s_3) => (!Py_truthy(Py_get(s_3, "chapter")) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_3), ": a bridge scene needs \"chapter\": \"Title\" (the frame shows it on the title card)")])) : empty_1()), whys), delay(() => append((((idOf(head(scenes)) !== "title") ? true : !cardHas("course")) ? true : !cardHas("lesson")) ? singleton_1(new Finding(/* Error */ 0, ["a long video opens with a scene \"title\" and a top-level \"card\": {\"course\", \"lesson\", \"sub\"}, so the viewer knows the course and lesson before anything else"])) : empty_1(), delay(() => append(!contains("intro", prefixes, {
+            Equals: (x_1, y_1) => (x_1 === y_1),
+            GetHashCode: (x_1) => (stringHash(x_1) | 0),
+        }) ? singleton_1(new Finding(/* Warning */ 1, ["no intro scene: a long video should open by stating its goal"])) : empty_1(), delay(() => append(!contains("outro", prefixes, {
             Equals: (x_2, y_2) => (x_2 === y_2),
             GetHashCode: (x_2) => (stringHash(x_2) | 0),
-        }));
-        try {
-            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                const key = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                if (!exists(join_1(ofArray([clip, key + ".js"])))) {
-                    Findings__err_Z721C83C5(f, `module ${Py_reprStr(key)} has no ${key}.js`);
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator_1);
-        }
-        return true;
+        }) ? singleton_1(new Finding(/* Warning */ 1, ["no outro scene: a long video should close on its goal"])) : empty_1(), delay(() => append(collect((matchValue) => {
+            const s_4 = matchValue[1];
+            const k_1 = matchValue[0] | 0;
+            return (isWhy(idOf(s_4)) && ((((k_1 + 1) >= arr.length) ? true : isWhy(idOf(item(k_1 + 1, arr)))) ? true : (prefix(idOf(item(k_1 + 1, arr))) === "outro"))) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_4), ": chapter has no content scenes")])) : empty_1();
+        }, indexed(arr)), delay(() => collect((key) => (!exists(join_1(ofArray([clip, key + ".js"]))) ? singleton_1(new Finding(/* Error */ 0, [`module ${Py_reprStr(key)} has no ${key}.js`])) : empty_1()), keys)))))))))))))];
     }
 }
 
@@ -1130,22 +1019,14 @@ function num(o, k) {
     return o[k];
 }
 
-function checkCuesWith(f, timing, jsFiles) {
+function checkCuesWith(timing, jsFiles) {
     const scenes = Py_list(timing, "scenes");
-    const byId = new Map();
-    const enumerator = getEnumerator(scenes);
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const s = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            byId.set(idOf(s), s);
-        }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    const nSentences = (sid) => (length_1(sentencesOf(byId.get(sid))) | 0);
+    const byId = ofList(map_3((s) => [idOf(s), s], scenes), {
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
+    });
+    const nSentences = (sid) => (length_1(sentencesOf(FSharpMap__get_Item(byId, sid))) | 0);
     const hasPhrase = (sid_1, phrase, nth) => {
-        const units = map_3((u) => [lower(spokenOf(u)), lower(textOf(u))], collect((se) => {
+        const units = map_3((u) => [lower(spokenOf(u)), lower(textOf(u))], collect_1((se) => {
             const matchValue = Py_list(se, "parts");
             if (length_1(matchValue) > 1) {
                 return matchValue;
@@ -1153,242 +1034,176 @@ function checkCuesWith(f, timing, jsFiles) {
             else {
                 return singleton(se);
             }
-        }, sentencesOf(byId.get(sid_1))));
+        }, sentencesOf(FSharpMap__get_Item(byId, sid_1))));
         const want = lower(phrase);
         return exists_1((field) => (sumBy((u_1) => (Py_count(field(u_1), want) | 0), units, {
             GetZero: () => 0,
-            Add: (x, y) => ((x + y) | 0),
+            Add: (x_1, y_1) => ((x_1 + y_1) | 0),
         }) >= nth), ofArray([(tuple) => tuple[0], (tuple_1) => tuple_1[1]]));
     };
-    const enumerator_1 = getEnumerator(jsFiles);
-    try {
-        while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            const file = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const name = basename(file);
-            const names = new Map();
-            iterateIndexed((i, line) => {
-                const ln = (i + 1) | 0;
-                if (!Py_strip(line).startsWith("//")) {
-                    const enumerator_2 = getEnumerator(Py_finditer(SCENE_CONST, line));
-                    try {
-                        while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-                            const d = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            names.set(Py_M__G_Z524259A4(d, 1), Py_M__G_Z524259A4(d, 2));
-                        }
+    const cues = collect_1((file) => {
+        const name_1 = basename(file);
+        return concat_1(mapFold((names, tupledArg) => {
+            let name, ln, line;
+            const line_1 = tupledArg[1];
+            if (Py_strip(line_1).startsWith("//")) {
+                return [empty(), names];
+            }
+            else {
+                const names_2 = fold((names_1, d) => add(Py_M__G_Z524259A4(d, 1), Py_M__G_Z524259A4(d, 2), names_1), names, Py_finditer(SCENE_CONST, line_1));
+                return [(name = name_1, (ln = ((tupledArg[0] + 1) | 0), (line = Py_sub(SCENE_REF, (m_3) => {
+                    const matchValue_8 = tryFind(Py_M__G_Z524259A4(m_3, 1), names_2);
+                    if (matchValue_8 == null) {
+                        return Py_M__get_Value(m_3);
                     }
-                    finally {
-                        disposeSafe(enumerator_2);
+                    else {
+                        return (("\"" + matchValue_8) + Py_M__G_Z524259A4(m_3, 2)) + "\"";
                     }
-                    const line_1 = Py_sub(SCENE_REF, (m) => {
-                        if (names.has(Py_M__G_Z524259A4(m, 1))) {
-                            return (("\"" + names.get(Py_M__G_Z524259A4(m, 1))) + Py_M__G_Z524259A4(m, 2)) + "\"";
+                }, line_1), toList(delay(() => append(collect((m) => {
+                    let nth_1;
+                    const sid_2 = Py_M__G_Z524259A4(m, 1);
+                    const whole = Py_M__get_Value(m);
+                    if (!((prefix(sid_2) === "k") ? true : ((!FSharpMap__ContainsKey(byId, sid_2) && !(whole.indexOf("|") >= 0)) && !(whole.indexOf("#") >= 0)))) {
+                        if (!FSharpMap__ContainsKey(byId, sid_2)) {
+                            return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_2)}`]));
                         }
                         else {
-                            return Py_M__get_Value(m);
-                        }
-                    }, line);
-                    const enumerator_3 = getEnumerator(Py_finditer(SPEC, line_1));
-                    try {
-                        while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
-                            let nth_1;
-                            const m_1 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            const sid_2 = Py_M__G_Z524259A4(m_1, 1);
-                            const whole = Py_M__get_Value(m_1);
-                            if (!((prefix(sid_2) === "k") ? true : ((!byId.has(sid_2) && !(whole.indexOf("|") >= 0)) && !(whole.indexOf("#") >= 0)))) {
-                                if (!byId.has(sid_2)) {
-                                    Findings__err_Z721C83C5(f, `${name}:${ln}: no scene ${Py_reprStr(sid_2)}`);
-                                }
-                                else {
-                                    const matchValue_1 = Py_M__Group_Z524259A4(m_1, 2);
-                                    const matchValue_2 = Py_M__Group_Z524259A4(m_1, 4);
-                                    const matchValue_3 = Py_M__Group_Z524259A4(m_1, 5);
-                                    let matchResult, nth_2, phrase_2, sent_1;
-                                    if (matchValue_1 == null) {
-                                        if (matchValue_3 != null) {
-                                            if (parse(matchValue_3, 511, false, 32) >= nSentences(sid_2)) {
-                                                matchResult = 2;
-                                                sent_1 = matchValue_3;
-                                            }
-                                            else {
-                                                matchResult = 3;
-                                            }
-                                        }
-                                        else {
-                                            matchResult = 3;
-                                        }
-                                    }
-                                    else if ((nth_1 = matchValue_2, !hasPhrase(sid_2, matchValue_1, (nth_1 == null) ? 1 : parse(nth_1, 511, false, 32)))) {
-                                        matchResult = 0;
-                                        nth_2 = matchValue_2;
-                                        phrase_2 = matchValue_1;
+                            const matchValue_1 = Py_M__Group_Z524259A4(m, 2);
+                            const matchValue_2 = Py_M__Group_Z524259A4(m, 4);
+                            const matchValue_3 = Py_M__Group_Z524259A4(m, 5);
+                            let matchResult, nth_2, phrase_2, sent_1;
+                            if (matchValue_1 == null) {
+                                if (matchValue_3 != null) {
+                                    if (parse(matchValue_3, 511, false, 32) >= nSentences(sid_2)) {
+                                        matchResult = 2;
+                                        sent_1 = matchValue_3;
                                     }
                                     else {
-                                        matchResult = 1;
-                                    }
-                                    switch (matchResult) {
-                                        case 0: {
-                                            const times = (nth_2 == null) ? "" : concat(" ", nth_2, " times");
-                                            Findings__err_Z721C83C5(f, `${name}:${ln}: ${Py_reprStr(phrase_2)} is not spoken in ${sid_2}${times}`);
-                                            break;
-                                        }
-                                        case 2: {
-                                            Findings__err_Z721C83C5(f, `${name}:${ln}: ${sid_2} has ${nSentences(sid_2)} sentence(s), asked for #${sent_1}`);
-                                            break;
-                                        }
+                                        matchResult = 3;
                                     }
                                 }
+                                else {
+                                    matchResult = 3;
+                                }
                             }
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator_3);
-                    }
-                    const enumerator_4 = getEnumerator(Py_finditer(WORD_CALL, line_1));
-                    try {
-                        while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
-                            const m_2 = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            const sid_3 = Py_M__G_Z524259A4(m_2, 1);
-                            const phrase_3 = Py_M__G_Z524259A4(m_2, 2);
-                            if (byId.has(sid_3) && !hasPhrase(sid_3, phrase_3, 1)) {
-                                Findings__err_Z721C83C5(f, `${name}:${ln}: word(${Py_reprStr(sid_3)}, ${Py_reprStr(phrase_3)}): not spoken there`);
-                            }
-                            else if (!byId.has(sid_3)) {
-                                Findings__err_Z721C83C5(f, `${name}:${ln}: no scene ${Py_reprStr(sid_3)}`);
-                            }
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator_4);
-                    }
-                    const enumerator_5 = getEnumerator(Py_finditer(CUE_CALL, line_1));
-                    try {
-                        while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
-                            let i_1;
-                            const m_3 = enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            const sid_4 = Py_M__G_Z524259A4(m_3, 1);
-                            if (!byId.has(sid_4)) {
-                                Findings__err_Z721C83C5(f, `${name}:${ln}: no scene ${Py_reprStr(sid_4)}`);
+                            else if ((nth_1 = matchValue_2, !hasPhrase(sid_2, matchValue_1, (nth_1 == null) ? 1 : parse(nth_1, 511, false, 32)))) {
+                                matchResult = 0;
+                                nth_2 = matchValue_2;
+                                phrase_2 = matchValue_1;
                             }
                             else {
-                                const matchValue_7 = Py_M__Group_Z524259A4(m_3, 2);
-                                let matchResult_1, i_2;
-                                if (matchValue_7 != null) {
-                                    if ((i_1 = matchValue_7, (parse(i_1, 511, false, 32) >= nSentences(sid_4)) ? true : (op_UnaryNegation_Int32(parse(i_1, 511, false, 32)) > nSentences(sid_4)))) {
-                                        matchResult_1 = 0;
-                                        i_2 = matchValue_7;
-                                    }
-                                    else {
-                                        matchResult_1 = 1;
-                                    }
+                                matchResult = 1;
+                            }
+                            switch (matchResult) {
+                                case 0: {
+                                    const times = (nth_2 == null) ? "" : concat(" ", nth_2, " times");
+                                    return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${Py_reprStr(phrase_2)} is not spoken in ${sid_2}${times}`]));
                                 }
-                                else {
-                                    matchResult_1 = 1;
+                                case 1: {
+                                    return empty_1();
                                 }
-                                switch (matchResult_1) {
-                                    case 0: {
-                                        Findings__err_Z721C83C5(f, `${name}:${ln}: ${sid_4} has ${nSentences(sid_4)} sentence(s), asked for ${i_2}`);
-                                        break;
-                                    }
+                                case 2:
+                                    return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${sid_2} has ${nSentences(sid_2)} sentence(s), asked for #${sent_1}`]));
+                                default: {
+                                    return empty_1();
                                 }
                             }
                         }
                     }
-                    finally {
-                        disposeSafe(enumerator_5);
+                    else {
+                        return empty_1();
                     }
-                }
-            }, Py_splitlines(readText(file)));
-        }
-    }
-    finally {
-        disposeSafe(enumerator_1);
-    }
-    const seen = [];
-    const enumerator_6 = getEnumerator(scenes);
-    try {
-        while (enumerator_6["System.Collections.IEnumerator.MoveNext"]()) {
-            const s_3 = enumerator_6["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const enumerator_7 = getEnumerator(Py_list(s_3, "toasts"));
-            try {
-                while (enumerator_7["System.Collections.IEnumerator.MoveNext"]()) {
-                    let s_2, at, sents, k, want_1;
-                    const d_1 = enumerator_7["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    const kind = Py_get(d_1, "kind");
-                    const where = concat(idOf(s_3), " toast ", Py_repr(kind));
-                    if (!(Py_isStr(kind) && FSharpSet__Contains(toastKinds, kind))) {
-                        Findings__err_Z721C83C5(f, concat(where, ": unknown kind; use one of ", join(", ", Py_sortWith((a, b) => (Py_cmpStr(a, b) | 0), toList(toastKinds)))));
+                }, Py_finditer(SPEC, line)), delay(() => append(collect((m_1) => {
+                    const sid_3 = Py_M__G_Z524259A4(m_1, 1);
+                    const phrase_3 = Py_M__G_Z524259A4(m_1, 2);
+                    return (FSharpMap__ContainsKey(byId, sid_3) && !hasPhrase(sid_3, phrase_3, 1)) ? singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: word(${Py_reprStr(sid_3)}, ${Py_reprStr(phrase_3)}): not spoken there`])) : (!FSharpMap__ContainsKey(byId, sid_3) ? singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_3)}`])) : empty_1());
+                }, Py_finditer(WORD_CALL, line)), delay(() => collect((m_2) => {
+                    let i;
+                    const sid_4 = Py_M__G_Z524259A4(m_2, 1);
+                    if (!FSharpMap__ContainsKey(byId, sid_4)) {
+                        return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_4)}`]));
                     }
-                    const at_1 = Py_get(d_1, "at");
-                    if ((Py_truthy(at_1) && !Py_str(at_1).startsWith("#")) && !hasPhrase(idOf(s_3), Py_str(at_1), 1)) {
-                        Findings__err_Z721C83C5(f, `${where}: ${Py_repr(at_1)} is not spoken in ${idOf(s_3)}`);
-                    }
-                    const text_1 = Py_get(d_1, "text");
-                    if (Py_truthy(text_1) && (length_1(Py_words(text_1)) > 5)) {
-                        Findings__warn_Z721C83C5(f, concat(where, ": text ", Py_repr(text_1), " is long for a badge; keep it to about 4 words"));
-                    }
-                    void (seen.push([(s_2 = s_3, (at = at_1, (sents = toArray(sentencesOf(s_2)), (sents.length === 0) ? num(s_2, "start") : ((Py_truthy(at) && Py_str(at).startsWith("#")) ? ((k = (min(parse(substring(Py_str(at), 1), 511, false, 32), sents.length - 1) | 0), num(item((k < 0) ? (k + sents.length) : k, sents), "start"))) : (Py_truthy(at) ? ((want_1 = lower(Py_str(at)), defaultArg(tryPick((se_1) => tryPick_1((text) => {
-                        const k_1 = indexOf(text, want_1, 4) | 0;
-                        if (k_1 >= 0) {
-                            const start = num(se_1, "start");
-                            return start + (((num(se_1, "end") - start) * Py_len(substring(text, 0, k_1))) / max(Py_len(text), 1));
+                    else {
+                        const matchValue_7 = Py_M__Group_Z524259A4(m_2, 2);
+                        let matchResult_1, i_1;
+                        if (matchValue_7 != null) {
+                            if ((i = matchValue_7, (parse(i, 511, false, 32) >= nSentences(sid_4)) ? true : (op_UnaryNegation_Int32(parse(i, 511, false, 32)) > nSentences(sid_4)))) {
+                                matchResult_1 = 0;
+                                i_1 = matchValue_7;
+                            }
+                            else {
+                                matchResult_1 = 1;
+                            }
                         }
                         else {
-                            return undefined;
+                            matchResult_1 = 1;
                         }
-                    }, ofArray([lower(spokenOf(se_1)), lower(textOf(se_1))])), sents), num(item(0, sents), "start")))) : num(item(0, sents), "start")))))), kind, where]));
-                }
+                        switch (matchResult_1) {
+                            case 0:
+                                return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${sid_4} has ${nSentences(sid_4)} sentence(s), asked for ${i_1}`]));
+                            default: {
+                                return empty_1();
+                            }
+                        }
+                    }
+                }, Py_finditer(CUE_CALL, line))))))))))), names_2];
             }
-            finally {
-                disposeSafe(enumerator_7);
+        }, empty_2({
+            Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+        }), indexed_1(Py_splitlines(readText(file))))[0]);
+    }, jsFiles);
+    const toasts = toList(delay(() => collect((s_3) => collect((d_1) => {
+        let s_2, at, sents, k, want_1;
+        const kind = Py_get(d_1, "kind");
+        const where = concat(idOf(s_3), " toast ", Py_repr(kind));
+        const at_1 = Py_get(d_1, "at");
+        const text_1 = Py_get(d_1, "text");
+        return singleton_1([toList(delay(() => append(!(Py_isStr(kind) && FSharpSet__Contains(toastKinds, kind)) ? singleton_1(new Finding(/* Error */ 0, [concat(where, ": unknown kind; use one of ", join(", ", Py_sortWith((a, b) => (Py_cmpStr(a, b) | 0), toList_1(toastKinds))))])) : empty_1(), delay(() => append(((Py_truthy(at_1) && !Py_str(at_1).startsWith("#")) && !hasPhrase(idOf(s_3), Py_str(at_1), 1)) ? singleton_1(new Finding(/* Error */ 0, [`${where}: ${Py_repr(at_1)} is not spoken in ${idOf(s_3)}`])) : empty_1(), delay(() => ((Py_truthy(text_1) && (length_1(Py_words(text_1)) > 5)) ? singleton_1(new Finding(/* Warning */ 1, [concat(where, ": text ", Py_repr(text_1), " is long for a badge; keep it to about 4 words")])) : empty_1()))))))), [(s_2 = s_3, (at = at_1, (sents = toArray(sentencesOf(s_2)), (sents.length === 0) ? num(s_2, "start") : ((Py_truthy(at) && Py_str(at).startsWith("#")) ? ((k = (min(parse(substring(Py_str(at), 1), 511, false, 32), sents.length - 1) | 0), num(item((k < 0) ? (k + sents.length) : k, sents), "start"))) : (Py_truthy(at) ? ((want_1 = lower(Py_str(at)), defaultArg(tryPick((se_1) => tryPick_1((text) => {
+            const k_1 = indexOf(text, want_1, 4) | 0;
+            if (k_1 >= 0) {
+                const start = num(se_1, "start");
+                return start + (((num(se_1, "end") - start) * Py_len(substring(text, 0, k_1))) / max(Py_len(text), 1));
             }
-        }
-    }
-    finally {
-        disposeSafe(enumerator_6);
-    }
-    const seen_1 = Py_sortWith((tupledArg, tupledArg_1) => {
-        const c = comparePrimitives(tupledArg[0], tupledArg_1[0]) | 0;
+            else {
+                return undefined;
+            }
+        }, ofArray([lower(spokenOf(se_1)), lower(textOf(se_1))])), sents), num(item(0, sents), "start")))) : num(item(0, sents), "start")))))), kind, where]]);
+    }, Py_list(s_3, "toasts")), scenes)));
+    const seen = Py_sortWith((tupledArg_1, tupledArg_2) => {
+        const c = comparePrimitives(tupledArg_1[0], tupledArg_2[0]) | 0;
         if (c !== 0) {
             return c | 0;
         }
         else {
-            const c_1 = Py_cmpStr(Py_str(tupledArg[1]), Py_str(tupledArg_1[1])) | 0;
+            const c_1 = Py_cmpStr(Py_str(tupledArg_1[1]), Py_str(tupledArg_2[1])) | 0;
             if (c_1 !== 0) {
                 return c_1 | 0;
             }
             else {
-                return Py_cmpStr(tupledArg[2], tupledArg_1[2]) | 0;
+                return Py_cmpStr(tupledArg_1[2], tupledArg_2[2]) | 0;
             }
         }
-    }, ofSeq(seen));
-    const enumerator_8 = getEnumerator(pairwise(seen_1));
-    try {
-        while (enumerator_8["System.Collections.IEnumerator.MoveNext"]()) {
-            const forLoopVar = enumerator_8["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const b_2 = forLoopVar[1][0];
-            const a_2 = forLoopVar[0][0];
-            if ((b_2 - a_2) < 6) {
-                Findings__warn_Z721C83C5(f, `toasts crowd: ${forLoopVar[0][2]} and ${forLoopVar[1][2]} are ${Py_fmtF(1, b_2 - a_2)} s apart (keep at least 6 s)`);
-            }
-        }
+    }, map_3((tuple_2) => tuple_2[1], toasts));
+    const crowded = toList(delay(() => collect((matchValue_11) => {
+        const b_2 = matchValue_11[1][0];
+        const a_2 = matchValue_11[0][0];
+        return ((b_2 - a_2) < 6) ? singleton_1(new Finding(/* Warning */ 1, [`toasts crowd: ${matchValue_11[0][2]} and ${matchValue_11[1][2]} are ${Py_fmtF(1, b_2 - a_2)} s apart (keep at least 6 s)`])) : empty_1();
+    }, pairwise(seen))));
+    if (!isEmpty(seen)) {
+        Py_print(`toasts: ${join(", ", map_3((tupledArg_6) => (`${tupledArg_6[0]} ${tupledArg_6[1]}`), sortWith((tupledArg_4, tupledArg_5) => (comparePrimitives(tupledArg_5[1], tupledArg_4[1]) | 0), List_countBy((x_3) => x_3, map_3((tupledArg_3) => Py_str(tupledArg_3[1]), seen), {
+            Equals: (x_4, y_3) => (x_4 === y_3),
+            GetHashCode: (x_4) => (stringHash(x_4) | 0),
+        }))))} (${length_1(seen)} total)`);
     }
-    finally {
-        disposeSafe(enumerator_8);
-    }
-    if (!isEmpty(seen_1)) {
-        Py_print(`toasts: ${join(", ", map_3((tupledArg_5) => (`${tupledArg_5[0]} ${tupledArg_5[1]}`), sortWith((tupledArg_3, tupledArg_4) => (comparePrimitives(tupledArg_4[1], tupledArg_3[1]) | 0), List_countBy((x_1) => x_1, map_3((tupledArg_2) => Py_str(tupledArg_2[1]), seen_1), {
-            Equals: (x_2, y_1) => (x_2 === y_1),
-            GetHashCode: (x_2) => (stringHash(x_2) | 0),
-        }))))} (${length_1(seen_1)} total)`);
-    }
+    return append_1(cues, append_1(collect_1((tuple_3) => tuple_3[0], toasts), crowded));
 }
 
-function checkCues(f, timing, jsFiles) {
+function checkCues(timing, jsFiles) {
     if (timing != null) {
-        checkCuesWith(f, value_8(timing), jsFiles);
+        return checkCuesWith(value_8(timing), jsFiles);
     }
     else {
-        Findings__warn_Z721C83C5(f, "no build/timing.json yet: cue checks skipped (run narrate first)");
+        return singleton(new Finding(/* Warning */ 1, ["no build/timing.json yet: cue checks skipped (run narrate first)"]));
     }
 }
 
@@ -1410,122 +1225,50 @@ function norm(n) {
     return replace(n, ",", "");
 }
 
-function checkLesson(f, script, jsFiles, lessonText) {
-    const have = new Set([]);
-    const enumerator = getEnumerator(Py_finditer(NUM, lessonText));
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            addToSet(norm(Py_M__get_Value(enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]())), have);
-        }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    const enumerator_1 = getEnumerator(Py_finditer(shorthand, lessonText));
-    try {
-        while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            const m_1 = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            let mult;
-            const matchValue = Py_M__G_Z524259A4(m_1, 2);
-            switch (matchValue) {
-                case "k":
-                case "K": {
-                    mult = 1000;
-                    break;
-                }
-                case "M": {
-                    mult = 1000000;
-                    break;
-                }
-                default:
-                    mult = 1000000000;
+function checkLesson(glossary, script, jsFiles, lessonText) {
+    const have = ofSeq_1(append_1(toList(delay(() => map_2((m) => norm(Py_M__get_Value(m)), Py_finditer(NUM, lessonText)))), toList(delay(() => collect((m_1) => {
+        let mult;
+        const matchValue = Py_M__G_Z524259A4(m_1, 2);
+        switch (matchValue) {
+            case "k":
+            case "K": {
+                mult = 1000;
+                break;
             }
-            const v = parse_1(Py_M__G_Z524259A4(m_1, 1)) * mult;
-            addToSet((Number.isInteger(v)) ? Py_numStr(v, false) : Py_floatRepr(v), have);
-        }
-    }
-    finally {
-        disposeSafe(enumerator_1);
-    }
-    const seen = new Map();
-    const note = (n, where) => {
-        if (!seen.has(n)) {
-            seen.set(n, where);
-        }
-    };
-    const enumerator_2 = getEnumerator(Py_list(script, "scenes"));
-    try {
-        while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-            const s = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const enumerator_3 = getEnumerator(Py_finditer(NUM, Py_sub(PRONOUNCE, (m_2) => Py_M__G_Z524259A4(m_2, 1), say(s))));
-            try {
-                while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
-                    note(norm(Py_M__get_Value(enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]())), concat("narration ", idOf(s)));
-                }
+            case "M": {
+                mult = 1000000;
+                break;
             }
-            finally {
-                disposeSafe(enumerator_3);
-            }
+            default:
+                mult = 1000000000;
         }
-    }
-    finally {
-        disposeSafe(enumerator_2);
-    }
-    const enumerator_4 = getEnumerator(jsFiles);
-    try {
-        while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
-            const file = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            iterateIndexed((i, line) => {
-                if (!Py_strip(line).startsWith("//")) {
-                    const enumerator_5 = getEnumerator(Py_finditer(stringLit, line));
-                    try {
-                        while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
-                            const m_4 = enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            const text = pick((x) => x, m_4.Groups.slice(1, m_4.Groups.length));
-                            if (!(((((!Py_found(anyDigit, text) ? true : Py_found(layoutish, text)) ? true : Py_fullmatch(svgPath, text)) ? true : Py_fullmatch(coords, text)) ? true : (text.indexOf("|") >= 0)) ? true : (text.indexOf("${") >= 0))) {
-                                const enumerator_6 = getEnumerator(Py_finditer(NUM, text));
-                                try {
-                                    while (enumerator_6["System.Collections.IEnumerator.MoveNext"]()) {
-                                        note(norm(Py_M__get_Value(enumerator_6["System.Collections.Generic.IEnumerator`1.get_Current"]())), `${basename(file)}:${i + 1}`);
-                                    }
-                                }
-                                finally {
-                                    disposeSafe(enumerator_6);
-                                }
-                            }
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator_5);
-                    }
-                }
-            }, Py_splitlines(readText(file)));
-        }
-    }
-    finally {
-        disposeSafe(enumerator_4);
-    }
-    const small = ofSeq_1(append(toList_1(delay(() => map_2(int32ToString, rangeDouble(0, 1, 12)))), singleton("100")), {
-        Compare: (x_1, y) => (comparePrimitives(x_1, y) | 0),
+        const v = parse_1(Py_M__G_Z524259A4(m_1, 1)) * mult;
+        return singleton_1((Number.isInteger(v)) ? Py_numStr(v, false) : Py_floatRepr(v));
+    }, Py_finditer(shorthand, lessonText))))), {
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
     });
-    const enumerator_7 = getEnumerator(Py_sortWith((tupledArg_1, tupledArg_2) => (Py_cmpStr(tupledArg_1[1], tupledArg_2[1]) | 0), ofSeq(filter_1((tupledArg) => {
-        const n_2 = tupledArg[0];
-        if (!have.has(n_2)) {
-            return !FSharpSet__Contains(small, n_2);
+    const seen = List_distinctBy((tuple) => tuple[0], append_1(toList(delay(() => collect((s) => map_2((m_2) => [norm(Py_M__get_Value(m_2)), concat("narration ", idOf(s))], Py_finditer(NUM, Py_sub(PRONOUNCE, (m_3) => Py_M__G_Z524259A4(m_3, 1), say(glossary, s)))), Py_list(script, "scenes")))), toList(delay(() => collect((file) => collect((matchValue_1) => {
+        const line = matchValue_1[1];
+        return !Py_strip(line).startsWith("//") ? collect((m_4) => {
+            const text = pick((x_1) => x_1, m_4.Groups.slice(1, m_4.Groups.length));
+            return !(((((!Py_found(anyDigit, text) ? true : Py_found(layoutish, text)) ? true : Py_fullmatch(svgPath, text)) ? true : Py_fullmatch(coords, text)) ? true : (text.indexOf("|") >= 0)) ? true : (text.indexOf("${") >= 0)) ? map_2((n) => [norm(Py_M__get_Value(n)), `${basename(file)}:${matchValue_1[0] + 1}`], Py_finditer(NUM, text)) : empty_1();
+        }, Py_finditer(stringLit, line)) : empty_1();
+    }, indexed_1(Py_splitlines(readText(file)))), jsFiles)))), {
+        Equals: (x_2, y_1) => (x_2 === y_1),
+        GetHashCode: (x_2) => (stringHash(x_2) | 0),
+    });
+    const small = ofSeq_1(append_1(toList(delay(() => map_2(int32ToString, rangeDouble(0, 1, 12)))), singleton("100")), {
+        Compare: (x_3, y_2) => (comparePrimitives(x_3, y_2) | 0),
+    });
+    return map_3((tupledArg_3) => (new Finding(/* Warning */ 1, [concat(tupledArg_3[0], " (", tupledArg_3[1], ") does not appear in the lesson; check it is derived from lesson numbers, or drop it")])), Py_sortWith((tupledArg_1, tupledArg_2) => (Py_cmpStr(tupledArg_1[1], tupledArg_2[1]) | 0), filter((tupledArg) => {
+        const n_1 = tupledArg[0];
+        if (!FSharpSet__Contains(have, n_1)) {
+            return !FSharpSet__Contains(small, n_1);
         }
         else {
             return false;
         }
-    }, seen.entries()))));
-    try {
-        while (enumerator_7["System.Collections.IEnumerator.MoveNext"]()) {
-            const forLoopVar = enumerator_7["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            Findings__warn_Z721C83C5(f, concat(forLoopVar[0], " (", forLoopVar[1], ") does not appear in the lesson; check it is derived from lesson numbers, or drop it"));
-        }
-    }
-    finally {
-        disposeSafe(enumerator_7);
-    }
+    }, seen)));
 }
 
 const CONNECTIVES = ofArray(["so", "therefore", "hence", "that\'s why", "which is why", "this is why", "because", "as a result", "that means", "this means", "which means", "in other words", "but", "however", "on the other hand", "instead", "even so", "whereas", "unlike", "remember", "recall", "as we saw", "earlier", "back in", "you saw", "now", "next", "first", "then", "finally", "in short", "here\'s", "here is", "the tricky part", "the catch", "the key point", "the key idea", "the question is", "notice", "watch", "careful", "surprisingly", "it turns out", "the trap", "a common mistake", "easy to miss", "perhaps", "similarly", "likewise", "after all", "in fact", "as you know", "for example", "for instance", "you might", "imagine", "suppose", "what if"]);
@@ -1535,102 +1278,80 @@ const CONN_RE = Py_rxI(("\\b(" + join("|", map_3(Py_escape, sortWith((a, b) => (
 const FLOW_MIN = 0.4;
 
 function chapters(scenes, each) {
-    const rows = [];
-    let chapter = "intro";
-    const cur = [];
-    const flush = () => {
-        void (rows.push([chapter, ofSeq(cur)]));
-    };
-    const enumerator = getEnumerator(scenes);
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            let c;
-            const s = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            if (isWhy(idOf(s)) ? true : (prefix(idOf(s)) === "outro")) {
-                flush();
-                chapter = ((c = Py_get(s, "chapter"), Py_truthy(c) ? Py_str(c) : idOf(s)));
-                clear(cur);
-            }
-            void (cur.push(each(s)));
+    const patternInput = fold((tupledArg, s_2) => {
+        let s, s_1, c;
+        const finished = tupledArg[0];
+        const name = tupledArg[1];
+        const items = tupledArg[2];
+        if ((s = s_2, isWhy(idOf(s)) ? true : (prefix(idOf(s)) === "outro"))) {
+            return [cons([name, reverse(items)], finished), (s_1 = s_2, (c = Py_get(s_1, "chapter"), Py_truthy(c) ? Py_str(c) : idOf(s_1))), singleton(each(s_2))];
         }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    flush();
-    return ofSeq(rows);
+        else {
+            return [finished, name, cons(each(s_2), items)];
+        }
+    }, [empty(), "intro", empty()], scenes);
+    return reverse(cons([patternInput[1], reverse(patternInput[2])], patternInput[0]));
 }
 
-function reportFlow(f, script, longVideo) {
-    const used = new Map();
-    const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_3((tupledArg) => {
-        const l = concat_1(tupledArg[1]);
-        return [tupledArg[0], length_1(l), length_1(filter((x) => x, l))];
-    }, chapters(Py_list(script, "scenes"), (s) => map_3((sent) => {
-        const words = map_3((m) => lower(Py_M__G_Z524259A4(m, 1)), Py_finditer(CONN_RE, shown(sent)));
-        const enumerator = getEnumerator(words);
-        try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const w = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                used.set(w, (used.has(w) ? used.get(w) : 0) + 1);
-            }
-        }
-        finally {
-            disposeSafe(enumerator);
-        }
-        return !isEmpty(words);
-    }, sentences(say(s))))));
-    const matchValue = sumBy((tupledArg_2) => (tupledArg_2[1] | 0), rows, {
-        GetZero: () => 0,
-        Add: (x_1, y) => ((x_1 + y) | 0),
-    }) | 0;
-    const totalLinked = sumBy((tupledArg_3) => (tupledArg_3[2] | 0), rows, {
+function reportFlow(glossary, script, longVideo) {
+    const perChapter = map_3((tupledArg) => [tupledArg[0], concat_1(tupledArg[1])], chapters(Py_list(script, "scenes"), (s) => map_3((sent) => map_3((m) => lower(Py_M__G_Z524259A4(m, 1)), Py_finditer(CONN_RE, shown(sent))), sentences(say(glossary, s)))));
+    const used = List_countBy((x) => x, collect_1((arg) => concat_1(arg[1]), perChapter), {
+        Equals: (x_1, y) => (x_1 === y),
+        GetHashCode: (x_1) => (stringHash(x_1) | 0),
+    });
+    const rows = filter((tupledArg_2) => (tupledArg_2[1] > 0), map_3((tupledArg_1) => {
+        const opens = tupledArg_1[1];
+        return [tupledArg_1[0], length_1(opens), length_1(filter((arg_1) => !isEmpty(arg_1), opens))];
+    }, perChapter));
+    const matchValue = sumBy((tupledArg_3) => (tupledArg_3[1] | 0), rows, {
         GetZero: () => 0,
         Add: (x_2, y_1) => ((x_2 + y_1) | 0),
     }) | 0;
+    const totalLinked = sumBy((tupledArg_4) => (tupledArg_4[2] | 0), rows, {
+        GetZero: () => 0,
+        Add: (x_3, y_2) => ((x_3 + y_2) | 0),
+    }) | 0;
     const total = matchValue | 0;
-    if (total > 0) {
+    if (total === 0) {
+        return empty();
+    }
+    else {
         Py_print(`flow: ${totalLinked}/${total} sentences link to what came before (${Py_pct(0, totalLinked / total)})`);
-        const enumerator_1 = getEnumerator(rows);
-        try {
-            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const name_1 = forLoopVar[0];
-                const l_2 = forLoopVar[2] | 0;
-                const k = forLoopVar[1] | 0;
-                if (longVideo) {
-                    Py_print(`  ${padLeft(int32ToString(l_2), 3)}/${padRight(int32ToString(k), 3)} ${padLeft(Py_pct(0, l_2 / k), 4)}  ${name_1}`);
-                }
-                if ((k >= 4) && ((l_2 / k) < FLOW_MIN)) {
-                    Findings__warn_Z721C83C5(f, `flow: ${name_1}: only ${l_2} of ${k} sentences link to the one before; add connectives (so, but, remember, the tricky part, ...)`);
+        if (longVideo) {
+            const enumerator = getEnumerator(rows);
+            try {
+                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                    const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    const l_1 = forLoopVar[2] | 0;
+                    const k = forLoopVar[1] | 0;
+                    Py_print(`  ${padLeft(int32ToString(l_1), 3)}/${padRight(int32ToString(k), 3)} ${padLeft(Py_pct(0, l_1 / k), 4)}  ${forLoopVar[0]}`);
                 }
             }
-        }
-        finally {
-            disposeSafe(enumerator_1);
-        }
-        const top = sortWith((tupledArg_4, tupledArg_5) => (comparePrimitives(tupledArg_5[1], tupledArg_4[1]) | 0), ofSeq(used.entries()));
-        const enumerator_2 = getEnumerator(truncate(3, top));
-        try {
-            while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar_1 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const c = forLoopVar_1[1] | 0;
-                if ((c >= 6) && ((c / max(1, totalLinked)) > 0.25)) {
-                    Findings__warn_Z721C83C5(f, `flow: '${forLoopVar_1[0]}' opens ${c} of ${totalLinked} linked sentences; vary the connectives`);
-                }
+            finally {
+                disposeSafe(enumerator);
             }
         }
-        finally {
-            disposeSafe(enumerator_2);
-        }
-        Py_print("  most used: " + join(", ", map_3((tupledArg_6) => (`${tupledArg_6[0]} ${tupledArg_6[1]}`), truncate(8, top))));
+        const top = sortWith((tupledArg_5, tupledArg_6) => (comparePrimitives(tupledArg_6[1], tupledArg_5[1]) | 0), used);
+        Py_print("  most used: " + join(", ", map_3((tupledArg_7) => (`${tupledArg_7[0]} ${tupledArg_7[1]}`), truncate(8, top))));
+        return toList(delay(() => append(collect((matchValue_2) => {
+            const l_2 = matchValue_2[2] | 0;
+            const k_1 = matchValue_2[1] | 0;
+            return ((k_1 >= 4) && ((l_2 / k_1) < FLOW_MIN)) ? singleton_1(new Finding(/* Warning */ 1, [`flow: ${matchValue_2[0]}: only ${l_2} of ${k_1} sentences link to the one before; add connectives (so, but, remember, the tricky part, ...)`])) : empty_1();
+        }, rows), delay(() => collect((matchValue_3) => {
+            const c_1 = matchValue_3[1] | 0;
+            return ((c_1 >= 6) && ((c_1 / max(1, totalLinked)) > 0.25)) ? singleton_1(new Finding(/* Warning */ 1, [`flow: '${matchValue_3[0]}' opens ${c_1} of ${totalLinked} linked sentences; vary the connectives`])) : empty_1();
+        }, truncate(3, top))))));
     }
 }
 
-function reportBreathingWith(f, timing, longVideo) {
+function reportBreathingWith(timing, longVideo) {
+    let patternInput_2;
     const scenes = Py_list(timing, "scenes");
-    const sents = toArray(collect(sentencesOf, scenes));
-    if (sents.length >= 2) {
+    const sents = toArray(collect_1(sentencesOf, scenes));
+    if (sents.length < 2) {
+        return empty();
+    }
+    else {
         const start = (x) => num(x, "start");
         const stop = (x_1) => num(x_1, "end");
         const talk = sumBy_1((x_2) => (stop(x_2) - start(x_2)), sents, {
@@ -1638,100 +1359,78 @@ function reportBreathingWith(f, timing, longVideo) {
             Add: (x_3, y) => (x_3 + y),
         });
         const dur = num(timing, "duration");
-        let longest = 0;
-        let runStart = start(item(0, sents));
-        let where = item(0, sents);
-        const arr = pairwise_1(sents);
-        for (let idx = 0; idx <= (arr.length - 1); idx++) {
-            const forLoopVar = item(idx, arr);
-            const b = forLoopVar[1];
-            const a = forLoopVar[0];
+        const patternInput = fold_1((tupledArg, tupledArg_1) => {
+            const longest = tupledArg[0];
+            const runStart = tupledArg[1];
+            const where = tupledArg[2];
+            const a = tupledArg_1[0];
+            const b = tupledArg_1[1];
             if ((start(b) - stop(a)) >= 1.5) {
                 if ((stop(a) - runStart) > longest) {
-                    longest = (stop(a) - runStart);
-                    where = a;
+                    return [stop(a) - runStart, start(b), a];
                 }
-                runStart = start(b);
+                else {
+                    return [longest, start(b), where];
+                }
             }
-        }
+            else {
+                return [longest, runStart, where];
+            }
+        }, [0, start(item(0, sents)), item(0, sents)], pairwise_1(sents));
+        const runStart_1 = patternInput[1];
+        const longest_1 = patternInput[0];
         const lastS = last_1(sents);
-        if ((stop(lastS) - runStart) > longest) {
-            longest = (stop(lastS) - runStart);
-            where = lastS;
-        }
+        const patternInput_1 = ((stop(lastS) - runStart_1) > longest_1) ? [stop(lastS) - runStart_1, lastS] : [longest_1, patternInput[2]];
+        const where_2 = patternInput_1[1];
+        const longest_2 = patternInput_1[0];
         const isThink = (b_1) => (b_1.kind === "think");
         const thinks = sumBy((s_1) => (length_1(filter(isThink, Py_list(s_1, "breaks"))) | 0), scenes, {
             GetZero: () => 0,
             Add: (x_4, y_1) => ((x_4 + y_1) | 0),
         }) | 0;
         const recaps = length_1(filter((s_2) => Py_truthy(Py_get(s_2, "recap")), scenes)) | 0;
-        Py_print((`breathe: talking ${Py_pct(0, talk / dur)} of ${Py_fmtF(1, dur / 60)} min; longest stretch without a 1.5 s pause `) + (`${Py_fmtF(0, longest)} s (ends ${Py_fmtF(0, stop(where))} s); ${thinks} think, ${recaps} recap`));
-        const enumerator = getEnumerator(scenes);
-        try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const s_3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const recap = Py_get(s_3, "recap");
-                const nRecap = (Py_truthy(recap) ? recap.length : 0) | 0;
-                const nSent = length_1(sentencesOf(s_3)) | 0;
-                if (Py_truthy(recap) && (nRecap > nSent)) {
-                    Findings__warn_Z721C83C5(f, (`recap: ${idOf(s_3)} has ${nRecap} lines but ${nSent} sentences; `) + "line i appears on sentence i, so the extra lines arrive late - speak one sentence per line");
-                }
+        Py_print((`breathe: talking ${Py_pct(0, talk / dur)} of ${Py_fmtF(1, dur / 60)} min; longest stretch without a 1.5 s pause `) + (`${Py_fmtF(0, longest_2)} s (ends ${Py_fmtF(0, stop(where_2))} s); ${thinks} think, ${recaps} recap`));
+        return append_1(toList(delay(() => collect((s_3) => {
+            const recap = Py_get(s_3, "recap");
+            const nRecap = (Py_truthy(recap) ? recap.length : 0) | 0;
+            const nSent = length_1(sentencesOf(s_3)) | 0;
+            return (Py_truthy(recap) && (nRecap > nSent)) ? singleton_1(new Finding(/* Warning */ 1, [(`recap: ${idOf(s_3)} has ${nRecap} lines but ${nSent} sentences; `) + "line i appears on sentence i, so the extra lines arrive late - speak one sentence per line"])) : empty_1();
+        }, scenes))), !longVideo ? empty() : ((patternInput_2 = mapFold((tupledArg_2, s_4) => {
+            const chapter = tupledArg_2[0];
+            const has = tupledArg_2[1];
+            const helps = Py_truthy(Py_get(s_4, "recap")) ? true : exists_1(isThink, Py_list(s_4, "breaks"));
+            if (isWhy(idOf(s_4)) ? true : (prefix(idOf(s_4)) === "outro")) {
+                return [(Py_truthy(chapter) && !has) ? singleton(new Finding(/* Warning */ 1, [concat("breathe: chapter ", Py_repr(chapter), " has no recap scene and no [think]")])) : empty(), [isWhy(idOf(s_4)) ? Py_get(s_4, "chapter") : defaultOf(), helps]];
             }
-        }
-        finally {
-            disposeSafe(enumerator);
-        }
-        if (longVideo) {
-            if (longest > 45) {
-                Findings__warn_Z721C83C5(f, `breathe: ${Py_fmtF(0, longest)} s of talk without a 1.5 s pause (ending at ${Py_fmtF(0, stop(where))} s); add a [pause] after a key point`);
+            else {
+                return [empty(), [chapter, has ? true : helps]];
             }
-            if ((talk / dur) > 0.82) {
-                Findings__warn_Z721C83C5(f, concat("breathe: talking ", Py_pct(0, talk / dur), " of the time; aim for 72-78% with [pause], [think] and recap scenes"));
-            }
-            let chapter = defaultOf();
-            let has = false;
-            const enumerator_1 = getEnumerator(append(scenes, singleton({
-                id: "outro-end",
-                sentences: [],
-            })));
-            try {
-                while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                    const s_4 = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    if (isWhy(idOf(s_4)) ? true : (prefix(idOf(s_4)) === "outro")) {
-                        if (Py_truthy(chapter) && !has) {
-                            Findings__warn_Z721C83C5(f, concat("breathe: chapter ", Py_repr(chapter), " has no recap scene and no [think]"));
-                        }
-                        chapter = (isWhy(idOf(s_4)) ? Py_get(s_4, "chapter") : defaultOf());
-                        has = false;
-                    }
-                    has = ((has ? true : Py_truthy(Py_get(s_4, "recap"))) ? true : exists_1(isThink, Py_list(s_4, "breaks")));
-                }
-            }
-            finally {
-                disposeSafe(enumerator_1);
-            }
-        }
+        }, [defaultOf(), false], append_1(scenes, singleton({
+            id: "outro-end",
+            sentences: [],
+        }))), toList(delay(() => append((longest_2 > 45) ? singleton_1(new Finding(/* Warning */ 1, [`breathe: ${Py_fmtF(0, longest_2)} s of talk without a 1.5 s pause (ending at ${Py_fmtF(0, stop(where_2))} s); add a [pause] after a key point`])) : empty_1(), delay(() => append(((talk / dur) > 0.82) ? singleton_1(new Finding(/* Warning */ 1, [concat("breathe: talking ", Py_pct(0, talk / dur), " of the time; aim for 72-78% with [pause], [think] and recap scenes")])) : empty_1(), delay(() => concat_1(patternInput_2[0]))))))))));
     }
 }
 
-function reportBreathing(f, timing, longVideo) {
-    const option_1 = timing;
-    if (option_1 != null) {
-        reportBreathingWith(f, value_8(option_1), longVideo);
+function reportBreathing(timing, longVideo) {
+    if (timing == null) {
+        return empty();
+    }
+    else {
+        return reportBreathingWith(value_8(timing), longVideo);
     }
 }
 
 export const lengthCaps = ofArray([["short", 5.5], ["tour", 11], ["deep", 29]]);
 
-function reportDuration(f, clip, timing) {
-    const option_1 = timing;
-    if (option_1 != null) {
-        const minutes = num(value_8(option_1), "duration") / 60;
+function reportDuration(clip, timing) {
+    if (timing != null) {
+        const minutes = num(value_8(timing), "duration") / 60;
         Py_print(concat("video:  ", Py_fmtF(1, minutes), " min with pauses, cards and recaps"));
         const briefPath = join_1(ofArray([clip, "brief.json"]));
         if (exists(briefPath)) {
             const length = Py_str(Py_get(readJson(briefPath), "length"));
-            const matchValue = tryFind((tupledArg) => (tupledArg[0] === length), lengthCaps);
+            const matchValue = tryFind_1((tupledArg) => (tupledArg[0] === length), lengthCaps);
             let matchResult, cap_1;
             if (matchValue != null) {
                 if (minutes > matchValue[1]) {
@@ -1746,23 +1445,26 @@ function reportDuration(f, clip, timing) {
                 matchResult = 1;
             }
             switch (matchResult) {
-                case 0: {
-                    Findings__warn_Z721C83C5(f, `the video runs ${Py_fmtF(1, minutes)} min, over the ${Py_g(cap_1)} min cap of a '${length}' video: cut sentences or a scene`);
-                    break;
-                }
-                case 1: {
-                    break;
-                }
+                case 0:
+                    return singleton(new Finding(/* Warning */ 1, [`the video runs ${Py_fmtF(1, minutes)} min, over the ${Py_g(cap_1)} min cap of a '${length}' video: cut sentences or a scene`]));
+                default:
+                    return empty();
             }
         }
+        else {
+            return empty();
+        }
+    }
+    else {
+        return empty();
     }
 }
 
-function reportLength(script, longVideo) {
+function reportLength(glossary, script, longVideo) {
     const rows = filter((tupledArg_1) => (tupledArg_1[1] > 0), map_3((tupledArg) => [tupledArg[0], sum(tupledArg[1], {
         GetZero: () => 0,
         Add: (x, y) => ((x + y) | 0),
-    })], chapters(Py_list(script, "scenes"), (s) => (length_1(Py_words(shown(say(s)))) | 0))));
+    })], chapters(Py_list(script, "scenes"), (s) => (length_1(Py_words(shown(say(glossary, s)))) | 0))));
     const total = sumBy((tuple) => (tuple[1] | 0), rows, {
         GetZero: () => 0,
         Add: (x_1, y_1) => ((x_1 + y_1) | 0),
@@ -1785,13 +1487,13 @@ function reportLength(script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401029 = [1.2, 1.9];
+export const patternInput$00401060 = [1.2, 1.9];
 
-export const VISIT_TAIL = patternInput$00401029[1];
+export const VISIT_TAIL = patternInput$00401060[1];
 
-const VISIT_LEAD = patternInput$00401029[0];
+const VISIT_LEAD = patternInput$00401060[0];
 
-function checkMap(f, script, jsFiles, lesson) {
+function checkMap(script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
     const map = Py_get(script, "map");
     const field = (o, k) => {
@@ -1823,426 +1525,271 @@ function checkMap(f, script, jsFiles, lesson) {
     const hasPath = (s_1) => !Operators_IsNull(Py_get(s_1, "path"));
     const insideOf = (s_2) => text(s_2, "inside");
     if (!Py_truthy(map)) {
-        const enumerator = getEnumerator(scenes);
+        return toList(delay(() => append(collect((s_3) => append(hasPath(s_3) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_3), ": \"path\" needs a top-level \"map\" in script.json")])) : empty_1(), delay(() => (!Operators_IsNull(Py_get(s_3, "inside")) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_3), ": \"inside\" needs a top-level \"map\" in script.json")])) : empty_1()))), scenes), delay(() => collect((file) => ((Py_search(K_MAP, readText(file)) != null) ? singleton_1(new Finding(/* Error */ 0, [concat(basename(file), ": K.map needs a top-level \"map\" in script.json")])) : empty_1()), jsFiles)))));
+    }
+    else {
+        const kinds = Py_get(map, "kinds");
+        const notObjects = (what, xs) => toList(delay(() => collect((matchValue) => (!((matchValue[1] !== null && typeof matchValue[1] === 'object' && !Array.isArray(matchValue[1]))) ? singleton_1(new Finding(/* Error */ 0, [`map: ${what} ${matchValue[0]} is not an object`])) : empty_1()), indexed_1(xs))));
+        const rawParts = Py_list(map, "parts");
+        const rawEdges = Py_list(map, "edges");
+        const parts = filter((v_3) => ((v_3 !== null && typeof v_3 === 'object' && !Array.isArray(v_3))), rawParts);
+        const edges = filter((v_4) => ((v_4 !== null && typeof v_4 === 'object' && !Array.isArray(v_4))), rawEdges);
+        const ids = filter((y) => ("" !== y), map_3((p) => text(p, "id"), parts));
+        const cell = (p_1) => [number(p_1, "col", -1), number(p_1, "row", -1)];
+        const known = (id) => contains(id, ids, {
+            Equals: (x_2, y_1) => (x_2 === y_1),
+            GetHashCode: (x_2) => (stringHash(x_2) | 0),
+        });
+        const byId = (id_1) => find((p_2) => (text(p_2, "id") === id_1), parts);
+        const arr = toArray(scenes);
+        return toList(delay(() => append(notObjects("part", rawParts), delay(() => append(notObjects("edge", rawEdges), delay(() => append(((length_1(parts) < 2) ? true : (length_1(parts) > 7)) ? singleton_1(new Finding(/* Error */ 0, [`map: ${length_1(parts)} parts; a map has 2 to 7 (more do not fit at a readable size)`])) : empty_1(), delay(() => append(Py_truthy(kinds) ? collect((k_3) => {
+            const kind = Py_get(kinds, k_3);
+            return (!Py_truthy(Py_get(kind, "tone")) ? true : !Py_truthy(Py_get(kind, "icon"))) ? singleton_1(new Finding(/* Error */ 0, [concat("map: kind ", Py_reprStr(k_3), " needs a \"tone\" and an \"icon\"")])) : empty_1();
+        }, Object.keys(kinds)) : empty_1(), delay(() => append(collect((matchValue_5) => {
+            const p_3 = matchValue_5[1];
+            const id_2 = text(p_3, "id");
+            const name = (id_2 === "") ? (`part ${matchValue_5[0]}`) : concat("part ", Py_reprStr(id_2));
+            return append(collect((k_4) => ((text(p_3, k_4) === "") ? singleton_1(new Finding(/* Error */ 0, [`map: ${name} has no "${k_4}"`])) : empty_1()), ["id", "label", "kind"]), delay(() => {
+                const kind_1 = text(p_3, "kind");
+                return append(((kind_1 !== "") && !(Py_truthy(kinds) && Py_truthy(Py_get(kinds, kind_1)))) ? singleton_1(new Finding(/* Error */ 0, [`map: ${name} has kind ${Py_reprStr(kind_1)}, which is not in "kinds"`])) : empty_1(), delay(() => append(collect((matchValue_6) => {
+                    const top = matchValue_6[1] | 0;
+                    const k_5 = matchValue_6[0];
+                    const v_5 = field(p_3, k_5);
+                    return Operators_IsNull(v_5) ? singleton_1(new Finding(/* Error */ 0, [`map: ${name} has no "${k_5}"`])) : (((!(Number.isInteger(v_5)) ? true : (v_5 < 0)) ? true : (v_5 > top)) ? singleton_1(new Finding(/* Error */ 0, [`map: ${name} has "${k_5}": ${JSON.stringify(v_5)}; the grid's ${k_5}s are 0 to ${top}`])) : empty_1());
+                }, [["col", 3], ["row", 2]]), delay(() => {
+                    const badge = field(p_3, "badge");
+                    return append((!Operators_IsNull(badge) && (!Py_isStr(badge) ? true : (Py_len(Py_str(badge)) > 10))) ? singleton_1(new Finding(/* Error */ 0, [concat("map: the badge of ", name, " is a word of at most 10 characters (\"new\", \"changed\")")])) : empty_1(), delay(() => {
+                        const label = text(p_3, "label");
+                        return (Py_len(label) > 12) ? singleton_1(new Finding(/* Error */ 0, [`map: the label ${Py_reprStr(label)} of ${name} is ${Py_len(label)} characters; at most 12 fit a box`])) : empty_1();
+                    }));
+                }))));
+            }));
+        }, indexed_1(parts)), delay(() => append(collect((matchValue_7) => {
+            const n = matchValue_7[1] | 0;
+            return (n > 1) ? singleton_1(new Finding(/* Error */ 0, [`map: ${n} parts have the id ${Py_reprStr(matchValue_7[0])}`])) : empty_1();
+        }, List_countBy((x_3) => x_3, ids, {
+            Equals: (x_4, y_2) => (x_4 === y_2),
+            GetHashCode: (x_4) => (stringHash(x_4) | 0),
+        })), delay(() => append(collect((matchValue_8) => {
+            const row = matchValue_8[0][1];
+            const ps = matchValue_8[1];
+            const col = matchValue_8[0][0];
+            return (((length_1(ps) > 1) && (col >= 0)) && (row >= 0)) ? singleton_1(new Finding(/* Error */ 0, [`map: ${join(" and ", map_3((p_4) => text(p_4, "id"), ps))} share the cell col ${col}, row ${row}`])) : empty_1();
+        }, List_groupBy(cell, parts, {
+            Equals: equalArrays,
+            GetHashCode: (x_5) => (arrayHash(x_5) | 0),
+        })), delay(() => append(collect((e_1) => {
+            const matchValue_9 = text(e_1, "from");
+            const b_1 = text(e_1, "to");
+            const a_1 = matchValue_9;
+            return append(collect((id_4) => (!known(id_4) ? singleton_1(new Finding(/* Error */ 0, [concat("map: an edge names ", Py_reprStr(id_4), ", which is not a part")])) : empty_1()), [a_1, b_1]), delay(() => {
+                if ((a_1 !== "") && (a_1 === b_1)) {
+                    return singleton_1(new Finding(/* Error */ 0, [concat("map: an edge joins ", a_1, " to itself")]));
+                }
+                else if (known(a_1) && known(b_1)) {
+                    const matchValue_11 = cell(byId(a_1));
+                    const matchValue_12 = cell(byId(b_1));
+                    const r2 = matchValue_12[1];
+                    const r1 = matchValue_11[1];
+                    const c2 = matchValue_12[0];
+                    const c1 = matchValue_11[0];
+                    return collect((p_5) => {
+                        const patternInput_4 = cell(p_5);
+                        const r = patternInput_4[1];
+                        const c = patternInput_4[0];
+                        const between = (x_6, x1, x2) => {
+                            if (compare(x_6, min_1((x_7, y_4) => (compare(x_7, y_4) | 0), x1, x2)) > 0) {
+                                return compare(x_6, max_1((x_8, y_5) => (compare(x_8, y_5) | 0), x1, x2)) < 0;
+                            }
+                            else {
+                                return false;
+                            }
+                        };
+                        const crossed = text(p_5, "id");
+                        const straight = (((r1 === r2) && (r === r1)) && between(c, c1, c2)) ? true : (((c1 === c2) && (c === c1)) && between(r, r1, r2));
+                        const onWay = (tupledArg, tupledArg_1) => {
+                            const ca = tupledArg[0];
+                            const rb = tupledArg[3];
+                            const c_1 = tupledArg_1[0];
+                            const r_1 = tupledArg_1[1];
+                            if (equals(c_1, ca) && between(r_1, tupledArg[1], rb)) {
+                                return true;
+                            }
+                            else if (equals(r_1, rb)) {
+                                if (equals(c_1, ca)) {
+                                    return true;
+                                }
+                                else {
+                                    return between(c_1, ca, tupledArg[2]);
+                                }
+                            }
+                            else {
+                                return false;
+                            }
+                        };
+                        const curved = (((r1 !== r2) && (c1 !== c2)) && onWay([c1, r1, c2, r2], [c, r])) && exists_1((q) => onWay([c2, r2, c1, r1], cell(q)), parts);
+                        return (straight ? true : curved) ? singleton_1(new Finding(/* Warning */ 1, [`map: the edge ${a_1} -> ${b_1} would cross ${crossed}; move a part, or route the edge through it`])) : empty_1();
+                    }, parts);
+                }
+                else {
+                    return empty_1();
+                }
+            }));
+        }, edges), delay(() => append(collect((s_4) => {
+            let path;
+            const sid = idOf(s_4);
+            return append(hasPath(s_4) ? ((path = map_3(Py_str, Py_list(s_4, "path")), append(!isWhy(sid) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"path\" belongs on a chapter\'s bridge scene (one ending in -why)")])) : empty_1(), delay(() => append((length_1(path) < 2) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": a path names at least 2 parts")])) : empty_1(), delay(() => append(collect((id_5) => (!known(id_5) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": the path names ", Py_reprStr(id_5), ", which is not a part of the map")])) : empty_1()), path), delay(() => collect((matchValue_13) => {
+                let a, b;
+                const b_2 = matchValue_13[1];
+                const a_2 = matchValue_13[0];
+                return (((known(a_2) && known(b_2)) && !((a = a_2, (b = b_2, exists_1((e) => {
+                    if ((text(e, "from") === a) && (text(e, "to") === b)) {
+                        return true;
+                    }
+                    else if (text(e, "from") === b) {
+                        return text(e, "to") === a;
+                    }
+                    else {
+                        return false;
+                    }
+                }, edges))))) && (text(script, "kind") !== "progress")) ? singleton_1(new Finding(/* Error */ 0, [`${sid}: the path goes from ${a_2} to ${b_2}, but the map has no edge between them`])) : empty_1();
+            }, pairwise(path)))))))))) : empty_1(), delay(() => {
+                const inside = insideOf(s_4);
+                return append(((inside === "") && !Operators_IsNull(Py_get(s_4, "inside"))) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"inside\" is the id of one part of the map, as a string")])) : empty_1(), delay(() => ((inside !== "") ? append(!known(inside) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"inside\": ", Py_reprStr(inside), " is not a part of the map")])) : empty_1(), delay(() => ((isWhy(sid) ? true : Py_truthy(Py_get(s_4, "recap"))) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"inside\" cannot be on a bridge or recap scene (the frame draws those; no module is inside anything there)")])) : empty_1()))) : empty_1())));
+            }));
+        }, scenes), delay(() => append(collect((matchValue_14) => {
+            const s_5 = matchValue_14[1];
+            const k_6 = matchValue_14[0] | 0;
+            const inside_1 = insideOf(s_5);
+            if (inside_1 !== "") {
+                const first = (k_6 === 0) ? true : (insideOf(item(k_6 - 1, arr)) !== inside_1);
+                const last = (k_6 === (arr.length - 1)) ? true : (insideOf(item(k_6 + 1, arr)) !== inside_1);
+                const lead = number(s_5, "lead", 0.4);
+                const tail = number(s_5, "pad", 0.9) + number(s_5, "hold", 0);
+                return append((first && (lead < VISIT_LEAD)) ? singleton_1(new Finding(/* Warning */ 1, [`${idOf(s_5)}: the zoom into ${inside_1} takes ${VISIT_LEAD} s; give this scene "lead": ${VISIT_LEAD} or more (it has ${lead})`])) : empty_1(), delay(() => (((last && (k_6 < (arr.length - 1))) && (tail < VISIT_TAIL)) ? singleton_1(new Finding(/* Warning */ 1, [`${idOf(s_5)}: the zoom out of ${inside_1} needs "pad" plus "hold" of ${VISIT_TAIL} s or more (it has ${tail})`])) : empty_1())));
+            }
+            else {
+                return empty_1();
+            }
+        }, indexed(arr)), delay(() => append(!exists_1(hasPath, scenes) ? singleton_1(new Finding(/* Warning */ 1, ["map: no bridge scene has a \"path\", so the map never opens a chapter"])) : empty_1(), delay(() => {
+            const matchValue_15 = lesson;
+            if (matchValue_15 == null) {
+                return empty_1();
+            }
+            else {
+                const doc_1 = lower(matchValue_15);
+                return collect((p_6) => {
+                    const label_1 = text(p_6, "label");
+                    return ((label_1 !== "") && !(doc_1.indexOf(lower(label_1)) >= 0)) ? singleton_1(new Finding(/* Warning */ 1, [concat("map: the label ", Py_reprStr(label_1), " does not appear in the document")])) : empty_1();
+                }, parts);
+            }
+        }))))))))))))))))))))))));
+    }
+}
+
+function reportGlossary(glossary, script) {
+    const uses = sortBy((tupledArg) => tupledArg[0][0].toLocaleLowerCase(), List_countBy((x) => x, collect_1((s) => uses_1(glossary, rawSay(s)), Py_list(script, "scenes")), {
+        Equals: equalArrays,
+        GetHashCode: (x_1) => (arrayHash(x_1) | 0),
+    }), {
+        Compare: (x_2, y_1) => (comparePrimitives(x_2, y_1) | 0),
+    });
+    if (!isEmpty(uses)) {
+        Py_print(`glossary: ${length_1(uses)} term(s) said its way (engine/glossary.json, <repo>/.codebase-video/glossary.json)`);
+        const enumerator = getEnumerator(uses);
         try {
             while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const s_3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                if (hasPath(s_3)) {
-                    Findings__err_Z721C83C5(f, concat(idOf(s_3), ": \"path\" needs a top-level \"map\" in script.json"));
-                }
-                if (!Operators_IsNull(Py_get(s_3, "inside"))) {
-                    Findings__err_Z721C83C5(f, concat(idOf(s_3), ": \"inside\" needs a top-level \"map\" in script.json"));
-                }
+                const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const n = forLoopVar[1] | 0;
+                Py_print(`  ${forLoopVar[0][0]} -> ${forLoopVar[0][1]}${(n > 1) ? (`  x${n}`) : ""}`);
             }
         }
         finally {
             disposeSafe(enumerator);
         }
-        const enumerator_1 = getEnumerator(jsFiles);
-        try {
-            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                const file = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                if (Py_search(K_MAP, readText(file)) != null) {
-                    Findings__err_Z721C83C5(f, concat(basename(file), ": K.map needs a top-level \"map\" in script.json"));
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator_1);
-        }
-    }
-    else {
-        const kinds = Py_get(map, "kinds");
-        const objects = (what, xs) => {
-            iterateIndexed((i, x) => {
-                if (!((x !== null && typeof x === 'object' && !Array.isArray(x)))) {
-                    Findings__err_Z721C83C5(f, `map: ${what} ${i} is not an object`);
-                }
-            }, xs);
-            return filter((v_3) => ((v_3 !== null && typeof v_3 === 'object' && !Array.isArray(v_3))), xs);
-        };
-        const parts = objects("part", Py_list(map, "parts"));
-        const edges = objects("edge", Py_list(map, "edges"));
-        if ((length_1(parts) < 2) ? true : (length_1(parts) > 7)) {
-            Findings__err_Z721C83C5(f, `map: ${length_1(parts)} parts; a map has 2 to 7 (more do not fit at a readable size)`);
-        }
-        if (Py_truthy(kinds)) {
-            const arr = Object.keys(kinds);
-            for (let idx = 0; idx <= (arr.length - 1); idx++) {
-                const k_3 = item(idx, arr);
-                const kind = Py_get(kinds, k_3);
-                if (!Py_truthy(Py_get(kind, "tone")) ? true : !Py_truthy(Py_get(kind, "icon"))) {
-                    Findings__err_Z721C83C5(f, concat("map: kind ", Py_reprStr(k_3), " needs a \"tone\" and an \"icon\""));
-                }
-            }
-        }
-        iterateIndexed((i_1, p) => {
-            const id = text(p, "id");
-            const name = (id === "") ? (`part ${i_1}`) : concat("part ", Py_reprStr(id));
-            const enumerator_2 = getEnumerator(["id", "label", "kind"]);
-            try {
-                while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-                    const k_4 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    if (text(p, k_4) === "") {
-                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_4}"`);
-                    }
-                }
-            }
-            finally {
-                disposeSafe(enumerator_2);
-            }
-            const kind_1 = text(p, "kind");
-            if ((kind_1 !== "") && !(Py_truthy(kinds) && Py_truthy(Py_get(kinds, kind_1)))) {
-                Findings__err_Z721C83C5(f, `map: ${name} has kind ${Py_reprStr(kind_1)}, which is not in "kinds"`);
-            }
-            const enumerator_3 = getEnumerator([["col", 3], ["row", 2]]);
-            try {
-                while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
-                    const forLoopVar = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    const top = forLoopVar[1] | 0;
-                    const k_5 = forLoopVar[0];
-                    const v_4 = field(p, k_5);
-                    if (Operators_IsNull(v_4)) {
-                        Findings__err_Z721C83C5(f, `map: ${name} has no "${k_5}"`);
-                    }
-                    else if ((!(Number.isInteger(v_4)) ? true : (v_4 < 0)) ? true : (v_4 > top)) {
-                        Findings__err_Z721C83C5(f, `map: ${name} has "${k_5}": ${JSON.stringify(v_4)}; the grid's ${k_5}s are 0 to ${top}`);
-                    }
-                }
-            }
-            finally {
-                disposeSafe(enumerator_3);
-            }
-            const badge = field(p, "badge");
-            if (!Operators_IsNull(badge) && (!Py_isStr(badge) ? true : (Py_len(Py_str(badge)) > 10))) {
-                Findings__err_Z721C83C5(f, concat("map: the badge of ", name, " is a word of at most 10 characters (\"new\", \"changed\")"));
-            }
-            const label = text(p, "label");
-            if (Py_len(label) > 12) {
-                Findings__err_Z721C83C5(f, `map: the label ${Py_reprStr(label)} of ${name} is ${Py_len(label)} characters; at most 12 fit a box`);
-            }
-        }, parts);
-        const ids = filter((y) => ("" !== y), map_3((p_1) => text(p_1, "id"), parts));
-        const enumerator_4 = getEnumerator(List_countBy((x_2) => x_2, ids, {
-            Equals: (x_3, y_1) => (x_3 === y_1),
-            GetHashCode: (x_3) => (stringHash(x_3) | 0),
-        }));
-        try {
-            while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar_1 = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const n = forLoopVar_1[1] | 0;
-                if (n > 1) {
-                    Findings__err_Z721C83C5(f, `map: ${n} parts have the id ${Py_reprStr(forLoopVar_1[0])}`);
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator_4);
-        }
-        const cell = (p_2) => [number(p_2, "col", -1), number(p_2, "row", -1)];
-        const enumerator_5 = getEnumerator(List_groupBy(cell, parts, {
-            Equals: equalArrays,
-            GetHashCode: (x_4) => (arrayHash(x_4) | 0),
-        }));
-        try {
-            while (enumerator_5["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar_2 = enumerator_5["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const row = forLoopVar_2[0][1];
-                const ps = forLoopVar_2[1];
-                const col = forLoopVar_2[0][0];
-                if (((length_1(ps) > 1) && (col >= 0)) && (row >= 0)) {
-                    Findings__err_Z721C83C5(f, `map: ${join(" and ", map_3((p_3) => text(p_3, "id"), ps))} share the cell col ${col}, row ${row}`);
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator_5);
-        }
-        const known = (id_2) => contains(id_2, ids, {
-            Equals: (x_5, y_3) => (x_5 === y_3),
-            GetHashCode: (x_5) => (stringHash(x_5) | 0),
-        });
-        const byId = (id_3) => find((p_4) => (text(p_4, "id") === id_3), parts);
-        const enumerator_6 = getEnumerator(edges);
-        try {
-            while (enumerator_6["System.Collections.IEnumerator.MoveNext"]()) {
-                const e = enumerator_6["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const matchValue = text(e, "from");
-                const b = text(e, "to");
-                const a = matchValue;
-                const enumerator_7 = getEnumerator([a, b]);
-                try {
-                    while (enumerator_7["System.Collections.IEnumerator.MoveNext"]()) {
-                        const id_4 = enumerator_7["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                        if (!known(id_4)) {
-                            Findings__err_Z721C83C5(f, concat("map: an edge names ", Py_reprStr(id_4), ", which is not a part"));
-                        }
-                    }
-                }
-                finally {
-                    disposeSafe(enumerator_7);
-                }
-                if ((a !== "") && (a === b)) {
-                    Findings__err_Z721C83C5(f, concat("map: an edge joins ", a, " to itself"));
-                }
-                else if (known(a) && known(b)) {
-                    const matchValue_2 = cell(byId(a));
-                    const matchValue_3 = cell(byId(b));
-                    const r2 = matchValue_3[1];
-                    const r1 = matchValue_2[1];
-                    const c2 = matchValue_3[0];
-                    const c1 = matchValue_2[0];
-                    const enumerator_8 = getEnumerator(parts);
-                    try {
-                        while (enumerator_8["System.Collections.IEnumerator.MoveNext"]()) {
-                            const p_5 = enumerator_8["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            const patternInput_2 = cell(p_5);
-                            const r = patternInput_2[1];
-                            const c = patternInput_2[0];
-                            const between = (x_6, x1, x2) => {
-                                if (compare(x_6, min_1((x_7, y_4) => (compare(x_7, y_4) | 0), x1, x2)) > 0) {
-                                    return compare(x_6, max_1((x_8, y_5) => (compare(x_8, y_5) | 0), x1, x2)) < 0;
-                                }
-                                else {
-                                    return false;
-                                }
-                            };
-                            const crossed = text(p_5, "id");
-                            const straight = (((r1 === r2) && (r === r1)) && between(c, c1, c2)) ? true : (((c1 === c2) && (c === c1)) && between(r, r1, r2));
-                            const onWay = (tupledArg, tupledArg_1) => {
-                                const ca = tupledArg[0];
-                                const rb = tupledArg[3];
-                                const c_1 = tupledArg_1[0];
-                                const r_1 = tupledArg_1[1];
-                                if (equals(c_1, ca) && between(r_1, tupledArg[1], rb)) {
-                                    return true;
-                                }
-                                else if (equals(r_1, rb)) {
-                                    if (equals(c_1, ca)) {
-                                        return true;
-                                    }
-                                    else {
-                                        return between(c_1, ca, tupledArg[2]);
-                                    }
-                                }
-                                else {
-                                    return false;
-                                }
-                            };
-                            const curved = (((r1 !== r2) && (c1 !== c2)) && onWay([c1, r1, c2, r2], [c, r])) && exists_1((q) => onWay([c2, r2, c1, r1], cell(q)), parts);
-                            if (straight ? true : curved) {
-                                Findings__warn_Z721C83C5(f, `map: the edge ${a} -> ${b} would cross ${crossed}; move a part, or route the edge through it`);
-                            }
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator_8);
-                    }
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator_6);
-        }
-        const enumerator_9 = getEnumerator(scenes);
-        try {
-            while (enumerator_9["System.Collections.IEnumerator.MoveNext"]()) {
-                const s_4 = enumerator_9["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const sid = idOf(s_4);
-                if (hasPath(s_4)) {
-                    const path = map_3(Py_str, Py_list(s_4, "path"));
-                    if (!isWhy(sid)) {
-                        Findings__err_Z721C83C5(f, concat(sid, ": \"path\" belongs on a chapter\'s bridge scene (one ending in -why)"));
-                    }
-                    if (length_1(path) < 2) {
-                        Findings__err_Z721C83C5(f, concat(sid, ": a path names at least 2 parts"));
-                    }
-                    const enumerator_10 = getEnumerator(path);
-                    try {
-                        while (enumerator_10["System.Collections.IEnumerator.MoveNext"]()) {
-                            const id_5 = enumerator_10["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            if (!known(id_5)) {
-                                Findings__err_Z721C83C5(f, concat(sid, ": the path names ", Py_reprStr(id_5), ", which is not a part of the map"));
-                            }
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator_10);
-                    }
-                    const enumerator_11 = getEnumerator(pairwise(path));
-                    try {
-                        while (enumerator_11["System.Collections.IEnumerator.MoveNext"]()) {
-                            let a_1, b_1;
-                            const forLoopVar_3 = enumerator_11["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            const b_2 = forLoopVar_3[1];
-                            const a_2 = forLoopVar_3[0];
-                            if (((known(a_2) && known(b_2)) && !((a_1 = a_2, (b_1 = b_2, exists_1((e_1) => {
-                                if ((text(e_1, "from") === a_1) && (text(e_1, "to") === b_1)) {
-                                    return true;
-                                }
-                                else if (text(e_1, "from") === b_1) {
-                                    return text(e_1, "to") === a_1;
-                                }
-                                else {
-                                    return false;
-                                }
-                            }, edges))))) && (text(script, "kind") !== "progress")) {
-                                Findings__err_Z721C83C5(f, `${sid}: the path goes from ${a_2} to ${b_2}, but the map has no edge between them`);
-                            }
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator_11);
-                    }
-                }
-                const inside = insideOf(s_4);
-                if ((inside === "") && !Operators_IsNull(Py_get(s_4, "inside"))) {
-                    Findings__err_Z721C83C5(f, concat(sid, ": \"inside\" is the id of one part of the map, as a string"));
-                }
-                if (inside !== "") {
-                    if (!known(inside)) {
-                        Findings__err_Z721C83C5(f, concat(sid, ": \"inside\": ", Py_reprStr(inside), " is not a part of the map"));
-                    }
-                    if (isWhy(sid) ? true : Py_truthy(Py_get(s_4, "recap"))) {
-                        Findings__err_Z721C83C5(f, concat(sid, ": \"inside\" cannot be on a bridge or recap scene (the frame draws those; no module is inside anything there)"));
-                    }
-                }
-            }
-        }
-        finally {
-            disposeSafe(enumerator_9);
-        }
-        const arr_1 = toArray(scenes);
-        iterateIndexed_1((k_6, s_5) => {
-            const inside_1 = insideOf(s_5);
-            if (inside_1 !== "") {
-                const first = (k_6 === 0) ? true : (insideOf(item(k_6 - 1, arr_1)) !== inside_1);
-                const last = (k_6 === (arr_1.length - 1)) ? true : (insideOf(item(k_6 + 1, arr_1)) !== inside_1);
-                const lead = number(s_5, "lead", 0.4);
-                const tail = number(s_5, "pad", 0.9) + number(s_5, "hold", 0);
-                if (first && (lead < VISIT_LEAD)) {
-                    Findings__warn_Z721C83C5(f, `${idOf(s_5)}: the zoom into ${inside_1} takes ${VISIT_LEAD} s; give this scene "lead": ${VISIT_LEAD} or more (it has ${lead})`);
-                }
-                if ((last && (k_6 < (arr_1.length - 1))) && (tail < VISIT_TAIL)) {
-                    Findings__warn_Z721C83C5(f, `${idOf(s_5)}: the zoom out of ${inside_1} needs "pad" plus "hold" of ${VISIT_TAIL} s or more (it has ${tail})`);
-                }
-            }
-        }, arr_1);
-        if (!exists_1(hasPath, scenes)) {
-            Findings__warn_Z721C83C5(f, "map: no bridge scene has a \"path\", so the map never opens a chapter");
-        }
-        const option_1 = lesson;
-        if (option_1 != null) {
-            const doc_1 = lower(option_1);
-            const enumerator_12 = getEnumerator(parts);
-            try {
-                while (enumerator_12["System.Collections.IEnumerator.MoveNext"]()) {
-                    const label_1 = text(enumerator_12["System.Collections.Generic.IEnumerator`1.get_Current"](), "label");
-                    if ((label_1 !== "") && !(doc_1.indexOf(lower(label_1)) >= 0)) {
-                        Findings__warn_Z721C83C5(f, concat("map: the label ", Py_reprStr(label_1), " does not appear in the document"));
-                    }
-                }
-            }
-            finally {
-                disposeSafe(enumerator_12);
-            }
-        }
-    }
-}
-
-function reportGlossary(script) {
-    if (glossary != null) {
-        const g = glossary;
-        const uses = sortBy((tupledArg) => tupledArg[0][0].toLocaleLowerCase(), List_countBy((x) => x, collect((s) => uses_1(g, rawSay(s)), Py_list(script, "scenes")), {
-            Equals: equalArrays,
-            GetHashCode: (x_1) => (arrayHash(x_1) | 0),
-        }), {
-            Compare: (x_2, y_1) => (comparePrimitives(x_2, y_1) | 0),
-        });
-        if (!isEmpty(uses)) {
-            Py_print(`glossary: ${length_1(uses)} term(s) said its way (engine/glossary.json, <repo>/.codebase-video/glossary.json)`);
-            const enumerator = getEnumerator(uses);
-            try {
-                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                    const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    const n = forLoopVar[1] | 0;
-                    Py_print(`  ${forLoopVar[0][0]} -> ${forLoopVar[0][1]}${(n > 1) ? (`  x${n}`) : ""}`);
-                }
-            }
-            finally {
-                disposeSafe(enumerator);
-            }
-        }
     }
 }
 
 export function run(ws, args) {
-    let option_3;
+    let option_1;
     const clip = ws;
     let lesson;
     const matchValue = tryFindIndex((y) => ("--lesson" === y), args);
     lesson = ((matchValue == null) ? undefined : resolve(item_1(matchValue + 1, args)));
-    const f = new Findings([], [], new Map());
-    glossary = load_1(clip);
-    const patternInput = load(f, clip);
-    const timing = patternInput[1];
-    const script = patternInput[0];
+    const glossary = load_1(clip);
+    const patternInput = load(clip);
+    const timing = patternInput[2];
+    const script = patternInput[1];
     const jsFiles = map_3((n_1) => join_1(ofArray([clip, n_1])), Py_sortWith((a, b) => (Py_cmpStr(a, b) | 0), filter((n) => n.endsWith(".js"), readDir(clip))));
-    checkScript(f, script);
+    const patternInput_1 = checkScript(glossary, script);
     const ok = ofSeq_1(map_3(Py_str, Py_list(script, "readsFine")), {
         Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
     });
-    const enumerator = getEnumerator(f.Read.entries());
+    const readAsWritten = toList(delay(() => collect((matchValue_1) => {
+        const tok = matchValue_1[0];
+        if (!FSharpSet__Contains(ok, tok)) {
+            const where = map_3((tuple) => tuple[1], matchValue_1[1]);
+            return singleton_1(new Finding(/* Warning */ 1, [`'${tok}' is read as written (${join(", ", truncate(4, where))}${(length_1(where) > 4) ? " …" : ""}): wrap it as [${tok}](how to say it), or list it in "readsFine" once checked by ear`]));
+        }
+        else {
+            return empty_1();
+        }
+    }, List_groupBy((tuple_1) => tuple_1[0], patternInput_1[1], {
+        Equals: (x_2, y_2) => (x_2 === y_2),
+        GetHashCode: (x_2) => (stringHash(x_2) | 0),
+    }))));
+    const patternInput_2 = checkLong(clip, script);
+    const longVideo = patternInput_2[0];
+    const cueFindings = checkCues(timing, jsFiles);
+    const lessonFindings = (lesson == null) ? empty() : checkLesson(glossary, script, jsFiles, readText(lesson));
+    const mapFindings = checkMap(script, jsFiles, (option_1 = lesson, (option_1 != null) ? readText(option_1) : undefined));
+    reportLength(glossary, script, longVideo);
+    const durationFindings = reportDuration(clip, timing);
+    const breathingFindings = reportBreathing(timing, longVideo);
+    const flowFindings = reportFlow(glossary, script, longVideo);
+    reportGlossary(glossary, script);
+    const findings = concat_1([patternInput[0], patternInput_1[0], readAsWritten, patternInput_2[1], cueFindings, lessonFindings, mapFindings, durationFindings, breathingFindings, flowFindings]);
+    const warnings = choose((_arg) => {
+        if (_arg.tag === 0) {
+            return undefined;
+        }
+        else {
+            return _arg.fields[0];
+        }
+    }, findings);
+    const errors = choose((_arg_1) => {
+        if (_arg_1.tag === 1) {
+            return undefined;
+        }
+        else {
+            return _arg_1.fields[0];
+        }
+    }, findings);
+    const enumerator = getEnumerator(warnings);
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const where = forLoopVar[1];
-            const tok = forLoopVar[0];
-            if (!FSharpSet__Contains(ok, tok)) {
-                Findings__warn_Z721C83C5(f, `'${tok}' is read as written (${join(", ", truncate_1(4, where))}${(where.length > 4) ? " …" : ""}): wrap it as [${tok}](how to say it), or list it in "readsFine" once checked by ear`);
-            }
+            Py_print(concat("warn   ", enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]()));
         }
     }
     finally {
         disposeSafe(enumerator);
     }
-    const longVideo = checkLong(f, clip, script);
-    checkCues(f, timing, jsFiles);
-    const option_1 = lesson;
-    if (option_1 != null) {
-        checkLesson(f, script, jsFiles, readText(option_1));
-    }
-    checkMap(f, script, jsFiles, (option_3 = lesson, (option_3 != null) ? readText(option_3) : undefined));
-    reportLength(script, longVideo);
-    reportDuration(f, clip, timing);
-    reportBreathing(f, timing, longVideo);
-    reportFlow(f, script, longVideo);
-    reportGlossary(script);
-    let enumerator_1 = getEnumerator(f.Warnings);
+    const enumerator_1 = getEnumerator(errors);
     try {
         while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            Py_print(concat("warn   ", enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]()));
+            Py_print(concat("ERROR  ", enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]()));
         }
     }
     finally {
         disposeSafe(enumerator_1);
     }
-    let enumerator_2 = getEnumerator(f.Errors);
-    try {
-        while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-            Py_print(concat("ERROR  ", enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]()));
-        }
-    }
-    finally {
-        disposeSafe(enumerator_2);
-    }
-    Py_print(`${f.Errors.length} error(s), ${f.Warnings.length} warning(s)`);
+    Py_print(`${length_1(errors)} error(s), ${length_1(warnings)} warning(s)`);
     Py_flush();
-    if (f.Errors.length > 0) {
-        return 1;
+    if (isEmpty(errors)) {
+        return 0;
     }
     else {
-        return 0;
+        return 1;
     }
 }
 
