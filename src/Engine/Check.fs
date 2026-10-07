@@ -1075,6 +1075,9 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
                 if isNull v then f.err $"map: {name} has no \"{k}\""
                 elif not (isInteger v) || unbox<float> v < 0.0 || unbox<float> v > float top then
                     f.err $"map: {name} has \"{k}\": {jsonOf v}; the grid's {k}s are 0 to {top}"
+            let badge = field p "badge"
+            if not (isNull badge) && (not (Py.isStr badge) || Py.len (Py.str badge) > 10) then
+                f.err $"map: the badge of {name} is a word of at most 10 characters (\"new\", \"changed\")"
             let label = text p "label"
             if Py.len label > 12 then
                 f.err $"map: the label {Py.reprStr label} of {name} is {Py.len label} characters; at most 12 fit a box")
@@ -1125,7 +1128,8 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
                 for id in path do
                     if not (known id) then f.err $"{sid}: the path names {Py.reprStr id}, which is not a part of the map"
                 for a, b in List.pairwise path do
-                    if known a && known b && not (joined a b) then
+                    // not in a progress video: there a chapter is a theme, and its path the parts it touched
+                    if known a && known b && not (joined a b) && text script "kind" <> "progress" then
                         f.err $"{sid}: the path goes from {a} to {b}, but the map has no edge between them"
             let inside = insideOf s
             if inside = "" && not (isNull (Py.get s "inside")) then

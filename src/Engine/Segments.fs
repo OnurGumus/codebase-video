@@ -339,6 +339,7 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
                         "runs" ==> moduleRuns
                         "chapters" ==> chapterList
                         "map" ==> (if showsMap then timing?map else null)
+                        "kind" ==> (if showsMap && not (isNil timing?kind) then timing?kind else null)
                         "chapterPath" ==> (if showsMap then chapterPath else null)
                         "zero" ==> far 0.0
                         "title" ==> title

@@ -30,6 +30,8 @@ type MapPart =
     abstract kind: string
     abstract col: float
     abstract row: float
+    /// a word shown beside the part ("new", "changed"), or nothing
+    abstract badge: string
 
 type MapEdge =
     abstract from: string
@@ -76,6 +78,8 @@ type private PartEl =
       cx: float
       cy: float
       el: HTMLElement
+      /// the part's badge, or null
+      badge: HTMLElement
       mutable box: Box }
 
 type private EdgeEl =
@@ -112,8 +116,9 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             let icon = if truthy kind.icon then $"""<span class="k-node-icon">{kind.icon}</span>""" else ""
             let el =
                 mk layer "div" "k-node k-actor" $"{icon}{esc p.label}" $"left:{cx}px;top:{cy - BOX_H / 2.0}px;transform:translateX(-50%%)"
+            let badge = if truthy p.badge then mk layer "div" "k-edge-label k-map-badge" (esc p.badge) null else null
             let part =
-                { p = p; tone = tone kind.tone; icon = icon; cx = cx; cy = cy; el = el
+                { p = p; tone = tone kind.tone; icon = icon; cx = cx; cy = cy; el = el; badge = badge
                   box = { x = cx; y = cy - BOX_H / 2.0; w = 0.0; h = BOX_H } }
             put byId p.id part
             part)
@@ -235,6 +240,24 @@ let build (parent: HTMLElement) (def: MapDef) : View =
                 overLevel sx (ex - dir * turn) sy
             if not g.fits && truthy g.e.label then
                 log $"map: label {stringify g.e.label} on {g.e.from} -> {g.e.``to``} does not fit, not drawn"
+        // A badge goes above its part, or below when arrows meet the top and none the bottom; when arrows meet
+        // both, above and to the left, clear of where they attach.
+        for q in parts do
+            if not (isNull q.badge) then
+                let meets (side: string) = (attached q.p.id side).Length > 0
+                let b = q.box
+                if not (meets "top") then
+                    q.badge.style.left <- $"{q.cx}px"
+                    q.badge.style.top <- $"{b.y}px"
+                    q.badge.style.transform <- "translate(-50%, calc(-100% - 10px))"
+                elif not (meets "bottom") then
+                    q.badge.style.left <- $"{q.cx}px"
+                    q.badge.style.top <- $"{b.y + b.h}px"
+                    q.badge.style.transform <- "translate(-50%, 10px)"
+                else
+                    q.badge.style.left <- $"{b.x + 30.0}px"
+                    q.badge.style.top <- $"{b.y}px"
+                    q.badge.style.transform <- "translate(-100%, calc(-100% - 10px))"
         laidOut <- true
     let draw (s: State) =
         if not laidOut && parts.[0].el.offsetWidth > 0.0 then layout ()
@@ -250,6 +273,9 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             show q.el (v * lerp DIM 1.0 l) 0.0 "translateX(-50%)"
             q.el.style.borderColor <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--border))"
             q.el.style.color <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--ink))"
+            if not (isNull q.badge) then
+                q.badge.style?opacity <- v * lerp DIM 1.0 l
+                q.badge.style.color <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--muted))"
         for g in edges do
             let l = clamp01 (s.edgeLit g.e.from g.e.``to``)
             let v = System.Math.Min(clamp01 (s.vis g.e.from), clamp01 (s.vis g.e.``to``)) * others

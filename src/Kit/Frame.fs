@@ -148,12 +148,16 @@ let run () =
         // The opener starts to fade 0.6 s before the chapter talks, a part takes 0.4 s to light, and the whole path
         // should be seen lit for a moment: so the last one starts 1.3 s before.
         t0, System.Math.Max(t0, System.Math.Min(System.Math.Max(spoken - 0.3, t0 + 0.8), c.talk - 1.3))
+    // A progress video's chapter is a theme, not a flow: its path names the parts the theme touched, which need
+    // not be joined by arrows. They light together as the bridge line starts, and no arrow lights.
+    let themed: bool = string (T?kind) = "progress"
     let litAt (c: Chapter) (step: int) : float =
         let t0, t1 = pathTimes c
         lerp t0 t1 (float step / float (c.path.Length * 2 - 2))
     /// How lit a part is at t in chapter c: the path's parts light in order, the rest stay dim.
     let partLit (c: Chapter) (t: float) (id: string) : float =
         match c.path |> Array.tryFindIndex ((=) id) with
+        | Some _ when themed -> clamp01 ((t - fst (pathTimes c)) / 0.4)
         | Some i -> clamp01 ((t - litAt c (i * 2)) / 0.4)
         | None -> 0.0
     let edgeLit (c: Chapter) (t: float) (a: string) (b: string) : float =
@@ -162,6 +166,7 @@ let run () =
             |> Array.pairwise
             |> Array.tryFindIndex (fun (x, y) -> (x = a && y = b) || (x = b && y = a))
         match hop with
+        | Some _ when themed -> 0.0
         | Some i -> clamp01 ((t - litAt c (i * 2 + 1)) / 0.4)
         | None -> 0.0
 

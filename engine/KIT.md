@@ -84,6 +84,8 @@ you in two places, always the same picture, so the viewer keeps their bearings f
 - `kinds` is the video's colour-by-kind table in a form the kit can read: a tone and an icon for each kind of part.
 - `parts`: 2 to 7 of them, each with a `label` of at most 12 characters and a cell on a grid of 4 columns (`col` 0-3)
   by 3 rows (`row` 0-2). Lay the main flow out left to right along one row; put what it branches to above and below.
+- A part may carry `"badge"`: one word of at most 10 characters ("new", "changed"), drawn beside its box wherever
+  the map is shown. It is for a video about how the code changed.
 - `edges`: `from` → `to` is the real direction, `label` a verb. An arrow between two parts of one row or one column
   is straight. An arrow that changes row and column makes one turn: it leaves its box from the top or bottom and
   arrives level, or, when a part is in that way, leaves level and arrives from above or below; `check` warns when
@@ -113,6 +115,10 @@ boundary of its own.
 same map inside a module, for the chapter that introduces it: a part named in `reveal` appears on its cue, the others
 with the component, an edge once both its parts have. It takes `at`, `until` and `in`, and nothing about positions,
 labels or colours. Never redraw the map by hand with `K.flow`.
+
+**A video about change.** With `"kind": "progress"` at the top of `script.json`, a chapter is a theme and its
+`path` is the parts that theme touched: they need not be joined by edges, and they light up together, with no arrow
+lit.
 
 `check` verifies the map, every path and every visit before anything is drawn.
 

@@ -169,12 +169,14 @@ export function run() {
     else {
         MAP = undefined;
     }
-    const litAt = (c_3, step) => {
-        let patternInput;
-        const c_2 = c_3;
+    const pathTimes = (c_2) => {
         const sentences = item(0, c_2.scenes).sentences;
         const t0 = (sentences.length > 0) ? item(0, sentences).start : c_2.start;
-        patternInput = [t0, max(t0, min(max(((sentences.length > 0) ? item(sentences.length - 1, sentences).end : c_2.talk) - 0.3, t0 + 0.8), c_2.talk - 1.3))];
+        return [t0, max(t0, min(max(((sentences.length > 0) ? item(sentences.length - 1, sentences).end : c_2.talk) - 0.3, t0 + 0.8), c_2.talk - 1.3))];
+    };
+    const themed = toString(timing.kind) === "progress";
+    const litAt = (c_3, step) => {
+        const patternInput = pathTimes(c_3);
         return lerp(patternInput[0], patternInput[1], step / ((c_3.path.length * 2) - 2));
     };
     let partIds;
@@ -332,7 +334,7 @@ export function run() {
     }));
     window["ready"] = (loaded.then(() => {
         play((t_6) => {
-            let v_1, t_3, c_4, c_5, v, t_2, c_13, o;
+            let v_1, t_3, c_4, t, c_5, v, t_2, c_13, o;
             const withTitle = (TITLE != null) && (!!(timing.card));
             const tc = withTitle ? within(t_6, -1, value_1(TITLE).end - 0.1, 0.4) : 0;
             const thumbOn = (THUMB != null) && (t_6 < 0.02);
@@ -421,10 +423,12 @@ export function run() {
                 }
                 else {
                     const c_11 = current;
-                    patternInput_1 = [(c_4 = c_11, (id) => {
+                    patternInput_1 = [(c_4 = c_11, (t = t_6, (id) => {
+                        let i_1;
                         const matchValue_2 = tryFindIndex((y) => (id === y), c_4.path);
-                        return (matchValue_2 == null) ? 0 : clamp01((t_6 - litAt(c_4, matchValue_2 * 2)) / 0.4);
-                    }), (c_5 = c_11, (a) => ((b) => {
+                        return (matchValue_2 == null) ? 0 : (themed ? clamp01((t - pathTimes(c_4)[0]) / 0.4) : ((i_1 = (matchValue_2 | 0), clamp01((t - litAt(c_4, i_1 * 2)) / 0.4))));
+                    })), (c_5 = c_11, (a) => ((b) => {
+                        let i_2;
                         const hop = tryFindIndex((tupledArg) => {
                             const x = tupledArg[0];
                             const y_1 = tupledArg[1];
@@ -438,7 +442,7 @@ export function run() {
                                 return false;
                             }
                         }, pairwise(c_5.path));
-                        return (hop == null) ? 0 : clamp01((t_6 - litAt(c_5, (hop * 2) + 1)) / 0.4);
+                        return (hop == null) ? 0 : (themed ? 0 : ((i_2 = (hop | 0), clamp01((t_6 - litAt(c_5, (i_2 * 2) + 1)) / 0.4))));
                     }))];
                 }
                 const lit = patternInput_1[0];

@@ -1061,6 +1061,11 @@ let run (ws: string) : JS.Promise<unit> =
                        let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
                        [ "card", Py.ofJs (withThumbnail marked?card (if on then box label else box false)) ]
                    | _ -> [])
+                // "kind": "progress" (a video about how the code changed): the frame lights a chapter's path
+                // as a set of parts, not as a flow along arrows
+                @ (match get script "kind" with
+                   | Some k when Py.truthy k -> [ "kind", Py.ofJs k ]
+                   | _ -> [])
                 // long videos: the shared map (parts on a grid, edges, kinds), drawn by the frame and by K.map
                 @ (match get script "map" with
                    | Some m when Py.truthy m -> [ "map", Py.ofJs m ]

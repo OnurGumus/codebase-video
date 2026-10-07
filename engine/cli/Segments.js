@@ -452,6 +452,7 @@ export function plan(ws, fps, size, browser, encoder) {
             runs: moduleRuns,
             chapters: chapterList,
             map: showsMap ? timing.map : defaultOf(),
+            kind: (showsMap && !((timing.kind == null))) ? timing.kind : defaultOf(),
             chapterPath: showsMap ? chapterPath : defaultOf(),
             zero: far(0),
             title: title,

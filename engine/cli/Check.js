@@ -1913,6 +1913,10 @@ function checkMap(f, script, jsFiles, lesson) {
             finally {
                 disposeSafe(enumerator_3);
             }
+            const badge = field(p, "badge");
+            if (!Operators_IsNull(badge) && (!Py_isStr(badge) ? true : (Py_len(Py_str(badge)) > 10))) {
+                Findings__err_Z721C83C5(f, concat("map: the badge of ", name, " is a word of at most 10 characters (\"new\", \"changed\")"));
+            }
             const label = text(p, "label");
             if (Py_len(label) > 12) {
                 Findings__err_Z721C83C5(f, `map: the label ${Py_reprStr(label)} of ${name} is ${Py_len(label)} characters; at most 12 fit a box`);
@@ -2072,7 +2076,7 @@ function checkMap(f, script, jsFiles, lesson) {
                             const forLoopVar_3 = enumerator_11["System.Collections.Generic.IEnumerator`1.get_Current"]();
                             const b_2 = forLoopVar_3[1];
                             const a_2 = forLoopVar_3[0];
-                            if ((known(a_2) && known(b_2)) && !((a_1 = a_2, (b_1 = b_2, exists_1((e_1) => {
+                            if (((known(a_2) && known(b_2)) && !((a_1 = a_2, (b_1 = b_2, exists_1((e_1) => {
                                 if ((text(e_1, "from") === a_1) && (text(e_1, "to") === b_1)) {
                                     return true;
                                 }
@@ -2082,7 +2086,7 @@ function checkMap(f, script, jsFiles, lesson) {
                                 else {
                                     return false;
                                 }
-                            }, edges))))) {
+                            }, edges))))) && (text(script, "kind") !== "progress")) {
                                 Findings__err_Z721C83C5(f, `${sid}: the path goes from ${a_2} to ${b_2}, but the map has no edge between them`);
                             }
                         }

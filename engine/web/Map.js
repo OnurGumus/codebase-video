@@ -12,6 +12,7 @@ import { max, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { singleton as singleton_1, append, forAll } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Array_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 import { append as append_1, toArray, empty, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 
 /**
  * What to draw: each part's visibility and litness (0..1) by id, each edge's litness by its two ends, and the part
@@ -45,23 +46,23 @@ export function View_$reflection() {
 
 export const BOUND = new Box(36, 218, 1848, 804);
 
-export const patternInput$004060 = [1.2, 1.5];
+export const patternInput$004062 = [1.2, 1.5];
 
-export const ZOOM_OUT = patternInput$004060[1];
+export const ZOOM_OUT = patternInput$004062[1];
 
-export const ZOOM_IN = patternInput$004060[0];
+export const ZOOM_IN = patternInput$004062[0];
 
-export const patternInput$004062$002D1 = [60, 240, 450, 253, 96];
+export const patternInput$004064$002D1 = [60, 240, 450, 253, 96];
 
-export const Y0 = patternInput$004062$002D1[1];
+export const Y0 = patternInput$004064$002D1[1];
 
-const X0 = patternInput$004062$002D1[0];
+const X0 = patternInput$004064$002D1[0];
 
-export const CELL_W = patternInput$004062$002D1[2];
+export const CELL_W = patternInput$004064$002D1[2];
 
-export const CELL_H = patternInput$004062$002D1[3];
+export const CELL_H = patternInput$004064$002D1[3];
 
-export const BOX_H = patternInput$004062$002D1[4];
+export const BOX_H = patternInput$004064$002D1[4];
 
 const DIM = 0.35;
 
@@ -81,7 +82,7 @@ export function definition() {
 }
 
 class PartEl extends Record {
-    constructor(p, tone, icon, cx, cy, el, box) {
+    constructor(p, tone, icon, cx, cy, el, badge, box) {
         super();
         this.p = p;
         this.tone = tone;
@@ -89,12 +90,13 @@ class PartEl extends Record {
         this.cx = cx;
         this.cy = cy;
         this.el = el;
+        this.badge = badge;
         this.box = box;
     }
 }
 
 function PartEl_$reflection() {
-    return record_type("Map.PartEl", [], PartEl, () => [["p", class_type("Map.MapPart")], ["tone", string_type], ["icon", string_type], ["cx", float64_type], ["cy", float64_type], ["el", class_type("Browser.Types.HTMLElement", undefined)], ["box", Box_$reflection()]]);
+    return record_type("Map.PartEl", [], PartEl, () => [["p", class_type("Map.MapPart")], ["tone", string_type], ["icon", string_type], ["cx", float64_type], ["cy", float64_type], ["el", class_type("Browser.Types.HTMLElement", undefined)], ["badge", class_type("Browser.Types.HTMLElement", undefined)], ["box", Box_$reflection()]]);
 }
 
 class EdgeEl extends Record {
@@ -143,7 +145,8 @@ export function build(parent, def) {
         const cx = matchValue_2;
         const icon = (!!(kind.icon)) ? concat("<span class=\"k-node-icon\">", kind.icon, "</span>") : "";
         const el = mk(layer, "div", "k-node k-actor", concat(icon, esc(p.label)), `left:${cx}px;top:${cy - (BOX_H / 2)}px;transform:translateX(-50%)`);
-        const part = new PartEl(p, tone(kind.tone), icon, cx, cy, el, new Box(cx, cy - (BOX_H / 2), 0, BOX_H));
+        const badge = (!!(p.badge)) ? mk(layer, "div", "k-edge-label k-map-badge", esc(p.badge), defaultOf()) : defaultOf();
+        const part = new PartEl(p, tone(kind.tone), icon, cx, cy, el, badge, new Box(cx, cy - (BOX_H / 2), 0, BOX_H));
         byId[p.id] = part;
         return part;
     }, partDefs);
@@ -232,14 +235,12 @@ export function build(parent, def) {
                     return (other.cx * 100000) + other.cy;
                 }
             };
+            const attached = (id_1, side_1) => sort(toArray(delay(() => collect((e_1) => append_1(((e_1.g.e.from === id_1) && (e_1.fromSide === side_1)) ? singleton([along(side_1, e_1.b), e_1.i]) : empty(), delay(() => (((e_1.g.e.to === id_1) && (e_1.toSide === side_1)) ? singleton([along(side_1, e_1.a), e_1.i]) : empty()))), ends))), {
+                Compare: (x_4, y_3) => (compareArrays(x_4, y_3) | 0),
+            });
             const pos = (id_2, side_2, other_1, i_1) => {
                 let x_5;
-                let all;
-                const id_1 = id_2;
-                const side_1 = side_2;
-                all = sort(toArray(delay(() => collect((e_1) => append_1(((e_1.g.e.from === id_1) && (e_1.fromSide === side_1)) ? singleton([along(side_1, e_1.b), e_1.i]) : empty(), delay(() => (((e_1.g.e.to === id_1) && (e_1.toSide === side_1)) ? singleton([along(side_1, e_1.a), e_1.i]) : empty()))), ends))), {
-                    Compare: (x_4, y_3) => (compareArrays(x_4, y_3) | 0),
-                });
+                const all = attached(id_2, side_2);
                 return (findIndex((x_5 = [along(side_2, other_1), i_1], (y_4) => equalArrays(x_5, y_4)), all) + 1) / (all.length + 1);
             };
             for (let idx_1 = 0; idx_1 <= (ends.length - 1); idx_1++) {
@@ -304,6 +305,28 @@ export function build(parent, def) {
                     console.log(`map: label ${JSON.stringify(g_1.e.label)} on ${g_1.e.from} -> ${g_1.e.to} does not fit, not drawn`);
                 }
             }
+            for (let idx_2 = 0; idx_2 <= (parts.length - 1); idx_2++) {
+                const q_1 = item(idx_2, parts);
+                if (!Operators_IsNull(q_1.badge)) {
+                    const meets = (side_3) => (attached(q_1.p.id, side_3).length > 0);
+                    const b_3 = q_1.box;
+                    if (!meets("top")) {
+                        q_1.badge.style.left = (`${q_1.cx}px`);
+                        q_1.badge.style.top = (`${b_3.y}px`);
+                        q_1.badge.style.transform = "translate(-50%, calc(-100% - 10px))";
+                    }
+                    else if (!meets("bottom")) {
+                        q_1.badge.style.left = (`${q_1.cx}px`);
+                        q_1.badge.style.top = (`${b_3.y + b_3.h}px`);
+                        q_1.badge.style.transform = "translate(-50%, 10px)";
+                    }
+                    else {
+                        q_1.badge.style.left = (`${b_3.x + 30}px`);
+                        q_1.badge.style.top = (`${b_3.y}px`);
+                        q_1.badge.style.transform = "translate(-100%, calc(-100% - 10px))";
+                    }
+                }
+            }
             laidOut = true;
         }
         let patternInput_9;
@@ -333,15 +356,20 @@ export function build(parent, def) {
         const zoomed = patternInput_9[0];
         const z_2 = patternInput_9[1];
         const others = 1 - clamp01(z_2 * 1.8);
-        for (let idx_2 = 0; idx_2 <= (parts.length - 1); idx_2++) {
-            const q_1 = item(idx_2, parts);
-            const l = clamp01(s.lit(q_1.p.id));
-            show(q_1.el, (clamp01(s.vis(q_1.p.id)) * ((q_1.p.id === zoomed) ? 0 : others)) * lerp(DIM, 1, l), 0, "translateX(-50%)");
-            q_1.el.style.borderColor = (`color-mix(in srgb, ${q_1.tone} ${l * 100}%, var(--border))`);
-            q_1.el.style.color = (`color-mix(in srgb, ${q_1.tone} ${l * 100}%, var(--ink))`);
+        for (let idx_3 = 0; idx_3 <= (parts.length - 1); idx_3++) {
+            const q_2 = item(idx_3, parts);
+            const l = clamp01(s.lit(q_2.p.id));
+            const v = clamp01(s.vis(q_2.p.id)) * ((q_2.p.id === zoomed) ? 0 : others);
+            show(q_2.el, v * lerp(DIM, 1, l), 0, "translateX(-50%)");
+            q_2.el.style.borderColor = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--border))`);
+            q_2.el.style.color = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--ink))`);
+            if (!Operators_IsNull(q_2.badge)) {
+                q_2.badge.style.opacity = (v * lerp(DIM, 1, l));
+                q_2.badge.style.color = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--muted))`);
+            }
         }
-        for (let idx_3 = 0; idx_3 <= (edges.length - 1); idx_3++) {
-            const g_2 = item(idx_3, edges);
+        for (let idx_4 = 0; idx_4 <= (edges.length - 1); idx_4++) {
+            const g_2 = item(idx_4, edges);
             const l_1 = clamp01(s.edgeLit(g_2.e.from, g_2.e.to));
             const v_1 = min(clamp01(s.vis(g_2.e.from)), clamp01(s.vis(g_2.e.to))) * others;
             const stroke = `color-mix(in srgb, var(--ink) ${l_1 * 100}%, var(--faint))`;
@@ -355,22 +383,22 @@ export function build(parent, def) {
         bound.style.display = on;
         tag.style.display = on;
         if (z_2 > 0) {
-            const q_2 = part_1(zoomed);
-            const b_3 = q_2.box;
-            bound.style.left = (`${lerp(b_3.x, BOUND.x, z_2)}px`);
-            bound.style.top = (`${lerp(b_3.y, BOUND.y, z_2)}px`);
-            bound.style.width = (`${lerp(b_3.w, BOUND.w, z_2)}px`);
-            bound.style.height = (`${lerp(b_3.h, BOUND.h, z_2)}px`);
-            bound.style.border = ((z_2 < 0.2) ? concat("3px solid ", q_2.tone) : concat("4px dashed color-mix(in srgb, ", q_2.tone, " 70%, transparent)"));
+            const q_3 = part_1(zoomed);
+            const b_4 = q_3.box;
+            bound.style.left = (`${lerp(b_4.x, BOUND.x, z_2)}px`);
+            bound.style.top = (`${lerp(b_4.y, BOUND.y, z_2)}px`);
+            bound.style.width = (`${lerp(b_4.w, BOUND.w, z_2)}px`);
+            bound.style.height = (`${lerp(b_4.h, BOUND.h, z_2)}px`);
+            bound.style.border = ((z_2 < 0.2) ? concat("3px solid ", q_3.tone) : concat("4px dashed color-mix(in srgb, ", q_3.tone, " 70%, transparent)"));
             bound.style.background = (`color-mix(in srgb, var(--card) ${(1 - clamp01(z_2 * 2)) * 100}%, transparent)`);
             if (tagged !== zoomed) {
                 tagged = zoomed;
-                tag.innerHTML = concat(q_2.icon, esc(q_2.p.label));
+                tag.innerHTML = concat(q_3.icon, esc(q_3.p.label));
             }
             const tw = tag.offsetWidth;
-            tag.style.left = (`${lerp(q_2.cx, TAG_RIGHT - (tw / 2), z_2)}px`);
-            tag.style.top = (`${lerp(q_2.cy, BOUND.y, z_2)}px`);
-            tag.style.color = q_2.tone;
+            tag.style.left = (`${lerp(q_3.cx, TAG_RIGHT - (tw / 2), z_2)}px`);
+            tag.style.top = (`${lerp(q_3.cy, BOUND.y, z_2)}px`);
+            tag.style.color = q_3.tone;
             tag.style.background = (`color-mix(in srgb, var(--bg) ${clamp01(z_2 * 2) * 100}%, transparent)`);
         }
     });
