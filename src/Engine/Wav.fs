@@ -61,27 +61,30 @@ let decode (buf: obj) : float32[] =
     let ascii (o: int) : string = buf?toString("ascii", o, o + 4)
     let total: int = buf?length
     if total < 12 || ascii 0 <> "RIFF" || ascii 8 <> "WAVE" then failwith "not a WAV file"
-    let mutable off = 12
-    let mutable pcm16 = false
-    let mutable result: float32[] option = None
-    while result.IsNone && off + 8 <= total do
-        let id = ascii off
-        let size: int = buf?readUInt32LE(off + 4)
-        if id = "fmt " then
-            let format: int = buf?readUInt16LE(off + 8)
-            let channels: int = buf?readUInt16LE(off + 10)
-            let bits: int = buf?readUInt16LE(off + 22)
-            pcm16 <- format = 1 && channels = 1 && bits = 16
-        elif id = "data" then
-            if not pcm16 then failwith "only 16-bit PCM mono WAV files are supported"
-            let n = (min size (total - off - 8)) / 2
-            let pcm = int16Copy buf (off + 8) n
-            let out: float32[] = Array.zeroCreate n
-            for i in 0 .. n - 1 do
-                out[i] <- float32 (float pcm[i] / 32768.0)
-            result <- Some out
-        off <- off + 8 + size + size % 2
-    match result with
+    // walk the chunks from `off`, carrying whether the fmt chunk said 16-bit PCM mono
+    let rec walk (off: int) (pcm16: bool) : float32[] option =
+        if off + 8 > total then
+            None
+        else
+            let id = ascii off
+            let size: int = buf?readUInt32LE(off + 4)
+            let next = off + 8 + size + size % 2
+            if id = "fmt " then
+                let format: int = buf?readUInt16LE(off + 8)
+                let channels: int = buf?readUInt16LE(off + 10)
+                let bits: int = buf?readUInt16LE(off + 22)
+                walk next (format = 1 && channels = 1 && bits = 16)
+            elif id = "data" then
+                if not pcm16 then failwith "only 16-bit PCM mono WAV files are supported"
+                let n = (min size (total - off - 8)) / 2
+                let pcm = int16Copy buf (off + 8) n
+                let out: float32[] = Array.zeroCreate n
+                for i in 0 .. n - 1 do
+                    out[i] <- float32 (float pcm[i] / 32768.0)
+                Some out
+            else
+                walk next pcm16
+    match walk 12 false with
     | Some r -> r
     | None -> failwith "WAV file has no data chunk"
 
@@ -91,10 +94,13 @@ let write (path: string) (samples: float32[]) : unit = Node.writeBytes path (enc
 /// The samples of several pieces, one after another.
 let concat (pieces: float32[] list) : float32[] =
     let out: float32[] = Array.zeroCreate (pieces |> List.sumBy (fun p -> p.Length))
-    let mutable at = 0
-    for p in pieces do
-        out?set(p, at) |> ignore
-        at <- at + p.Length
+    pieces
+    |> List.fold
+        (fun at p ->
+            out?set(p, at) |> ignore
+            at + p.Length)
+        0
+    |> ignore
     out
 
 /// Leading and trailing silence cut off, exactly as kokoro-onnx did to every generated piece with librosa's
@@ -111,7 +117,7 @@ let trim (y: float32[]) : float32[] =
     let rms =
         Array.init frames (fun f ->
             let first = f * hop - pad
-            let mutable s = 0.0
+            let mutable s = 0.0 // a sample loop: a local accumulator is clearest
             for i in max 0 first .. min (n - 1) (first + frameLength - 1) do
                 let v = float y[i]
                 s <- s + v * v
