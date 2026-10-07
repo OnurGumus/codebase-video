@@ -84,9 +84,13 @@ you in two places, always the same picture, so the viewer keeps their bearings f
 - `kinds` is the video's colour-by-kind table in a form the kit can read: a tone and an icon for each kind of part.
 - `parts`: 2 to 7 of them, each with a `label` of at most 12 characters and a cell on a grid of 4 columns (`col` 0-3)
   by 3 rows (`row` 0-2). Lay the main flow out left to right along one row; put what it branches to above and below.
-- `edges`: `from` → `to` is the real direction, `label` a verb. The verb is drawn on an arrow between two parts of
-  the same row when it fits between their boxes (about 6 characters between neighbouring columns), or of the same
-  column. Other arrows are drawn without it; the render output names each label that was left out.
+- `edges`: `from` → `to` is the real direction, `label` a verb. An arrow between two parts of one row or one column
+  is straight. An arrow that changes row and column makes one turn: it leaves its box from the top or bottom and
+  arrives level, or, when a part is in that way, leaves level and arrives from above or below; `check` warns when
+  a part is in both ways. Arrows that meet on one side of a box are spread along it. The verb is drawn over an
+  arrow's level stretch when it fits (about 6 characters between neighbouring boxes of a row, about 8 on an arrow
+  with a turn between neighbouring columns), or beside an upright arrow; the render output names each label that
+  was left out. Keep verbs to one short word.
 
 **A chapter's path.** On a chapter's bridge scene, `"path": ["endpoint", "journal"]` replaces the plain chapter card
 with the map: the chapter's number and title at the top, every part dim, and the path's parts and edges lighting up

@@ -1096,18 +1096,23 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
             elif known a && known b then
                 // An arrow between two parts of one row or column is a straight line: a part in a cell between
                 // them would sit on it.
-                // An arrow that changes row and column leaves and arrives level and turns in the middle: a part
-                // in a column between, in the row it leaves or the row it arrives in, or at the very middle, is in
-                // its way.
+                // An arrow that changes row and column makes one turn (src/Kit/Map.fs): down or up its own column
+                // and then level along the row it arrives in, or, when a part is on that way, level along its
+                // own row and then down or up the column it arrives in. Only when a part is on both ways is
+                // there no way round.
                 let (c1, r1), (c2, r2) = cell (byId a), cell (byId b)
                 for p in parts do
                     let c, r = cell p
                     let between x x1 x2 = x > min x1 x2 && x < max x1 x2
                     let crossed = text p "id"
                     let straight = (r1 = r2 && r = r1 && between c c1 c2) || (c1 = c2 && c = c1 && between r r1 r2)
+                    let onWay (ca, ra, cb, rb) (c, r) = (c = ca && between r ra rb) || (r = rb && (c = ca || between c ca cb))
+                    let blocked way = parts |> List.exists (fun q -> onWay way (cell q))
                     let curved =
-                        r1 <> r2 && c1 <> c2 && between c c1 c2
-                        && (r = r1 || r = r2 || (c * 2.0 = c1 + c2 && r * 2.0 = r1 + r2))
+                        r1 <> r2 && c1 <> c2
+                        && onWay (c1, r1, c2, r2) (c, r)
+                        // the other way round is the same shape seen from the far end
+                        && blocked (c2, r2, c1, r1)
                     if straight || curved then
                         f.warn $"map: the edge {a} -> {b} would cross {crossed}; move a part, or route the edge through it"
         let joined a b = edges |> List.exists (fun e -> (text e "from" = a && text e "to" = b) || (text e "from" = b && text e "to" = a))

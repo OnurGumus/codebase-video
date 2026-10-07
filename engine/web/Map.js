@@ -1,13 +1,17 @@
 
 import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { bool_type, unit_type, class_type, record_type, option_type, tuple_type, lambda_type, float64_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { route, tone, esc, mk, Box_$reflection, Box } from "./Draw.js";
+import { HEAD_W, HEAD_L, route, tone, esc, mk, Box_$reflection, Box } from "./Draw.js";
 import { lerp, show, clamp01, timing } from "./Stage.js";
-import { defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { equalArrays, numberHash, compareArrays, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { createSvg } from "./Interop.js";
-import { item, map } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { findIndex, sort, mapIndexed, item, map } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
+import { FSharpSet__Contains, ofArray } from "./fable_modules/fable-library-js.5.19.0/Set.js";
+import { max, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
+import { singleton as singleton_1, append, forAll } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { Array_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
+import { append as append_1, toArray, empty, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 
 /**
  * What to draw: each part's visibility and litness (0..1) by id, each edge's litness by its two ends, and the part
@@ -41,23 +45,23 @@ export function View_$reflection() {
 
 export const BOUND = new Box(36, 218, 1848, 804);
 
-export const patternInput$004058 = [1.2, 1.5];
+export const patternInput$004060 = [1.2, 1.5];
 
-export const ZOOM_OUT = patternInput$004058[1];
+export const ZOOM_OUT = patternInput$004060[1];
 
-export const ZOOM_IN = patternInput$004058[0];
+export const ZOOM_IN = patternInput$004060[0];
 
-export const patternInput$004060$002D1 = [60, 240, 450, 253, 96];
+export const patternInput$004062$002D1 = [60, 240, 450, 253, 96];
 
-export const Y0 = patternInput$004060$002D1[1];
+export const Y0 = patternInput$004062$002D1[1];
 
-const X0 = patternInput$004060$002D1[0];
+const X0 = patternInput$004062$002D1[0];
 
-export const CELL_W = patternInput$004060$002D1[2];
+export const CELL_W = patternInput$004062$002D1[2];
 
-export const CELL_H = patternInput$004060$002D1[3];
+export const CELL_H = patternInput$004062$002D1[3];
 
-export const BOX_H = patternInput$004060$002D1[4];
+export const BOX_H = patternInput$004062$002D1[4];
 
 const DIM = 0.35;
 
@@ -173,34 +177,143 @@ export function build(parent, def) {
                 const w = q.el.offsetWidth;
                 q.box = (new Box(q.cx - (w / 2), q.cy - (BOX_H / 2), w, BOX_H));
             }
-            for (let idx_1 = 0; idx_1 <= (edges.length - 1); idx_1++) {
-                const g = item(idx_1, edges);
-                const matchValue_4 = part_1(g.e.from).box;
-                const b = part_1(g.e.to).box;
-                const a = matchValue_4;
-                const r = route(a, b, 0, undefined, undefined, ["end"], part_1(g.e.from).p.col !== part_1(g.e.to).p.col);
-                g.path.setAttribute("d", r.d);
-                g.head.setAttribute("points", item(0, r.heads)[1]);
-                g.label.style.left = (`${r.label.x}px`);
-                g.label.style.top = (`${r.label.y}px`);
-                g.label.style.transform = r.labelTransform;
-                const gap = ((a.x + a.w) <= b.x) ? (b.x - (a.x + a.w)) : (a.x - (b.x + b.w));
-                const level = part_1(g.e.from).p.row === part_1(g.e.to).p.row;
-                g.fits = (!r.horiz ? true : (level && ((g.label.offsetWidth + 40) <= gap)));
-                if (!g.fits && (!!(g.e.label))) {
-                    console.log(`map: label ${JSON.stringify(g.e.label)} on ${g.e.from} -> ${g.e.to} does not fit, not drawn`);
+            const occupied = ofArray(map((p_2) => [p_2.col, p_2.row], partDefs), {
+                Compare: (x, y) => (compareArrays(x, y) | 0),
+            });
+            const between = (x_1, a, b) => {
+                if (x_1 > min(a, b)) {
+                    return x_1 < max(a, b);
+                }
+                else {
+                    return false;
+                }
+            };
+            const free = (cells) => forAll((c) => !FSharpSet__Contains(occupied, c), cells);
+            const cols = Array_distinct(map((p_3) => p_3.col, partDefs, Float64Array), {
+                Equals: (x_2, y_1) => (x_2 === y_1),
+                GetHashCode: (x_2) => (numberHash(x_2) | 0),
+            });
+            const rows = Array_distinct(map((p_4) => p_4.row, partDefs, Float64Array), {
+                Equals: (x_3, y_2) => (x_3 === y_2),
+                GetHashCode: (x_3) => (numberHash(x_3) | 0),
+            });
+            const ends = mapIndexed((i, g) => {
+                const matchValue_4 = part_1(g.e.from);
+                const b_1 = part_1(g.e.to);
+                const a_1 = matchValue_4;
+                const matchValue_6 = a_1.p.col;
+                const matchValue_7 = a_1.p.row;
+                const matchValue_8 = b_1.p.col;
+                const r2 = b_1.p.row;
+                const r1 = matchValue_7;
+                const c2 = matchValue_8;
+                const c1 = matchValue_6;
+                const downAcross = append(toList(delay(() => collect((r) => (between(r, r1, r2) ? singleton([c1, r]) : empty()), rows))), append(singleton_1([c1, r2]), toList(delay(() => collect((c_1) => (between(c_1, c1, c2) ? singleton([c_1, r2]) : empty()), cols)))));
+                const acrossDown = append(toList(delay(() => collect((c_2) => (between(c_2, c1, c2) ? singleton([c_2, r1]) : empty()), cols))), append(singleton_1([c2, r1]), toList(delay(() => collect((r_1) => (between(r_1, r1, r2) ? singleton([c2, r_1]) : empty()), rows)))));
+                const mode = (r1 === r2) ? "level" : ((c1 === c2) ? "upright" : ((free(downAcross) ? true : !free(acrossDown)) ? "down-across" : "across-down"));
+                const sideways = (b_1.cx > a_1.cx) ? ["right", "left"] : ["left", "right"];
+                const updown = (b_1.cy > a_1.cy) ? ["bottom", "top"] : ["top", "bottom"];
+                const patternInput_4 = (mode === "level") ? sideways : ((mode === "upright") ? updown : ((mode === "down-across") ? [updown[0], sideways[1]] : [sideways[0], updown[1]]));
+                return {
+                    a: a_1,
+                    b: b_1,
+                    fromSide: patternInput_4[0],
+                    g: g,
+                    i: i,
+                    mode: mode,
+                    toSide: patternInput_4[1],
+                };
+            }, edges);
+            const along = (side, other) => {
+                if ((side === "left") ? true : (side === "right")) {
+                    return (other.cy * 100000) + other.cx;
+                }
+                else {
+                    return (other.cx * 100000) + other.cy;
+                }
+            };
+            const pos = (id_2, side_2, other_1, i_1) => {
+                let x_5;
+                let all;
+                const id_1 = id_2;
+                const side_1 = side_2;
+                all = sort(toArray(delay(() => collect((e_1) => append_1(((e_1.g.e.from === id_1) && (e_1.fromSide === side_1)) ? singleton([along(side_1, e_1.b), e_1.i]) : empty(), delay(() => (((e_1.g.e.to === id_1) && (e_1.toSide === side_1)) ? singleton([along(side_1, e_1.a), e_1.i]) : empty()))), ends))), {
+                    Compare: (x_4, y_3) => (compareArrays(x_4, y_3) | 0),
+                });
+                return (findIndex((x_5 = [along(side_2, other_1), i_1], (y_4) => equalArrays(x_5, y_4)), all) + 1) / (all.length + 1);
+            };
+            for (let idx_1 = 0; idx_1 <= (ends.length - 1); idx_1++) {
+                const e_2 = item(idx_1, ends);
+                const matchValue_11 = e_2.a.box;
+                const g_1 = e_2.g;
+                const b_2 = e_2.b.box;
+                const a_2 = matchValue_11;
+                const matchValue_13 = pos(g_1.e.from, e_2.fromSide, e_2.b, e_2.i);
+                const toPos = pos(g_1.e.to, e_2.toSide, e_2.a, e_2.i);
+                const fromPos = matchValue_13;
+                const overLevel = (x0, x1, y_5) => {
+                    g_1.label.style.left = (`${(x0 + x1) / 2}px`);
+                    g_1.label.style.top = (`${y_5}px`);
+                    g_1.label.style.transform = "translate(-50%, -125%)";
+                    g_1.fits = ((g_1.label.offsetWidth + 40) <= Math.abs(x1 - x0));
+                };
+                const matchValue_15 = e_2.mode;
+                switch (matchValue_15) {
+                    case "level":
+                    case "upright": {
+                        const r_2 = route(a_2, b_2, 0, fromPos, toPos, ["end"], e_2.mode === "level");
+                        g_1.path.setAttribute("d", r_2.d);
+                        g_1.head.setAttribute("points", item(0, r_2.heads)[1]);
+                        g_1.label.style.left = (`${r_2.label.x}px`);
+                        g_1.label.style.top = (`${r_2.label.y}px`);
+                        g_1.label.style.transform = (((e_2.mode === "level") && (fromPos > 0.5)) ? "translate(-50%, 25%)" : r_2.labelTransform);
+                        const gap = ((a_2.x + a_2.w) <= b_2.x) ? (b_2.x - (a_2.x + a_2.w)) : (a_2.x - (b_2.x + b_2.w));
+                        g_1.fits = ((e_2.mode === "upright") ? true : ((g_1.label.offsetWidth + 40) <= gap));
+                        break;
+                    }
+                    case "down-across": {
+                        const matchValue_16 = a_2.x + (a_2.w * fromPos);
+                        const sy = (e_2.fromSide === "bottom") ? (a_2.y + a_2.h) : a_2.y;
+                        const sx = matchValue_16;
+                        const ey = b_2.y + (b_2.h * toPos);
+                        const dir = (e_2.toSide === "left") ? 1 : -1;
+                        const tip = (e_2.toSide === "left") ? b_2.x : (b_2.x + b_2.w);
+                        const back = tip - (dir * HEAD_L);
+                        const down = (ey > sy) ? 1 : -1;
+                        const turn = min(60, min(Math.abs(back - sx), Math.abs(ey - sy)));
+                        g_1.path.setAttribute("d", `M${sx},${sy} L${sx},${ey - (down * turn)} Q${sx},${ey} ${sx + (dir * turn)},${ey} L${back},${ey}`);
+                        g_1.head.setAttribute("points", `${tip},${ey} ${back},${ey - (HEAD_W / 2)} ${back},${ey + (HEAD_W / 2)}`);
+                        overLevel(sx + (dir * turn), back, ey);
+                        break;
+                    }
+                    default: {
+                        const sy_1 = a_2.y + (a_2.h * fromPos);
+                        const sx_1 = (e_2.fromSide === "right") ? (a_2.x + a_2.w) : a_2.x;
+                        const ex = b_2.x + (b_2.w * toPos);
+                        const down_1 = (e_2.toSide === "top") ? 1 : -1;
+                        const tip_1 = (e_2.toSide === "top") ? b_2.y : (b_2.y + b_2.h);
+                        const back_1 = tip_1 - (down_1 * HEAD_L);
+                        const dir_1 = (ex > sx_1) ? 1 : -1;
+                        const turn_1 = min(60, min(Math.abs(ex - sx_1), Math.abs(back_1 - sy_1)));
+                        g_1.path.setAttribute("d", `M${sx_1},${sy_1} L${ex - (dir_1 * turn_1)},${sy_1} Q${ex},${sy_1} ${ex},${sy_1 + (down_1 * turn_1)} L${ex},${back_1}`);
+                        g_1.head.setAttribute("points", `${ex},${tip_1} ${ex - (HEAD_W / 2)},${back_1} ${ex + (HEAD_W / 2)},${back_1}`);
+                        overLevel(sx_1, ex - (dir_1 * turn_1), sy_1);
+                    }
+                }
+                if (!g_1.fits && (!!(g_1.e.label))) {
+                    console.log(`map: label ${JSON.stringify(g_1.e.label)} on ${g_1.e.from} -> ${g_1.e.to} does not fit, not drawn`);
                 }
             }
             laidOut = true;
         }
-        let patternInput_3;
-        const matchValue_6 = s.zoom;
-        let matchResult, id_2, z_1;
-        if (matchValue_6 != null) {
-            if ((matchValue_6[0], matchValue_6[1] > 0)) {
+        let patternInput_9;
+        const matchValue_20 = s.zoom;
+        let matchResult, id_4, z_1;
+        if (matchValue_20 != null) {
+            if ((matchValue_20[0], matchValue_20[1] > 0)) {
                 matchResult = 0;
-                id_2 = matchValue_6[0];
-                z_1 = matchValue_6[1];
+                id_4 = matchValue_20[0];
+                z_1 = matchValue_20[1];
             }
             else {
                 matchResult = 1;
@@ -211,14 +324,14 @@ export function build(parent, def) {
         }
         switch (matchResult) {
             case 0: {
-                patternInput_3 = [id_2, clamp01(z_1)];
+                patternInput_9 = [id_4, clamp01(z_1)];
                 break;
             }
             default:
-                patternInput_3 = ["", 0];
+                patternInput_9 = ["", 0];
         }
-        const zoomed = patternInput_3[0];
-        const z_2 = patternInput_3[1];
+        const zoomed = patternInput_9[0];
+        const z_2 = patternInput_9[1];
         const others = 1 - clamp01(z_2 * 1.8);
         for (let idx_2 = 0; idx_2 <= (parts.length - 1); idx_2++) {
             const q_1 = item(idx_2, parts);
@@ -228,26 +341,26 @@ export function build(parent, def) {
             q_1.el.style.color = (`color-mix(in srgb, ${q_1.tone} ${l * 100}%, var(--ink))`);
         }
         for (let idx_3 = 0; idx_3 <= (edges.length - 1); idx_3++) {
-            const g_1 = item(idx_3, edges);
-            const l_1 = clamp01(s.edgeLit(g_1.e.from, g_1.e.to));
-            const v_1 = min(clamp01(s.vis(g_1.e.from)), clamp01(s.vis(g_1.e.to))) * others;
+            const g_2 = item(idx_3, edges);
+            const l_1 = clamp01(s.edgeLit(g_2.e.from, g_2.e.to));
+            const v_1 = min(clamp01(s.vis(g_2.e.from)), clamp01(s.vis(g_2.e.to))) * others;
             const stroke = `color-mix(in srgb, var(--ink) ${l_1 * 100}%, var(--faint))`;
-            g_1.path.style.opacity = (v_1 * lerp(DIM, 1, l_1));
-            g_1.path.style.stroke = stroke;
-            g_1.head.style.opacity = (v_1 * lerp(DIM, 1, l_1));
-            g_1.head.style.fill = stroke;
-            g_1.label.style.opacity = (g_1.fits ? (v_1 * lerp(DIM, 1, l_1)) : 0);
+            g_2.path.style.opacity = (v_1 * lerp(DIM, 1, l_1));
+            g_2.path.style.stroke = stroke;
+            g_2.head.style.opacity = (v_1 * lerp(DIM, 1, l_1));
+            g_2.head.style.fill = stroke;
+            g_2.label.style.opacity = (g_2.fits ? (v_1 * lerp(DIM, 1, l_1)) : 0);
         }
         const on = (z_2 > 0) ? "block" : "none";
         bound.style.display = on;
         tag.style.display = on;
         if (z_2 > 0) {
             const q_2 = part_1(zoomed);
-            const b_1 = q_2.box;
-            bound.style.left = (`${lerp(b_1.x, BOUND.x, z_2)}px`);
-            bound.style.top = (`${lerp(b_1.y, BOUND.y, z_2)}px`);
-            bound.style.width = (`${lerp(b_1.w, BOUND.w, z_2)}px`);
-            bound.style.height = (`${lerp(b_1.h, BOUND.h, z_2)}px`);
+            const b_3 = q_2.box;
+            bound.style.left = (`${lerp(b_3.x, BOUND.x, z_2)}px`);
+            bound.style.top = (`${lerp(b_3.y, BOUND.y, z_2)}px`);
+            bound.style.width = (`${lerp(b_3.w, BOUND.w, z_2)}px`);
+            bound.style.height = (`${lerp(b_3.h, BOUND.h, z_2)}px`);
             bound.style.border = ((z_2 < 0.2) ? concat("3px solid ", q_2.tone) : concat("4px dashed color-mix(in srgb, ", q_2.tone, " 70%, transparent)"));
             bound.style.background = (`color-mix(in srgb, var(--card) ${(1 - clamp01(z_2 * 2)) * 100}%, transparent)`);
             if (tagged !== zoomed) {

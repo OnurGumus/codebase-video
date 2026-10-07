@@ -7,8 +7,10 @@
 /// each part and edge is, and how far a zoom into one part has gone. It knows nothing of scenes or chapters.
 ///
 /// Parts sit in the cells of a 4 by 3 grid over the module area (x 60-1860, y 240-1000), each an icon and a label
-/// in a box 96 px tall. A part is dim (35%, neutral) or lit (its kind's tone). An edge's label is drawn only on an
-/// arrow between two parts of one row, when it fits between their boxes, or of one column.
+/// in a box 96 px tall. A part is dim (35%, neutral) or lit (its kind's tone). An arrow between two parts of one
+/// row or one column is straight; one that changes row and column leaves from the top or bottom of its box, turns
+/// once and arrives level. Ends that meet on one side of a box are spread along it. An edge's label is drawn over a
+/// level stretch that is long enough for it, or beside an upright arrow.
 module Map
 
 open Fable.Core
@@ -141,22 +143,96 @@ let build (parent: HTMLElement) (def: MapDef) : View =
         for q in parts do
             let w = q.el.offsetWidth
             q.box <- { x = q.cx - w / 2.0; y = q.cy - BOX_H / 2.0; w = w; h = BOX_H }
-        for g in edges do
-            let a, b = (part g.e.from).box, (part g.e.``to``).box
-            // Parts in different columns are joined side to side, so every such arrow reads left to right or
-            // right to left and its label has the gap between the columns; parts in one column, top to bottom.
-            let r = route a b 0.0 None None [| "end" |] (Some((part g.e.from).p.col <> (part g.e.``to``).p.col))
-            g.path.setAttribute ("d", r.d)
-            g.head.setAttribute ("points", snd r.heads.[0])
-            g.label.style.left <- $"{r.label.x}px"
-            g.label.style.top <- $"{r.label.y}px"
-            g.label.style.transform <- r.labelTransform
-            // A label over a level arrow has the gap between the two boxes to itself, less 20 px each side; beside
-            // an upright arrow it has the row. An arrow between two rows and two columns is a steep curve where its
-            // label would go, so it carries none.
-            let gap = if a.x + a.w <= b.x then b.x - (a.x + a.w) else a.x - (b.x + b.w)
-            let level = (part g.e.from).p.row = (part g.e.``to``).p.row
-            g.fits <- not r.horiz || (level && g.label.offsetWidth + 40.0 <= gap)
+        // How each arrow runs. Two parts of one row are joined side to side ("level"), two of one column top to
+        // bottom ("upright"). An arrow that changes row and column makes one turn. By choice it leaves its box
+        // from the top or bottom and arrives level at the side that faces where it came from ("down-across"): so
+        // it never starts on the side of a box where the arrows of that box's own row arrive, which made it read
+        // as a branch of one of them. When a part sits on that way and the other way round is free, it leaves
+        // level and arrives from above or below ("across-down"). check warns when neither way is free.
+        let occupied = partDefs |> Array.map (fun p -> p.col, p.row) |> Set.ofArray
+        let between (x: float) (a: float) (b: float) = x > System.Math.Min(a, b) && x < System.Math.Max(a, b)
+        let free (cells: (float * float) list) = cells |> List.forall (fun c -> not (occupied.Contains c))
+        let cols = partDefs |> Array.map (fun p -> p.col) |> Array.distinct
+        let rows = partDefs |> Array.map (fun p -> p.row) |> Array.distinct
+        let ends =
+            edges
+            |> Array.mapi (fun i g ->
+                let a, b = part g.e.from, part g.e.``to``
+                let c1, r1, c2, r2 = a.p.col, a.p.row, b.p.col, b.p.row
+                let downAcross =
+                    [ for r in rows do if between r r1 r2 then c1, r ] @ [ c1, r2 ] @ [ for c in cols do if between c c1 c2 then c, r2 ]
+                let acrossDown =
+                    [ for c in cols do if between c c1 c2 then c, r1 ] @ [ c2, r1 ] @ [ for r in rows do if between r r1 r2 then c2, r ]
+                let mode =
+                    if r1 = r2 then "level"
+                    elif c1 = c2 then "upright"
+                    elif free downAcross || not (free acrossDown) then "down-across"
+                    else "across-down"
+                let sideways = if b.cx > a.cx then "right", "left" else "left", "right"
+                let updown = if b.cy > a.cy then "bottom", "top" else "top", "bottom"
+                let fromSide, toSide =
+                    match mode with
+                    | "level" -> sideways
+                    | "upright" -> updown
+                    | "down-across" -> fst updown, snd sideways
+                    | _ -> fst sideways, snd updown
+                {| i = i; g = g; a = a; b = b; mode = mode; fromSide = fromSide; toSide = toSide |})
+        // Where on its side an end attaches: alone, the middle; with others, spread along the side in the order
+        // of where their other ends are, so that arrows meeting at one side neither share a point nor cross. Two
+        // arrows between the same two parts keep their order at both, and so run side by side.
+        let along (side: string) (other: PartEl) = if side = "left" || side = "right" then other.cy * 1e5 + other.cx else other.cx * 1e5 + other.cy
+        let attached (id: string) (side: string) : (float * int)[] =
+            [| for e in ends do
+                   if e.g.e.from = id && e.fromSide = side then along side e.b, e.i
+                   if e.g.e.``to`` = id && e.toSide = side then along side e.a, e.i |]
+            |> Array.sort
+        let pos (id: string) (side: string) (other: PartEl) (i: int) : float =
+            let all = attached id side
+            float (Array.findIndex ((=) (along side other, i)) all + 1) / float (all.Length + 1)
+        for e in ends do
+            let g, a, b = e.g, e.a.box, e.b.box
+            let fromPos, toPos = pos g.e.from e.fromSide e.b e.i, pos g.e.``to`` e.toSide e.a e.i
+            // The label of an arrow with a turn goes over its level stretch, from x0 to x1 at height y.
+            let overLevel (x0: float) (x1: float) (y: float) =
+                g.label.style.left <- $"{(x0 + x1) / 2.0}px"
+                g.label.style.top <- $"{y}px"
+                g.label.style.transform <- "translate(-50%, -125%)"
+                g.fits <- g.label.offsetWidth + 40.0 <= abs (x1 - x0)
+            match e.mode with
+            | "level" | "upright" ->
+                let r = route a b 0.0 (Some fromPos) (Some toPos) [| "end" |] (Some(e.mode = "level"))
+                g.path.setAttribute ("d", r.d)
+                g.head.setAttribute ("points", snd r.heads.[0])
+                g.label.style.left <- $"{r.label.x}px"
+                g.label.style.top <- $"{r.label.y}px"
+                // The lower of two arrows that run side by side carries its label below its line.
+                g.label.style.transform <- if e.mode = "level" && fromPos > 0.5 then "translate(-50%, 25%)" else r.labelTransform
+                // A label over a level arrow has the gap between the two boxes to itself, less 20 px each side;
+                // beside an upright arrow it has the row.
+                let gap = if a.x + a.w <= b.x then b.x - (a.x + a.w) else a.x - (b.x + b.w)
+                g.fits <- e.mode = "upright" || g.label.offsetWidth + 40.0 <= gap
+            | "down-across" ->
+                let sx, sy = a.x + a.w * fromPos, (if e.fromSide = "bottom" then a.y + a.h else a.y)
+                let ey = b.y + b.h * toPos
+                let dir = if e.toSide = "left" then 1.0 else -1.0
+                let tip = if e.toSide = "left" then b.x else b.x + b.w
+                let back = tip - dir * HEAD_L
+                let down = if ey > sy then 1.0 else -1.0
+                let turn = System.Math.Min(60.0, System.Math.Min(abs (back - sx), abs (ey - sy)))
+                g.path.setAttribute ("d", $"M{sx},{sy} L{sx},{ey - down * turn} Q{sx},{ey} {sx + dir * turn},{ey} L{back},{ey}")
+                g.head.setAttribute ("points", $"{tip},{ey} {back},{ey - HEAD_W / 2.0} {back},{ey + HEAD_W / 2.0}")
+                overLevel (sx + dir * turn) back ey
+            | _ ->
+                let sx, sy = (if e.fromSide = "right" then a.x + a.w else a.x), a.y + a.h * fromPos
+                let ex = b.x + b.w * toPos
+                let down = if e.toSide = "top" then 1.0 else -1.0
+                let tip = if e.toSide = "top" then b.y else b.y + b.h
+                let back = tip - down * HEAD_L
+                let dir = if ex > sx then 1.0 else -1.0
+                let turn = System.Math.Min(60.0, System.Math.Min(abs (ex - sx), abs (back - sy)))
+                g.path.setAttribute ("d", $"M{sx},{sy} L{ex - dir * turn},{sy} Q{ex},{sy} {ex},{sy + down * turn} L{ex},{back}")
+                g.head.setAttribute ("points", $"{ex},{tip} {ex - HEAD_W / 2.0},{back} {ex + HEAD_W / 2.0},{back}")
+                overLevel sx (ex - dir * turn) sy
             if not g.fits && truthy g.e.label then
                 log $"map: label {stringify g.e.label} on {g.e.from} -> {g.e.``to``} does not fit, not drawn"
         laidOut <- true

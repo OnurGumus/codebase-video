@@ -2005,7 +2005,27 @@ function checkMap(f, script, jsFiles, lesson) {
                             };
                             const crossed = text(p_5, "id");
                             const straight = (((r1 === r2) && (r === r1)) && between(c, c1, c2)) ? true : (((c1 === c2) && (c === c1)) && between(r, r1, r2));
-                            const curved = (((r1 !== r2) && (c1 !== c2)) && between(c, c1, c2)) && (((r === r1) ? true : (r === r2)) ? true : (((c * 2) === (c1 + c2)) && ((r * 2) === (r1 + r2))));
+                            const onWay = (tupledArg, tupledArg_1) => {
+                                const ca = tupledArg[0];
+                                const rb = tupledArg[3];
+                                const c_1 = tupledArg_1[0];
+                                const r_1 = tupledArg_1[1];
+                                if (equals(c_1, ca) && between(r_1, tupledArg[1], rb)) {
+                                    return true;
+                                }
+                                else if (equals(r_1, rb)) {
+                                    if (equals(c_1, ca)) {
+                                        return true;
+                                    }
+                                    else {
+                                        return between(c_1, ca, tupledArg[2]);
+                                    }
+                                }
+                                else {
+                                    return false;
+                                }
+                            };
+                            const curved = (((r1 !== r2) && (c1 !== c2)) && onWay([c1, r1, c2, r2], [c, r])) && exists_1((q) => onWay([c2, r2, c1, r1], cell(q)), parts);
                             if (straight ? true : curved) {
                                 Findings__warn_Z721C83C5(f, `map: the edge ${a} -> ${b} would cross ${crossed}; move a part, or route the edge through it`);
                             }
