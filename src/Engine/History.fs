@@ -470,8 +470,6 @@ let private write (ws: string) : int =
     writeText (join [ build; "history.json" ]) (toJsonIndented json 2 + "\n")
 
     // The same facts, to read.
-    let md = ResizeArray<string>()
-    let line (s: string) = md.Add s
     let chosen =
         match sinceWas with
         | "last video" -> " The start is where the last progress video of this repository ended."
@@ -480,78 +478,84 @@ let private write (ws: string) : int =
         | "before first commit" -> " The start asked for is before the repository's first commit: the range is the whole history, the first commit included."
         | "whole history" -> " No start was given, there is no earlier tag, and the repository is younger than 30 days: the range is the whole history, the first commit included."
         | _ -> ""
-    line $"# History: {sinceRef} to {untilRef}"
-    line ""
-    let days, commits = count (daysBetween sinceDate untilDate) "day", count all.Length "commit"
-    line $"From {sinceRef} ({shortOf repo sinceCommit}, {sinceDate}) to {untilRef} ({shortOf repo until}, {untilDate}): {days}, {commits}.{chosen}"
-    for note in notes do
-        line ""
-        line note
-    line ""
-    line "Every number in the video comes from this file or from history.json. Do not count anything yourself."
-    line ""
-    line $"Totals: {json?totals?files} files changed, {totalAdded} lines added, {totalRemoved} lines removed. Lines and files are sums over the range's commits; added, deleted and renamed compare its two ends."
-    if not left.IsEmpty then
-        let names = left |> List.map (fun (p, _, _) -> p) |> List.distinct
-        line ""
-        let sample = names |> List.truncate 5 |> String.concat ", "
-        line $"Left out of every number above and below (lock files, generated files, the brief's \"ignore\"): {names.Length} files, {leftAdded} lines added, {leftRemoved} removed, across {json?ignored?commits} of the commits. For example: {sample}."
-    match publishedBranch with
-    | Some branch when unpublished.Length > 0 ->
-        let ids = unpublished |> Array.truncate 40 |> String.concat ", "
-        let more = if unpublished.Length > 40 then ", ..." else ""
-        line ""
-        let n, verb = count unpublished.Length "commit", (if unpublished.Length = 1 then "is" else "are")
-        line $"Not published yet: {n} of the range {verb} not on {branch}, the published branch of this repository ({ids}{more}). What only those commits did is in progress on a branch; it has not shipped."
-    | Some branch ->
-        line ""
-        line $"Every commit of the range is on {branch}, the published branch of this repository."
-    | None -> ()
-    line ""
-    line "## Tags in the range"
-    line ""
-    if tags.IsEmpty then line "None." else for t, id, d in tags do line $"- {t} ({id}, {d})"
-    line ""
-    line "## Areas"
-    line ""
-    line "| area | commits | files | added | deleted | renamed | lines + | lines - |"
-    line "|---|---|---|---|---|---|---|---|"
-    for a in areas do
-        line $"| {a?area} | {a?commits} | {a?files} | {a?added} | {a?deleted} | {a?renamed} | {a?linesAdded} | {a?linesRemoved} |"
-    if people then
-        line ""
-        line "## People (written because the focus includes \"people\")"
-        line ""
-        line "By area, who committed there and how many commits. No ranking is meant by the order."
-        line ""
-        for a in areas do
-            let who = (a?people: obj[]) |> Array.map (fun p -> $"{p?name} ({p?commits})") |> String.concat ", "
-            line $"- {a?area}: {who}"
-    line ""
-    line "## Files"
-    line ""
-    let top = mostChanged |> List.map (fun (p, n, _, _) -> p + " (" + string n + ")") |> String.concat ", "
-    line $"Most changed (by commits): {top}."
-    let list (title: string) (paths: string list) =
-        if not paths.IsEmpty then
-            line ""
+    // A blank line, then "Added (3): a, b, c", for what there is to list.
+    let pathsLine (title: string) (paths: string list) : string list =
+        if paths.IsEmpty then []
+        else
             let shown = (paths |> List.truncate 40 |> String.concat ", ") + (if paths.Length > 40 then ", ..." else "")
-            line $"{title} ({paths.Length}): {shown}"
-    list "Added" (of' "added" |> List.map (fun (_, p, _) -> p))
-    list "Deleted" (of' "deleted" |> List.map (fun (_, p, _) -> p))
-    list "Renamed" (of' "renamed" |> List.map (fun (_, b, a) -> a + " -> " + b))
-    line ""
-    line "## Commits, oldest first"
-    line ""
-    if partial then
-        line $"The range holds {all.Length} commits. Only the {listed.Length} that are tagged, are merges or touch more than {WIDE} files are listed; the rest are in the counts above. Read the others with git when a theme needs them."
-        line ""
-    for c in listed do
-        let who = if people then $", {c.Author}" else ""
-        line $"- {c.Id} ({c.Date}{who}) {saidSubject c.Subject} [{c.Files.Length} files]"
-        if saidBody c.Body <> "" then
-            for b in (saidBody c.Body).Split '\n' do
-                if b.Trim() <> "" then line $"    {b.TrimEnd()}"
+            [ ""; $"{title} ({paths.Length}): {shown}" ]
+    let md =
+        [ $"# History: {sinceRef} to {untilRef}"
+          ""
+          let days, commits = count (daysBetween sinceDate untilDate) "day", count all.Length "commit"
+          $"From {sinceRef} ({shortOf repo sinceCommit}, {sinceDate}) to {untilRef} ({shortOf repo until}, {untilDate}): {days}, {commits}.{chosen}"
+          for note in notes do
+              ""
+              note
+          ""
+          "Every number in the video comes from this file or from history.json. Do not count anything yourself."
+          ""
+          $"Totals: {json?totals?files} files changed, {totalAdded} lines added, {totalRemoved} lines removed. Lines and files are sums over the range's commits; added, deleted and renamed compare its two ends."
+          if not left.IsEmpty then
+              let names = left |> List.map (fun (p, _, _) -> p) |> List.distinct
+              ""
+              let sample = names |> List.truncate 5 |> String.concat ", "
+              $"Left out of every number above and below (lock files, generated files, the brief's \"ignore\"): {names.Length} files, {leftAdded} lines added, {leftRemoved} removed, across {json?ignored?commits} of the commits. For example: {sample}."
+          match publishedBranch with
+          | Some branch when unpublished.Length > 0 ->
+              let ids = unpublished |> Array.truncate 40 |> String.concat ", "
+              let more = if unpublished.Length > 40 then ", ..." else ""
+              ""
+              let n, verb = count unpublished.Length "commit", (if unpublished.Length = 1 then "is" else "are")
+              $"Not published yet: {n} of the range {verb} not on {branch}, the published branch of this repository ({ids}{more}). What only those commits did is in progress on a branch; it has not shipped."
+          | Some branch ->
+              ""
+              $"Every commit of the range is on {branch}, the published branch of this repository."
+          | None -> ()
+          ""
+          "## Tags in the range"
+          ""
+          if tags.IsEmpty then
+              "None."
+          else
+              for t, id, d in tags do
+                  $"- {t} ({id}, {d})"
+          ""
+          "## Areas"
+          ""
+          "| area | commits | files | added | deleted | renamed | lines + | lines - |"
+          "|---|---|---|---|---|---|---|---|"
+          for a in areas do
+              $"| {a?area} | {a?commits} | {a?files} | {a?added} | {a?deleted} | {a?renamed} | {a?linesAdded} | {a?linesRemoved} |"
+          if people then
+              ""
+              "## People (written because the focus includes \"people\")"
+              ""
+              "By area, who committed there and how many commits. No ranking is meant by the order."
+              ""
+              for a in areas do
+                  let who = (a?people: obj[]) |> Array.map (fun p -> $"{p?name} ({p?commits})") |> String.concat ", "
+                  $"- {a?area}: {who}"
+          ""
+          "## Files"
+          ""
+          let top = mostChanged |> List.map (fun (p, n, _, _) -> p + " (" + string n + ")") |> String.concat ", "
+          $"Most changed (by commits): {top}."
+          yield! pathsLine "Added" (of' "added" |> List.map (fun (_, p, _) -> p))
+          yield! pathsLine "Deleted" (of' "deleted" |> List.map (fun (_, p, _) -> p))
+          yield! pathsLine "Renamed" (of' "renamed" |> List.map (fun (_, b, a) -> a + " -> " + b))
+          ""
+          "## Commits, oldest first"
+          ""
+          if partial then
+              $"The range holds {all.Length} commits. Only the {listed.Length} that are tagged, are merges or touch more than {WIDE} files are listed; the rest are in the counts above. Read the others with git when a theme needs them."
+              ""
+          for c in listed do
+              let who = if people then $", {c.Author}" else ""
+              $"- {c.Id} ({c.Date}{who}) {saidSubject c.Subject} [{c.Files.Length} files]"
+              if saidBody c.Body <> "" then
+                  for b in (saidBody c.Body).Split '\n' do
+                      if b.Trim() <> "" then $"    {b.TrimEnd()}" ]
     writeText (join [ build; "history.md" ]) (String.concat "\n" md + "\n")
     printfn "history: %s to %s, %s, %s -> %s" sinceRef untilRef (count all.Length "commit") (count (daysBetween sinceDate untilDate) "day") (join [ build; "history.md" ])
     0
