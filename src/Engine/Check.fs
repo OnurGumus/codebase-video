@@ -686,15 +686,18 @@ let private num (o: Json) (k: string) : float = o?(k)
 
 let private checkCuesWith (timing: Json) (jsFiles: string list) : Finding list =
     let scenes = Py.list timing "scenes"
-    // A later scene with the same id wins.
-    let byId = scenes |> List.map (fun s -> idOf s, s) |> Map.ofList
-    let nSentences sid = (sentencesOf byId.[sid]).Length
+    // A scene by its id, the last scene with that id winning, ids compared as they are in the JSON (strictly: an
+    // id can be missing or a number there), not ordered, so no F# Map.
+    let byId = scenes |> List.map (fun s -> idOf s, s)
+    let sceneOf (sid: string) : Json option = byId |> List.tryFindBack (fun (id, _) -> id = sid) |> Option.map snd
+    let hasScene (sid: string) = (sceneOf sid).IsSome
+    let nSentences sid = (sentencesOf (sceneOf sid).Value).Length
 
     let hasPhrase (sid: string) (phrase: string) (nth: int) =
         // As the kit matches (Stage.word): inside one voiced piece of a sentence, when it has several (a foreign
         // phrase, or the stretches between [rest] marks), so a phrase that spans two pieces is not found.
         let units =
-            sentencesOf byId.[sid]
+            sentencesOf (sceneOf sid).Value
             |> List.collect (fun se ->
                 match Py.list se "parts" with
                 | parts when parts.Length > 1 -> parts
@@ -709,8 +712,8 @@ let private checkCuesWith (timing: Json) (jsFiles: string list) : Finding list =
               let sid = m.G 1
               let whole = m.Value
               // a plain string that merely looks like an id
-              if not (prefix sid = "k" || (not (byId.ContainsKey sid) && not (whole.Contains "|") && not (whole.Contains "#"))) then
-                  if not (byId.ContainsKey sid) then
+              if not (prefix sid = "k" || (not (hasScene sid) && not (whole.Contains "|") && not (whole.Contains "#"))) then
+                  if not (hasScene sid) then
                       yield Error $"{name}:{ln}: no scene {Py.reprStr sid}"
                   else
                       match m.Group 2, m.Group 4, m.Group 5 with
@@ -723,13 +726,13 @@ let private checkCuesWith (timing: Json) (jsFiles: string list) : Finding list =
                       | _ -> ()
           for m in Py.finditer WORD_CALL line do
               let sid, phrase = m.G 1, m.G 2
-              if byId.ContainsKey sid && not (hasPhrase sid phrase 1) then
+              if hasScene sid && not (hasPhrase sid phrase 1) then
                   yield Error $"{name}:{ln}: word({Py.reprStr sid}, {Py.reprStr phrase}): not spoken there"
-              elif not (byId.ContainsKey sid) then
+              elif not (hasScene sid) then
                   yield Error $"{name}:{ln}: no scene {Py.reprStr sid}"
           for m in Py.finditer CUE_CALL line do
               let sid = m.G 1
-              if not (byId.ContainsKey sid) then
+              if not (hasScene sid) then
                   yield Error $"{name}:{ln}: no scene {Py.reprStr sid}"
               else
                   match m.Group 2 with

@@ -3,7 +3,7 @@ import { readDir, resolve, readText, basename, mtime, exists, readJson, join as 
 import { concat, split, trimStart, trimEnd, padLeft, replicate, padRight, replace, indexOf, substring, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { max as max_1, min as min_1, compare, arrayHash, equalArrays, disposeSafe, getEnumerator, stringHash, equals, defaultOf, int32ToString, comparePrimitives, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
-import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_2, truncate, pairwise, tryPick as tryPick_1, concat as concat_1, sumBy, exists as exists_1, contains, zip as zip_1, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, filter, fold, map as map_3, sortWith, toArray, tail as tail_1, head, isEmpty, indexed, mapFold, ofArray, empty, reverse, ofArrayWithTail, cons } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_2, truncate, pairwise, tryPick as tryPick_1, concat as concat_1, sumBy, exists as exists_1, tryFindBack, contains, zip as zip_1, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, filter, fold, map as map_3, sortWith, toArray, tail as tail_1, head, isEmpty, indexed, mapFold, ofArray, empty, reverse, ofArrayWithTail, cons } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Union, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { union_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
@@ -14,7 +14,7 @@ import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.
 import { load as load_1, uses as uses_1, apply } from "./Glossary.js";
 import { List_groupBy, List_distinctBy, List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { empty as empty_2, FSharpMap__ContainsKey, tryFind as tryFind_1, add as add_1, FSharpMap__get_Item, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { empty as empty_2, tryFind as tryFind_1, add as add_1 } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 
@@ -1089,11 +1089,19 @@ function num(o, k) {
 
 function checkCuesWith(timing, jsFiles) {
     const scenes = Py_list(timing, "scenes");
-    const byId = ofList(map_3((s) => [idOf(s), s], scenes), {
-        Compare: (x, y) => (comparePrimitives(x, y) | 0),
-    });
-    const nSentences = (sid) => (length_1(sentencesOf(FSharpMap__get_Item(byId, sid))) | 0);
-    const hasPhrase = (sid_1, phrase, nth) => {
+    const byId = map_3((s) => [idOf(s), s], scenes);
+    const sceneOf = (sid) => {
+        const option_1 = tryFindBack((tupledArg) => (tupledArg[0] === sid), byId);
+        if (option_1 != null) {
+            return some(option_1[1]);
+        }
+        else {
+            return undefined;
+        }
+    };
+    const hasScene = (sid_1) => (sceneOf(sid_1) != null);
+    const nSentences = (sid_2) => (length_1(sentencesOf(value_1(sceneOf(sid_2)))) | 0);
+    const hasPhrase = (sid_3, phrase, nth) => {
         const units = map_3((u) => [lower(spokenOf(u)), lower(textOf(u))], collect_1((se) => {
             const matchValue = Py_list(se, "parts");
             if (length_1(matchValue) > 1) {
@@ -1102,24 +1110,24 @@ function checkCuesWith(timing, jsFiles) {
             else {
                 return singleton(se);
             }
-        }, sentencesOf(FSharpMap__get_Item(byId, sid_1))));
+        }, sentencesOf(value_1(sceneOf(sid_3)))));
         const want = lower(phrase);
         return exists_1((field) => (sumBy((u_1) => (Py_count(field(u_1), want) | 0), units, {
             GetZero: () => 0,
-            Add: (x_1, y_1) => ((x_1 + y_1) | 0),
-        }) >= nth), ofArray([(tuple) => tuple[0], (tuple_1) => tuple_1[1]]));
+            Add: (x, y) => ((x + y) | 0),
+        }) >= nth), ofArray([(tuple_1) => tuple_1[0], (tuple_2) => tuple_2[1]]));
     };
     const cues = collect_1((file) => {
         const name_1 = basename(file);
-        return concat_1(mapFold((names, tupledArg) => {
+        return concat_1(mapFold((names, tupledArg_1) => {
             let name, ln, line;
-            const line_1 = tupledArg[1];
+            const line_1 = tupledArg_1[1];
             if (Py_strip(line_1).startsWith("//")) {
                 return [empty(), names];
             }
             else {
                 const names_2 = fold((names_1, d) => add_1(Py_M__G_Z524259A4(d, 1), Py_M__G_Z524259A4(d, 2), names_1), names, Py_finditer(SCENE_CONST, line_1));
-                return [(name = name_1, (ln = ((tupledArg[0] + 1) | 0), (line = Py_sub(SCENE_REF, (m_3) => {
+                return [(name = name_1, (ln = ((tupledArg_1[0] + 1) | 0), (line = Py_sub(SCENE_REF, (m_3) => {
                     const matchValue_8 = tryFind_1(Py_M__G_Z524259A4(m_3, 1), names_2);
                     if (matchValue_8 == null) {
                         return Py_M__get_Value(m_3);
@@ -1129,11 +1137,11 @@ function checkCuesWith(timing, jsFiles) {
                     }
                 }, line_1), toList(delay(() => append(collect((m) => {
                     let nth_1;
-                    const sid_2 = Py_M__G_Z524259A4(m, 1);
+                    const sid_4 = Py_M__G_Z524259A4(m, 1);
                     const whole = Py_M__get_Value(m);
-                    if (!((prefix(sid_2) === "k") ? true : ((!FSharpMap__ContainsKey(byId, sid_2) && !(whole.indexOf("|") >= 0)) && !(whole.indexOf("#") >= 0)))) {
-                        if (!FSharpMap__ContainsKey(byId, sid_2)) {
-                            return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_2)}`]));
+                    if (!((prefix(sid_4) === "k") ? true : ((!hasScene(sid_4) && !(whole.indexOf("|") >= 0)) && !(whole.indexOf("#") >= 0)))) {
+                        if (!hasScene(sid_4)) {
+                            return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_4)}`]));
                         }
                         else {
                             const matchValue_1 = Py_M__Group_Z524259A4(m, 2);
@@ -1142,7 +1150,7 @@ function checkCuesWith(timing, jsFiles) {
                             let matchResult, nth_2, phrase_2, sent_1;
                             if (matchValue_1 == null) {
                                 if (matchValue_3 != null) {
-                                    if (parse(matchValue_3, 511, false, 32) >= nSentences(sid_2)) {
+                                    if (parse(matchValue_3, 511, false, 32) >= nSentences(sid_4)) {
                                         matchResult = 2;
                                         sent_1 = matchValue_3;
                                     }
@@ -1154,7 +1162,7 @@ function checkCuesWith(timing, jsFiles) {
                                     matchResult = 3;
                                 }
                             }
-                            else if ((nth_1 = matchValue_2, !hasPhrase(sid_2, matchValue_1, (nth_1 == null) ? 1 : parse(nth_1, 511, false, 32)))) {
+                            else if ((nth_1 = matchValue_2, !hasPhrase(sid_4, matchValue_1, (nth_1 == null) ? 1 : parse(nth_1, 511, false, 32)))) {
                                 matchResult = 0;
                                 nth_2 = matchValue_2;
                                 phrase_2 = matchValue_1;
@@ -1165,13 +1173,13 @@ function checkCuesWith(timing, jsFiles) {
                             switch (matchResult) {
                                 case 0: {
                                     const times = (nth_2 == null) ? "" : concat(" ", nth_2, " times");
-                                    return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${Py_reprStr(phrase_2)} is not spoken in ${sid_2}${times}`]));
+                                    return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${Py_reprStr(phrase_2)} is not spoken in ${sid_4}${times}`]));
                                 }
                                 case 1: {
                                     return empty_1();
                                 }
                                 case 2:
-                                    return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${sid_2} has ${nSentences(sid_2)} sentence(s), asked for #${sent_1}`]));
+                                    return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${sid_4} has ${nSentences(sid_4)} sentence(s), asked for #${sent_1}`]));
                                 default: {
                                     return empty_1();
                                 }
@@ -1182,20 +1190,20 @@ function checkCuesWith(timing, jsFiles) {
                         return empty_1();
                     }
                 }, Py_finditer(SPEC, line)), delay(() => append(collect((m_1) => {
-                    const sid_3 = Py_M__G_Z524259A4(m_1, 1);
+                    const sid_5 = Py_M__G_Z524259A4(m_1, 1);
                     const phrase_3 = Py_M__G_Z524259A4(m_1, 2);
-                    return (FSharpMap__ContainsKey(byId, sid_3) && !hasPhrase(sid_3, phrase_3, 1)) ? singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: word(${Py_reprStr(sid_3)}, ${Py_reprStr(phrase_3)}): not spoken there`])) : (!FSharpMap__ContainsKey(byId, sid_3) ? singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_3)}`])) : empty_1());
+                    return (hasScene(sid_5) && !hasPhrase(sid_5, phrase_3, 1)) ? singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: word(${Py_reprStr(sid_5)}, ${Py_reprStr(phrase_3)}): not spoken there`])) : (!hasScene(sid_5) ? singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_5)}`])) : empty_1());
                 }, Py_finditer(WORD_CALL, line)), delay(() => collect((m_2) => {
                     let i;
-                    const sid_4 = Py_M__G_Z524259A4(m_2, 1);
-                    if (!FSharpMap__ContainsKey(byId, sid_4)) {
-                        return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_4)}`]));
+                    const sid_6 = Py_M__G_Z524259A4(m_2, 1);
+                    if (!hasScene(sid_6)) {
+                        return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: no scene ${Py_reprStr(sid_6)}`]));
                     }
                     else {
                         const matchValue_7 = Py_M__Group_Z524259A4(m_2, 2);
                         let matchResult_1, i_1;
                         if (matchValue_7 != null) {
-                            if ((i = matchValue_7, (parse(i, 511, false, 32) >= nSentences(sid_4)) ? true : (op_UnaryNegation_Int32(parse(i, 511, false, 32)) > nSentences(sid_4)))) {
+                            if ((i = matchValue_7, (parse(i, 511, false, 32) >= nSentences(sid_6)) ? true : (op_UnaryNegation_Int32(parse(i, 511, false, 32)) > nSentences(sid_6)))) {
                                 matchResult_1 = 0;
                                 i_1 = matchValue_7;
                             }
@@ -1208,7 +1216,7 @@ function checkCuesWith(timing, jsFiles) {
                         }
                         switch (matchResult_1) {
                             case 0:
-                                return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${sid_4} has ${nSentences(sid_4)} sentence(s), asked for ${i_1}`]));
+                                return singleton_1(new Finding(/* Error */ 0, [`${name}:${ln}: ${sid_6} has ${nSentences(sid_6)} sentence(s), asked for ${i_1}`]));
                             default: {
                                 return empty_1();
                             }
@@ -1217,7 +1225,7 @@ function checkCuesWith(timing, jsFiles) {
                 }, Py_finditer(CUE_CALL, line))))))))))), names_2];
             }
         }, empty_2({
-            Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+            Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
         }), indexed(Py_splitlines(readText(file))))[0]);
     }, jsFiles);
     const toasts = toList(delay(() => collect((s_3) => collect((d_1) => {
@@ -1237,33 +1245,33 @@ function checkCuesWith(timing, jsFiles) {
             }
         }, ofArray([lower(spokenOf(se_1)), lower(textOf(se_1))])), sents), num(item(0, sents), "start")))) : num(item(0, sents), "start")))))), kind, where]]);
     }, Py_list(s_3, "toasts")), scenes)));
-    const seen = Py_sortWith((tupledArg_1, tupledArg_2) => {
-        const c = comparePrimitives(tupledArg_1[0], tupledArg_2[0]) | 0;
+    const seen = Py_sortWith((tupledArg_2, tupledArg_3) => {
+        const c = comparePrimitives(tupledArg_2[0], tupledArg_3[0]) | 0;
         if (c !== 0) {
             return c | 0;
         }
         else {
-            const c_1 = Py_cmpStr(Py_str(tupledArg_1[1]), Py_str(tupledArg_2[1])) | 0;
+            const c_1 = Py_cmpStr(Py_str(tupledArg_2[1]), Py_str(tupledArg_3[1])) | 0;
             if (c_1 !== 0) {
                 return c_1 | 0;
             }
             else {
-                return Py_cmpStr(tupledArg_1[2], tupledArg_2[2]) | 0;
+                return Py_cmpStr(tupledArg_2[2], tupledArg_3[2]) | 0;
             }
         }
-    }, map_3((tuple_2) => tuple_2[1], toasts));
+    }, map_3((tuple_3) => tuple_3[1], toasts));
     const crowded = toList(delay(() => collect((matchValue_11) => {
         const b_2 = matchValue_11[1][0];
         const a_2 = matchValue_11[0][0];
         return ((b_2 - a_2) < 6) ? singleton_1(new Finding(/* Warning */ 1, [`toasts crowd: ${matchValue_11[0][2]} and ${matchValue_11[1][2]} are ${Py_fmtF(1, b_2 - a_2)} s apart (keep at least 6 s)`])) : empty_1();
     }, pairwise(seen))));
     if (!isEmpty(seen)) {
-        Py_print(`toasts: ${join(", ", map_3((tupledArg_6) => (`${tupledArg_6[0]} ${tupledArg_6[1]}`), sortWith((tupledArg_4, tupledArg_5) => (comparePrimitives(tupledArg_5[1], tupledArg_4[1]) | 0), List_countBy((x_3) => x_3, map_3((tupledArg_3) => Py_str(tupledArg_3[1]), seen), {
-            Equals: (x_4, y_3) => (x_4 === y_3),
-            GetHashCode: (x_4) => (stringHash(x_4) | 0),
+        Py_print(`toasts: ${join(", ", map_3((tupledArg_7) => (`${tupledArg_7[0]} ${tupledArg_7[1]}`), sortWith((tupledArg_5, tupledArg_6) => (comparePrimitives(tupledArg_6[1], tupledArg_5[1]) | 0), List_countBy((x_2) => x_2, map_3((tupledArg_4) => Py_str(tupledArg_4[1]), seen), {
+            Equals: (x_3, y_2) => (x_3 === y_2),
+            GetHashCode: (x_3) => (stringHash(x_3) | 0),
         }))))} (${length_1(seen)} total)`);
     }
-    return append_1(cues, append_1(collect_1((tuple_3) => tuple_3[0], toasts), crowded));
+    return append_1(cues, append_1(collect_1((tuple_4) => tuple_4[0], toasts), crowded));
 }
 
 function checkCues(timing, jsFiles) {
@@ -1555,11 +1563,11 @@ function reportLength(glossary, script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401058 = [1.2, 1.9];
+export const patternInput$00401061 = [1.2, 1.9];
 
-export const VISIT_TAIL = patternInput$00401058[1];
+export const VISIT_TAIL = patternInput$00401061[1];
 
-const VISIT_LEAD = patternInput$00401058[0];
+const VISIT_LEAD = patternInput$00401061[0];
 
 function checkMap(script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
