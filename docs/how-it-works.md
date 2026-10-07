@@ -66,6 +66,15 @@ module, a changed sentence costs its chapter. Everything else is reused, and joi
   with that path lit up, and a scene about the inside of one part zooms into that part's box;
 - a recap after each chapter, and in longer videos a few "pause and think" questions.
 
+## Progress videos
+
+The same steps make a second kind of video: how a project changed between a past commit, tag or date and now. A
+program first reads the history of that range and writes down the facts (commits, tags, work per area, files added
+and removed), and every number in the video comes from there. The document is organised by theme of change, the
+fact-checker compares each claim with the diff and not with the commit message, and the map shows which parts are
+new or changed. Authors are left out entirely unless you ask for them. With flags and `--yes` it runs from CI
+without asking anything; see [ci.md](ci.md).
+
 ## The files you get
 
 ```

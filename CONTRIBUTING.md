@@ -11,6 +11,7 @@ committed, which is why users need only Node.js.
 | `src/Kit` | the animation kit in F# that runs in the browser: code cards, diagrams, the chapter frame |
 | `engine/cli`, `engine/web` | the compiled JavaScript of the two folders above |
 | `engine/KIT.md` | how to draw a scene with the kit |
+| `briefs/*.progress.md`, `briefs/kind.progress.md` | what differs for a progress video (how the code changed over a commit range) |
 | `engine/glossary.json` | how technical terms are said aloud ("JSON" as "jason"); hand-written, read by `src/Engine/Glossary.fs` |
 | `engine/kit/gallery` | a small sample video that uses every kit component |
 | `docs/` | [how it works](docs/how-it-works.md) |
@@ -27,7 +28,7 @@ Commit the regenerated `engine/cli` and `engine/web` folders together with your 
 and pull request rebuilds them and fails if the committed files differ.
 
 Every step of the engine is one command, `node engine/cli/Cv.js <workspace> <step>`, where the step is one of
-`narrate`, `check`, `sheet`, `stills`, `scan`, `report`, `video`, `fill` or `fix`. The scenes of each video are
+`narrate`, `check`, `sheet`, `stills`, `scan`, `report`, `video`, `fill`, `fix` or `history`. The scenes of each video are
 small JavaScript files that call the kit; `engine/KIT.md` describes that API.
 
 `video` renders one segment per scene and caches it in `<workspace>/build/segments/` under a key made from

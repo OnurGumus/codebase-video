@@ -10,6 +10,8 @@
 ///   node engine/cli/Cv.js <ws> video [--full]        render and encode -> out/<name>.{mp4,webm,jpg,vtt}; scenes that did
 ///                                                    not change are reused from build/segments (--full: none are)
 ///   node engine/cli/Cv.js <ws> all                   narrate, then video
+///   node engine/cli/Cv.js <ws> history [--done]      progress videos: the facts of the commit range -> build/history.md,
+///                                                    history.json; --done records where this video ended
 ///   node engine/cli/Cv.js <ws> scan [t0 t1 step]     DOM scan every 0.25 s -> build/scan.json
 ///   node engine/cli/Cv.js <ws> report [mode]         findings from the scan (all|short|overlap|empty|...)
 ///   node engine/cli/Cv.js <ws> fill                  fill the brief templates from <ws>/brief.json -> <ws>/build/brief-*.txt

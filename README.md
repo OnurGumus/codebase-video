@@ -56,6 +56,15 @@ A video file (`.mp4`) with captions, saved inside your project in a folder calle
 
 Your code is not changed. Git ignores that folder, so nothing is committed by accident.
 
+## Can it show what changed?
+
+Yes. Ask for a progress video: "make a progress video since v1.4.0", or since a commit or a date. It shows what
+shipped in that range, where the work went, and what is still open, for someone who follows the project and does
+not read its code every day. Every number in it is read from git by a program. It names no one unless you ask it
+to, and it reports what changed without judging the team.
+
+It can also run without questions from CI, on each release or once a week: see [docs/ci.md](docs/ci.md).
+
 ## How long does it take, and what does it cost?
 
 You pick the length of the video:
