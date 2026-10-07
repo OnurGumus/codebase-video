@@ -15,16 +15,20 @@ a row without saying what it means for someone outside the team.
 **The general rules** are in `{{WS}}/build/brief-writer-base.txt`: read it in full. Its sections "Read first",
 "Output", "Narration rules" and "Process" apply to this video as written (the script format, the map format, rests,
 pauses, the glossary, toasts, the commands to run). Its "Structure" does not apply; this one does. Also put
-`"kind": "progress"` at the top level of `script.json`.
+`"kind": "progress"` at the top level of `script.json`, and set `"speed": 1.0` in place of the base brief's 0.87: this
+audience follows the project and does not need the slower pace of a first lesson.
 
 **Structure:**
 - `title` (one line: the project and the range in words, for example "from version 0.5 on October 4 to today"),
   `intro` (what the viewer will know at the end: what shipped, where the work went, what is still open).
+- Every chapter opens with a bridge scene `kN-why` with `"chapter"` and `"lead": 1.0, "pad": 0.5`. Its one or two
+  sentences introduce the chapter: what it is about and why it matters to someone who uses the project or builds on
+  it. A bare "Next, the parser." is not an introduction.
 - A chapter "At a glance" from the document's section of that name: the range and its totals, then where the work
   went by area. Speak only the few numbers that matter and round none of them.
-- One chapter per theme of the document, in its order. Each has a bridge scene `kN-why` with `"chapter"`, and
-  content scenes: what the project does now that it did not; then how, with the code that matters; and where the
-  document gives a before and after, both. Say each reason as the document does: "the commit message says ...".
+- One chapter per theme of the document, in its order. After its bridge scene come content scenes: what the project
+  does now that it did not; then how, with the code that matters; and where the document gives a before and after,
+  both. Say each reason as the document does: "the commit message says ...".
 - A chapter "In flight" from the document's "In flight and at risk": what is unfinished or fragile, as the document
   states it. No verdict on pace or on people, and no advice.
 - A chapter for the goals and one for who worked on what, ONLY if the document has those sections. For the people
