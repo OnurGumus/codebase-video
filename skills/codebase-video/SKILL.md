@@ -35,6 +35,12 @@ eyes miss. Each step's brief is a template in `${CLAUDE_PLUGIN_ROOT}/briefs/`, f
   - optionally a **preview** first (see "Preview" below): the checked document and the narrated script, no
     visuals. Offer it when the user is trying the plugin for the first time or is unsure about the cost.
   Tell them the cost honestly: a tour runs about 12 agent tasks, a deep dive about 30; most of it is auditing.
+- Pronunciation: the engine says technical terms from a glossary (`ENGINE/glossary.json`: "JSON" as "jason", "C#"
+  as "C sharp", "Render.fs" as "Render dot F S", several hundred terms including common .NET, AWS and Azure
+  names). A repository's own terms and the owner's preferences go in `<repo>/.codebase-video/glossary.json`, the
+  same shape (`{"terms": {"Cv": "C V", "SQL": "S Q L"}}`; an empty string means "as written"); it wins over the
+  engine's. When the user says a term sounded wrong, add it there, re-run `CV narrate` and `CV video` (only the
+  scenes that say it are voiced and drawn again), and offer to add a term of general use to the engine's file.
 - Standing hints: if `<repo>/.codebase-video/hints.md` exists, read it before agreeing the scope and tell the user
   in one line that it applies; `CV fill` adds it to every agent's brief. It holds what the owner wants in every video
   of this repository: terms to use or avoid, what to leave out, how to draw things, who the usual audience is. When

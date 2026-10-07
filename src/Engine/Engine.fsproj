@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="Node.fs" />
     <Compile Include="Wav.fs" />
+    <Compile Include="Glossary.fs" />
     <Compile Include="Narrate.fs" />
     <Compile Include="Chapters.fs" />
     <Compile Include="Check.fs" />

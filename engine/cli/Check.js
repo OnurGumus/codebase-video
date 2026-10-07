@@ -8,10 +8,11 @@ import { Record, toString } from "./fable_modules/fable-library-js.5.19.0/Types.
 import { class_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { pairwise as pairwise_1, sumBy as sumBy_1, pick, tryPick, iterateIndexed as iterateIndexed_1, last as last_1, setItem, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { item as item_1, tryFindIndex, find, sum, tryFind, truncate, concat as concat_1, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, singleton, collect, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { item as item_1, tryFindIndex, sortBy, find, sum, tryFind, truncate, concat as concat_1, append, pairwise, tryPick as tryPick_1, sumBy, exists as exists_1, singleton, collect, zip, toArray, contains, iterateIndexed, length as length_1, ofSeq, filter, map as map_3, sortWith, tail as tail_1, head, isEmpty, reverse, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { truncate as truncate_1, filter as filter_1, delay, toList as toList_1, findIndex, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { max, parse as parse_1, isInfinity, isNegativeInfinity, isPositiveInfinity, min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
+import { load as load_1, uses as uses_1, apply } from "./Glossary.js";
 import { List_groupBy, List_countBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 import { toList, FSharpSet__Contains, ofSeq as ofSeq_1 } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { addToSet } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
@@ -831,13 +832,24 @@ function idOf(s) {
     return s.id;
 }
 
-function say(s) {
+let glossary = undefined;
+
+function rawSay(s) {
     const matchValue = Py_get(s, "say");
     if (equals(matchValue, defaultOf())) {
         return "";
     }
     else {
         return matchValue;
+    }
+}
+
+function say(s) {
+    if (glossary == null) {
+        return rawSay(s);
+    }
+    else {
+        return apply(glossary, rawSay(s));
     }
 }
 
@@ -1773,11 +1785,11 @@ function reportLength(script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401022 = [1.2, 1.5];
+export const patternInput$00401029 = [1.2, 1.5];
 
-export const VISIT_TAIL = patternInput$00401022[1];
+export const VISIT_TAIL = patternInput$00401029[1];
 
-const VISIT_LEAD = patternInput$00401022[0];
+const VISIT_LEAD = patternInput$00401029[0];
 
 function checkMap(f, script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
@@ -2114,6 +2126,32 @@ function checkMap(f, script, jsFiles, lesson) {
     }
 }
 
+function reportGlossary(script) {
+    if (glossary != null) {
+        const g = glossary;
+        const uses = sortBy((tupledArg) => tupledArg[0][0].toLocaleLowerCase(), List_countBy((x) => x, collect((s) => uses_1(g, rawSay(s)), Py_list(script, "scenes")), {
+            Equals: equalArrays,
+            GetHashCode: (x_1) => (arrayHash(x_1) | 0),
+        }), {
+            Compare: (x_2, y_1) => (comparePrimitives(x_2, y_1) | 0),
+        });
+        if (!isEmpty(uses)) {
+            Py_print(`glossary: ${length_1(uses)} term(s) said its way (engine/glossary.json, <repo>/.codebase-video/glossary.json)`);
+            const enumerator = getEnumerator(uses);
+            try {
+                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                    const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    const n = forLoopVar[1] | 0;
+                    Py_print(`  ${forLoopVar[0][0]} -> ${forLoopVar[0][1]}${(n > 1) ? (`  x${n}`) : ""}`);
+                }
+            }
+            finally {
+                disposeSafe(enumerator);
+            }
+        }
+    }
+}
+
 export function run(ws, args) {
     let option_3;
     const clip = ws;
@@ -2121,6 +2159,7 @@ export function run(ws, args) {
     const matchValue = tryFindIndex((y) => ("--lesson" === y), args);
     lesson = ((matchValue == null) ? undefined : resolve(item_1(matchValue + 1, args)));
     const f = new Findings([], [], new Map());
+    glossary = load_1(clip);
     const patternInput = load(f, clip);
     const timing = patternInput[1];
     const script = patternInput[0];
@@ -2154,6 +2193,7 @@ export function run(ws, args) {
     reportDuration(f, clip, timing);
     reportBreathing(f, timing, longVideo);
     reportFlow(f, script, longVideo);
+    reportGlossary(script);
     let enumerator_1 = getEnumerator(f.Warnings);
     try {
         while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {

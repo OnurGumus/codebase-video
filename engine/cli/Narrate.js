@@ -18,6 +18,7 @@ import { PromiseBuilder__For_1565554B, PromiseBuilder__Delay_62FBFDE1, PromiseBu
 import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
 import * as node$003Aworker_threads from "node:worker_threads";
 import { addToSet, tryGetValue } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
+import { apply, load } from "./Glossary.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 
 /**
@@ -1328,6 +1329,7 @@ export function run(ws) {
     finally {
         disposeSafe(enumerator);
     }
+    const glossary = load(clip);
     const build = join_1(ofArray([clip, "build"]));
     const cache = join_1(ofArray([build, "tts-cache"]));
     mkdirp(cache);
@@ -1356,8 +1358,8 @@ export function run(ws) {
                 silence(getFloat(sc, "lead", 0.4));
                 const lines = [];
                 const sceneBreaks = [];
-                const say = defaultArg((option_11 = ((option_9 = get$(sc, "say"), (option_9 != null) ? (!Operators_IsNull(value_8(option_9)) ? option_9 : undefined) : undefined)), (option_11 != null) ? value_8(option_11) : undefined), "");
-                return PromiseBuilder__For_1565554B(promise, indexed(sentences(say)), (_arg_4) => {
+                const say_1 = apply(glossary, defaultArg((option_11 = ((option_9 = get$(sc, "say"), (option_9 != null) ? (!Operators_IsNull(value_8(option_9)) ? option_9 : undefined) : undefined)), (option_11 != null) ? value_8(option_11) : undefined), ""));
+                return PromiseBuilder__For_1565554B(promise, indexed(sentences(say_1)), (_arg_4) => {
                     const s = _arg_4[1];
                     const i = _arg_4[0] | 0;
                     return ((i > 0) ? ((silence(GAP), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {

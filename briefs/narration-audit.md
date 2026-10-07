@@ -25,7 +25,10 @@ C. Pause-and-think scenes: answerable from what was said so far? given away just
 D. Flow: sentences hard to follow by ear, dangling clauses, a connective implying a causal link that is not there,
    repeated connectives close together, stiff phrasing.
 E. Humour lines: any that adds or bends a claim; suggest a replacement. About one every two minutes is wanted.
-F. Speech: `(spoken)` forms the voice will mangle (identifiers, paths, acronyms), a `[shown]` form that would look wrong
+F. Speech: run `check` and read its "glossary:" list (each technical term and how the voice will say it, from
+   {{ENGINE}}/glossary.json and the repository's own `.codebase-video/glossary.json`): flag any term said in a way a
+   developer would not say it, a term said two different ways in the video, and a `[shown](spoken)` that spells out
+   what the glossary would have said better. Also: `(spoken)` forms the voice will mangle (identifiers, paths, acronyms), a `[shown]` form that would look wrong
    as a caption, spoken spellings outside brackets.
 G. Recaps: three spoken sentences match three card lines in order and say only what the chapter covered.
 H. Toasts: wrong kind, phrase not spoken in that scene, within 6 s of another, inside a think silence; more than 24.

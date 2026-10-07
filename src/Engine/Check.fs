@@ -549,7 +549,14 @@ type private Findings =
 type private Json = obj
 
 let private idOf (s: Json) : string = s?id
-let private say (s: Json) : string = match Py.get s "say" with null -> "" | v -> unbox v
+/// The glossary of the clip being checked (set by `run`): `say` gives a scene's text as narrate will voice it, with
+/// the glossary's terms already in their [shown](spoken) form.
+let mutable private glossary: Glossary.Glossary option = None
+let private rawSay (s: Json) : string = match Py.get s "say" with null -> "" | v -> unbox v
+let private say (s: Json) : string =
+    match glossary with
+    | Some g -> Glossary.apply g (rawSay s)
+    | None -> rawSay s
 let private prefix (sid: string) = sid.Split('-').[0]
 let private isWhy (sid: string) = sid.EndsWith "-why"
 let private sentencesOf (s: Json) : Json list = Py.list s "sentences"
@@ -1147,6 +1154,25 @@ let private checkMap (f: Findings) (script: Json) (jsFiles: string list) (lesson
                 if label <> "" && not (doc.Contains(lower label)) then
                     f.warn $"map: the label {Py.reprStr label} does not appear in the document")
 
+// ── glossary ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// What the glossary will say differently from how the script writes it, so a reader of `check` can see each
+/// pronunciation that was chosen for them, and how often.
+let private reportGlossary (script: Json) =
+    match glossary with
+    | None -> ()
+    | Some g ->
+        let uses =
+            Py.list script "scenes"
+            |> List.collect (fun s -> Glossary.uses g (rawSay s))
+            |> List.countBy id
+            |> List.sortBy (fun ((term, _), _) -> term.ToLower())
+        if not uses.IsEmpty then
+            Py.print $"glossary: {uses.Length} term(s) said its way (engine/glossary.json, <repo>/.codebase-video/glossary.json)"
+            for (term, said), n in uses do
+                let times = if n > 1 then $"  x{n}" else ""
+                Py.print $"  {term} -> {said}{times}"
+
 let run (ws: string) (args: string list) : int =
     let clip = ws
     let lesson =
@@ -1157,6 +1183,7 @@ let run (ws: string) (args: string list) : int =
         { Errors = ResizeArray()
           Warnings = ResizeArray()
           Read = JS.Constructors.Map.Create() }
+    glossary <- Some(Glossary.load clip)
     let script, timing = load f clip
     let jsFiles =
         readDir clip
@@ -1179,6 +1206,7 @@ let run (ws: string) (args: string list) : int =
     reportDuration f clip timing
     reportBreathing f timing longVideo
     reportFlow f script longVideo
+    reportGlossary script
     for w in f.Warnings do Py.print $"warn   {w}"
     for e in f.Errors do Py.print $"ERROR  {e}"
     Py.print $"{f.Errors.Count} error(s), {f.Warnings.Count} warning(s)"

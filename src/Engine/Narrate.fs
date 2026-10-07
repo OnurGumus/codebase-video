@@ -46,6 +46,9 @@
 ///                     countdown during it. Put either after the sentence's end punctuation.
 /// A scene may carry "recap": ["line", ...] (long videos: a chapter's closing "So far" card, one line
 /// appearing per sentence; give it "hold" for a quiet moment after).
+/// A technical term the glossary knows (src/Engine/Glossary.fs: engine/glossary.json, and the repository's own
+/// .codebase-video/glossary.json over it) is said its way without any mark: "JSON" as "jason", "C#" as "C sharp",
+/// "Render.fs" as "Render dot F S"; the caption shows the term as written. A [shown](spoken) wins over it.
 /// A "pronounce" entry replaces the phonemizer for a phrase that matches it exactly (any voice). Use it
 /// where the phonemizer is wrong, after checking phonemes.txt against what the lesson teaches.
 module Narrate
@@ -880,6 +883,7 @@ let run (ws: string) : JS.Promise<unit> =
                 + "Narrate in the learner's language, or set \"voice\": null for a captioned silent clip."
             )
 
+    let glossary = Glossary.load clip
     let build = join [ clip; "build" ]
     let cache = join [ build; "tts-cache" ]
     mkdirp cache
@@ -948,7 +952,11 @@ let run (ws: string) : JS.Promise<unit> =
             silence (getFloat sc "lead" 0.4)
             let lines = ResizeArray<Sentence>()
             let sceneBreaks = ResizeArray<Break>()
-            let say = get sc "say" |> Option.filter (isNull >> not) |> Option.map unbox<string> |> Option.defaultValue ""
+            // Terms the glossary knows (engine/glossary.json, <repo>/.codebase-video/glossary.json) are said its way:
+            // "JSON" becomes [JSON](jason) here, so the caption keeps the term and the voice gets the word.
+            let say =
+                get sc "say" |> Option.filter (isNull >> not) |> Option.map unbox<string> |> Option.defaultValue ""
+                |> Glossary.apply glossary
             for i, s in List.indexed (sentences say) do
                 if i > 0 then silence GAP
                 let sentenceStart = now ()

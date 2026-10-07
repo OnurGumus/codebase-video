@@ -11,6 +11,7 @@ committed, which is why users need only Node.js.
 | `src/Kit` | the animation kit in F# that runs in the browser: code cards, diagrams, the chapter frame |
 | `engine/cli`, `engine/web` | the compiled JavaScript of the two folders above |
 | `engine/KIT.md` | how to draw a scene with the kit |
+| `engine/glossary.json` | how technical terms are said aloud ("JSON" as "jason"); hand-written, read by `src/Engine/Glossary.fs` |
 | `engine/kit/gallery` | a small sample video that uses every kit component |
 | `docs/` | [how it works](docs/how-it-works.md) |
 | branch `gh-pages` | the project page and the promo video (kept off `main` so installs stay small) |

@@ -59,9 +59,15 @@ set it}, and `scenes`.
   show each one on its word. The `check` breathe line should show 72-78% talk; it warns over 82%, and over 45 s without a
   pause. If the video runs long, cut a fact, not a pause.
 - About one light humour line every two minutes, each adding NO claim and bending none.
-- `[shown](spoken)` for anything the voice would mangle or that should appear as code in the caption, e.g.
+- Technical terms: write them plainly, as they are spelled (`JSON`, `C#`, `.NET`, `S3`, `Render.fs`, `window.render`).
+  The engine's glossary ({{ENGINE}}/glossary.json, and this repository's own `.codebase-video/glossary.json` over it
+  when there is one) says each the way people do ("jason", "C sharp", "dot net", "S three", "Render dot F S") and
+  the caption shows it as you wrote it. `check` lists every term the glossary handled ("glossary: ...") and warns
+  about a capitalised term it does not know ("is read as written"): for that one, and for anything else the voice
+  would mangle or that should appear as code in the caption, use `[shown](spoken)`, e.g.
   `[fetchWithRetry](fetch with retry)`, `[src/http/client.ts](the client file in source slash H T T P)`,
-  `[npm test](N P M test)`. Spell acronyms as separate letters in the spoken half (`H T T P`, `A P I`, `J S O N`).
+  `[XKCD](X K C D)`. A path with slashes is always yours to wrap. In a spoken half you write yourself, say a term
+  the way the glossary does (read its entries), and spell an acronym people spell as separate letters (`X K C D`).
   The shown form must read correctly as a caption; never put a spoken spelling outside the brackets.
 - Do not let a pronoun or "its" follow a sentence about a different thing.
 - Think scenes: answerable from what was said so far, not given away in the sentences just before, short enough to hold
