@@ -12,6 +12,7 @@
     <Compile Include="Narrate.fs" />
     <Compile Include="Chapters.fs" />
     <Compile Include="Check.fs" />
+    <Compile Include="History.fs" />
     <Compile Include="ApplyFixes.fs" />
     <Compile Include="Fill.fs" />
     <Compile Include="ScanReport.fs" />

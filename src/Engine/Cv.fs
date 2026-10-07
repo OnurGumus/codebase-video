@@ -20,7 +20,7 @@ open Fable.Core
 open Node
 
 let usage () =
-    eprint "usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|scan|report|fill|fix [...]"
+    eprint "usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|scan|report|fill|fix|history [...]"
     exit 2
 
 let finish (p: JS.Promise<int>) =
@@ -65,7 +65,7 @@ let main () =
             exit 2
         mkdirp (join [ ws; "build" ])
         mkdirp (join [ ws; "out" ])
-        if step <> "narrate" && step <> "check" && step <> "new-long" && step <> "fill" && step <> "fix" then
+        if step <> "narrate" && step <> "check" && step <> "new-long" && step <> "fill" && step <> "fix" && step <> "history" then
             Setup.requireReady ()
         if step <> "new-long" then upgradeClip ws
         match step with
@@ -86,6 +86,7 @@ let main () =
         | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest))
         | "report" -> finish (Promise.lift (ScanReport.run ws rest))
         | "fill" -> finish (Promise.lift (Fill.run ws))
+        | "history" -> finish (Promise.lift (History.run ws rest))
         | "fix" -> finish (Promise.lift (ApplyFixes.run ws rest))
         | _ -> usage ()
     | _ -> usage ()

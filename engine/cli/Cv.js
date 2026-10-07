@@ -11,10 +11,11 @@ import { run as run_4, chapters } from "./Video.js";
 import { run as run_5 } from "./Scan.js";
 import { run as run_6 } from "./ScanReport.js";
 import { run as run_7 } from "./Fill.js";
-import { run as run_8 } from "./ApplyFixes.js";
+import { run as run_8 } from "./History.js";
+import { run as run_9 } from "./ApplyFixes.js";
 
 export function usage() {
-    eprint("usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|scan|report|fill|fix [...]");
+    eprint("usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|scan|report|fill|fix|history [...]");
     return exit(2);
 }
 
@@ -102,7 +103,7 @@ export function main() {
             }
             mkdirp(join(ofArray([ws, "build"])));
             mkdirp(join(ofArray([ws, "out"])));
-            if (((((step !== "narrate") && (step !== "check")) && (step !== "new-long")) && (step !== "fill")) && (step !== "fix")) {
+            if ((((((step !== "narrate") && (step !== "check")) && (step !== "new-long")) && (step !== "fill")) && (step !== "fix")) && (step !== "history")) {
                 requireReady();
             }
             if (step !== "new-long") {
@@ -158,8 +159,12 @@ export function main() {
                     finish(Promise.resolve(run_7(ws)));
                     break;
                 }
-                case "fix": {
+                case "history": {
                     finish(Promise.resolve(run_8(ws, rest)));
+                    break;
+                }
+                case "fix": {
+                    finish(Promise.resolve(run_9(ws, rest)));
                     break;
                 }
                 default:
