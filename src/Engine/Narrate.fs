@@ -328,7 +328,7 @@ let private cut (re: obj) (text: string) : (string * obj) list * string =
         |> List.mapFold
             (fun pos m ->
                 let i = matchIndex m
-                (text.Substring(pos, i - pos), m), i + (group0 m).Length)
+                (text.Substring(pos, i - pos), m), (i + (group0 m).Length) ||| 0)
             0
     found, text.Substring pos
 
@@ -863,7 +863,8 @@ let private getFloat (o: obj) (key: string) (fallback: float) : float =
 
 /// The soundtrack's samples: the speech pieces with their silences between.
 let private soundtrack (audio: Audio list) : float32[] =
-    let placed, total = audio |> List.mapFold (fun at piece -> (at, piece), at + samplesOf piece) 0
+    // The offsets wrap at 32 bits like Track.pos does (a negative lead or hold makes the sums wrap), and so does the total.
+    let placed, total = audio |> List.mapFold (fun at piece -> (at, piece), (at + samplesOf piece) ||| 0) 0
     let out: float32[] = Array.zeroCreate total
     for at, piece in placed do
         match piece with

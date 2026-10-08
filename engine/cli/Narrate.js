@@ -497,7 +497,7 @@ const LEADING_BREAKS = new RegExp("^(?:\\[(?:pause|think)(?:\\s+[\\d.]+)?\\]\\s*
 function cut(re, text) {
     const patternInput = mapFold((pos, m) => {
         const i = matchIndex(m) | 0;
-        return [[substring(text, pos, i - pos), m], i + group0(m).length];
+        return [[substring(text, pos, i - pos), m], (i + group0(m).length) | 0];
     }, 0, ofArray(Array.from(text.matchAll(re))));
     return [patternInput[0], substring(text, patternInput[1])];
 }
@@ -1240,7 +1240,7 @@ function getFloat(o, key, fallback) {
 }
 
 function soundtrack(audio) {
-    const patternInput = mapFold((at, piece) => [[at, piece], at + samplesOf(piece)], 0, audio);
+    const patternInput = mapFold((at, piece) => [[at, piece], (at + samplesOf(piece)) | 0], 0, audio);
     const out = new Float32Array(patternInput[1]);
     const enumerator = getEnumerator(patternInput[0]);
     try {
