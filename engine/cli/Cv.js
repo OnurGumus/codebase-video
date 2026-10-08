@@ -1,7 +1,8 @@
 
 import { argv, engineDir, copyFile, mkdirp, isDir, resolve, writeText, readText, join, exists, exit, eprint } from "./Node.js";
-import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
+import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { tail, head, isEmpty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { run } from "./Narrate.js";
 import { printf, toConsole, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
@@ -21,31 +22,41 @@ export function usage() {
     return exit(2);
 }
 
-export function finish(p) {
-    const pr_1 = p.then(exit);
-    void (pr_1.catch((e) => {
+/**
+ * Runs a step to its end, then exits with its code; an exception is printed and exits with 1. The engine's one
+ * Async.StartAsPromise: every step below is an Async.
+ */
+export function finish(step) {
+    startAsPromise(step).then(exit).catch((e) => {
         eprint(toString(e));
-        exit(1);
-    }));
+        return exit(1);
+    });
 }
 
-function voiced(narrate) {
-    const pr = startAsPromise(narrate);
-    return pr.then((_arg) => {
+function narrated(narration) {
+    return singleton.Delay(() => singleton.Bind(narration, (_arg) => {
         if (_arg.tag === 1) {
             eprint(_arg.fields[0]);
             exit(2);
+            return singleton.Zero();
         }
-    });
+        else {
+            return singleton.Zero();
+        }
+    }));
 }
 
 export function ensureTiming(ws) {
     if (exists(join(ofArray([ws, "build", "timing.json"])))) {
-        return Promise.resolve(undefined);
+        return singleton.Return(undefined);
     }
     else {
-        return voiced(run(ws));
+        return narrated(run(ws));
     }
+}
+
+function andThen(next, first) {
+    return singleton.Delay(() => singleton.Bind(first, () => singleton.ReturnFrom(next())));
 }
 
 /**
@@ -75,7 +86,6 @@ export function upgradeClip(ws) {
 }
 
 export function main() {
-    let pr, pr_1, pr_2, pr_3, pr_4, pr_5;
     let matchResult, rest, step, wsArg;
     if (!isEmpty(argv)) {
         if (head(argv) === "setup") {
@@ -104,7 +114,7 @@ export function main() {
     }
     switch (matchResult) {
         case 0: {
-            finish(startAsPromise(run_1()));
+            finish(run_1());
             break;
         }
         case 1: {
@@ -127,17 +137,17 @@ export function main() {
             }
             switch (step) {
                 case "narrate": {
-                    finish((pr = voiced(run(ws)), pr.then(() => 0)));
+                    finish(andThen(() => singleton.Return(0), narrated(run(ws))));
                     break;
                 }
                 case "check": {
-                    finish(Promise.resolve(run_2(ws, rest)));
+                    finish(singleton.Return(run_2(ws, rest)));
                     break;
                 }
                 case "stills":
                 case "sheet":
                 case "serve": {
-                    finish((pr_1 = ensureTiming(ws), pr_1.then(() => startAsPromise(run_3(ws, step, rest)))));
+                    finish(andThen(() => run_3(ws, step, rest), ensureTiming(ws)));
                     break;
                 }
                 case "new-long": {
@@ -152,39 +162,39 @@ export function main() {
                     break;
                 }
                 case "chapters": {
-                    finish(Promise.resolve(chapters(ws)));
+                    finish(singleton.Return(chapters(ws)));
                     break;
                 }
                 case "video": {
-                    finish((pr_2 = ensureTiming(ws), pr_2.then(() => startAsPromise(run_4(ws, rest)))));
+                    finish(andThen(() => run_4(ws, rest), ensureTiming(ws)));
                     break;
                 }
                 case "present": {
-                    finish((pr_3 = ensureTiming(ws), pr_3.then(() => run_5(ws, rest))));
+                    finish(andThen(() => run_5(ws, rest), ensureTiming(ws)));
                     break;
                 }
                 case "all": {
-                    finish((pr_4 = voiced(run(ws)), pr_4.then(() => startAsPromise(run_4(ws, rest)))));
+                    finish(andThen(() => run_4(ws, rest), narrated(run(ws))));
                     break;
                 }
                 case "scan": {
-                    finish((pr_5 = ensureTiming(ws), pr_5.then(() => startAsPromise(run_6(ws, rest)))));
+                    finish(andThen(() => run_6(ws, rest), ensureTiming(ws)));
                     break;
                 }
                 case "report": {
-                    finish(Promise.resolve(run_7(ws, rest)));
+                    finish(singleton.Return(run_7(ws, rest)));
                     break;
                 }
                 case "fill": {
-                    finish(Promise.resolve(run_8(ws)));
+                    finish(singleton.Return(run_8(ws)));
                     break;
                 }
                 case "history": {
-                    finish(Promise.resolve(run_9(ws, rest)));
+                    finish(singleton.Return(run_9(ws, rest)));
                     break;
                 }
                 case "fix": {
-                    finish(Promise.resolve(run_10(ws, rest)));
+                    finish(singleton.Return(run_10(ws, rest)));
                     break;
                 }
                 default:

@@ -720,8 +720,9 @@ let private serveVoice () =
              // onnxruntime's warnings (the "UserWarning" lines build.sh filtered out of the Python engine)
              transformers?env?backends?onnx?logLevel <- "error"
              let kokoro = requireFromHome "kokoro-js"
-             kokoro?KokoroTTS?from_pretrained(MODEL, createObj [ "dtype" ==> DTYPE; "device" ==> "cpu" ])
-             |> Promise.map (fun tts -> tts, transformers?Tensor))
+             let pretrained: JS.Promise<obj> =
+                 kokoro?KokoroTTS?from_pretrained(MODEL, createObj [ "dtype" ==> DTYPE; "device" ==> "cpu" ])
+             pretrained.``then``(fun tts -> tts, transformers?Tensor))
     /// One request answered: its audio, or the text of what went wrong (the model's load failing included: a load
     /// that throws is tried again on the next request, a load that rejects is not).
     let answer (msg: obj) : Async<unit> =

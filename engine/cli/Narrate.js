@@ -1014,11 +1014,11 @@ function serveVoice() {
         transformers.env.cacheDir = modelDir();
         transformers.env.backends.onnx.logLevel = "error";
         const kokoro = requireFromHome("kokoro-js");
-        const pr = kokoro.KokoroTTS.from_pretrained(MODEL, {
+        const pretrained = kokoro.KokoroTTS.from_pretrained(MODEL, {
             dtype: DTYPE,
             device: "cpu",
         });
-        return pr.then((tts) => [tts, transformers.Tensor]);
+        return pretrained.then((tts) => [tts, transformers.Tensor]);
     });
     const agent = start_1((inbox) => {
         const loop = () => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg_4) => {
