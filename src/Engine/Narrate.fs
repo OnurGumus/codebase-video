@@ -345,7 +345,7 @@ let sentences (say: string) : string list =
         |> List.mapi (fun n (before, m) ->
             let mark = if test ENDS_SENTENCE (group m 2).Value then "\u0001" else "\u0000"
             before + "\u0000" + string n + mark)
-    let restore (s: string) = subWith s SHIELDED (fun m -> shielded[int (group m 1).Value])
+    let unshield (s: string) = subWith s SHIELDED (fun m -> shielded[int (group m 1).Value])
     // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because..."): the
     // sentences so far, the latest first, take it in; what is left of the piece is a sentence of its own.
     let add (sofar: string list) (p: string) : string list =
@@ -359,7 +359,7 @@ let sentences (say: string) : string list =
     splitRe (String.concat "" marked + tail) SENTENCE_SPLIT
     |> Array.toList
     |> List.filter (fun raw -> raw.Trim() <> "")
-    |> List.map (fun raw -> (restore raw).Trim())
+    |> List.map (fun raw -> (unshield raw).Trim())
     |> List.fold add []
     |> List.rev
 
@@ -547,9 +547,10 @@ let private restore (text: string list) (marks: Mark list) : string list =
 
 type private Espeak = { worker: obj; heap: unit -> byte[]; voices: Map<string, string> }
 
-/// What the agent knows: the module loaded and the voice it is set to, or the error the load ended in (a failed load
-/// is never retried: every later message gets the same error).
+/// What the agent knows: nothing yet (the module loads on the first message), the module loaded and the voice it is
+/// set to, or the error the load ended in (a failed load is never retried: every later message gets the same error).
 type private EspeakState =
+    | NotLoaded
     | Loaded of Espeak * voice: string
     | LoadFailed of exn
 
@@ -637,21 +638,23 @@ let private speak (es: Espeak) (voice: string) (text: string) (lang: string) : s
         | Error e -> voice, Error e
         | Ok() -> id, attempt (fun () -> phonemesOf es text)
 
-/// One message: the module loaded if it is not yet, then `speak`. Whatever is thrown while handling it is the reply
-/// and the state stays as the message found it (`speak` returns the voice it set, so nothing that can throw lies
+/// One message: the module loaded first if it is not yet, then `speak`. Whatever is thrown while handling it is the
+/// reply and the state stays as the message found it (`speak` returns the voice it set, so nothing that can throw lies
 /// between its set_voice and its result): the agent does not stop. `load` catches its own errors (a failed load is
 /// the state, not an exception).
-let private handle (state: EspeakState option) (text: string) (lang: string) : Async<EspeakState * Result<string, exn>> =
+let rec private handleEspeak (state: EspeakState) (text: string) (lang: string) : Async<EspeakState * Result<string, exn>> =
     async {
-        let! loaded = match state with Some s -> async.Return s | None -> load ()
-        try
-            match loaded with
-            | LoadFailed e -> return loaded, Error e
-            | Loaded(es, voice) ->
-                let voice, result = speak es voice text lang
+        match state with
+        | NotLoaded ->
+            let! loaded = load ()
+            return! handleEspeak loaded text lang
+        | LoadFailed e -> return state, Error e
+        | Loaded(es, current) ->
+            try
+                let voice, result = speak es current text lang
                 return Loaded(es, voice), result
-        with e ->
-            return loaded, Error e
+            with e ->
+                return state, Error e
     }
 
 /// The only holder of the eSpeak module: one message at a time, so the voice it is set to cannot change between a
@@ -659,14 +662,14 @@ let private handle (state: EspeakState option) (text: string) (lang: string) : A
 /// its current voice, or the failed load.
 let private espeakAgent: MailboxProcessor<EspeakMsg> =
     MailboxProcessor.Start(fun inbox ->
-        let rec loop (state: EspeakState option) : Async<unit> =
+        let rec loop (state: EspeakState) : Async<unit> =
             async {
                 let! (Phonemize(text, lang, reply)) = inbox.Receive()
-                let! next, result = handle state text lang
-                reply.Reply result
-                return! loop (Some next)
+                let! next, result = handleEspeak state text lang
+                deliver [ fun () -> reply.Reply result ]
+                return! loop next
             }
-        loop None)
+        loop NotLoaded)
 
 /// Tokenizer.phonemize of kokoro-onnx: the phonemes of a text in a language ("en-us", "fr-fr"). Raises what went
 /// wrong, as the promise version rejected with it.
@@ -789,9 +792,6 @@ let private startWorker (agent: MailboxProcessor<VoiceMsg>) : obj =
     worker?on("error", fun (e: obj) -> agent.Post(Crashed(string e)))
     worker
 
-/// The answers a message owes, given as functions so that the agent calls them once its state is settled.
-type private Answers = (unit -> unit) list
-
 let private failAll (pending: Map<int, VoiceReply>) (text: string) : Answers =
     [ for KeyValue(_, reply) in pending -> fun () -> reply.Reply(Error text) ]
 
@@ -830,19 +830,11 @@ let private handleVoice (agent: MailboxProcessor<VoiceMsg>) (state: VoiceState) 
         with e ->
             match msg with
             | Generate(_, _, _, reply) -> return state, [ fun () -> reply.Reply(Error(string e)) ]
+            // Not a failure path for a Stop: Worker.terminate resolves on Node and never rejects.
             | Stop reply -> return noWorker, failAll state.Pending (string e) @ [ fun () -> reply.Reply() ]
             | Reply _
             | Crashed _ -> return state, []
     }
-
-/// Gives each answer. An answer runs its caller's continuation up to that caller's next await; what escapes it (only
-/// a caller whose computation is already over can throw back here) is the caller's, not the agent's or the others'.
-let private deliver (answers: Answers) : unit =
-    for answer in answers do
-        try
-            answer ()
-        with _ ->
-            ()
 
 /// The only holder of the model's worker thread: requests, the worker's answers and its death, and the release, one
 /// at a time. Every request gets one reply: its audio, the worker's error, or the error that killed the worker.

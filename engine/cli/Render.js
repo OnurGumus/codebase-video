@@ -1,10 +1,10 @@
 
 import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
+import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, deliver, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
-import { int32ToString, Exception, disposeSafe, getEnumerator, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { disposeSafe, getEnumerator, int32ToString, Exception, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
@@ -139,23 +139,6 @@ const renderAt = (0, eval)('(' + "(t) => window.render(t)" + ')');
 const labelled = "(t, label) => {\n        window.render(t);\n        let tag = document.getElementById(\"sheet-label\");\n        if (!tag) {\n          tag = document.createElement(\"div\");\n          tag.id = \"sheet-label\";\n          tag.style.cssText = \"position:fixed;left:0;right:0;top:0;z-index:99;padding:6px 14px;background:#000d;color:#ffd84d;font:600 34px/1.25 monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\";\n          document.body.append(tag);\n        }\n        tag.textContent = label;\n      }";
 
 const imagesLoaded = "() => Promise.all(Array.from(document.images, (img) =>\n        (img.complete ? Promise.resolve() : new Promise((ok) => {\n          img.addEventListener(\"load\", ok, { once: true });\n          img.addEventListener(\"error\", ok, { once: true });\n        })).then(() => img.decode().catch(() => {})))).then(() => true)";
-
-function deliver(answers) {
-    const enumerator = getEnumerator(answers);
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const answer = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            try {
-                answer();
-            }
-            catch (matchValue) {
-            }
-        }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-}
 
 class PageMsg extends Union {
     constructor(tag, fields) {
@@ -394,20 +377,21 @@ function WriterMsg_$reflection() {
 }
 
 class Writer extends Record {
-    constructor(NextToGive, Next, Waiting, Failed) {
+    constructor(NextToGive, Next, Written, Waiting, Failed) {
         super();
         this.NextToGive = (NextToGive | 0);
         this.Next = (Next | 0);
+        this.Written = (Written | 0);
         this.Waiting = Waiting;
         this.Failed = Failed;
     }
 }
 
 function Writer_$reflection() {
-    return record_type("Render.Writer", [], Writer, () => [["NextToGive", int32_type], ["Next", int32_type], ["Waiting", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [int32_type, tuple_type(obj_type, option_type(class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])))])], ["Failed", option_type(class_type("System.Exception"))]]);
+    return record_type("Render.Writer", [], Writer, () => [["NextToGive", int32_type], ["Next", int32_type], ["Written", int32_type], ["Waiting", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [int32_type, tuple_type(obj_type, option_type(class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])))])], ["Failed", option_type(class_type("System.Exception"))]]);
 }
 
-function exitStatus(ff) {
+function $007CExited$007C_$007C(ff) {
     if (!Operators_IsNull(ff.exitCode)) {
         return ff.exitCode;
     }
@@ -422,15 +406,18 @@ function exitStatus(ff) {
 function writeFrame(ff, png) {
     return fromContinuations((tupledArg) => {
         const ok = tupledArg[0];
-        if ((exitStatus(ff) != null) ? true : (ff.stdin.write(png))) {
-            ok();
+        if ($007CExited$007C_$007C(ff) != null) {
+            ok(false);
+        }
+        else if (ff.stdin.write(png)) {
+            ok(true);
         }
         else {
             const stdin = ff.stdin;
             const settle = (_arg_2) => {
                 stdin.removeListener("drain", settle);
                 ff.removeListener("close", settle);
-                ok();
+                ok(true);
             };
             stdin.once("drain", settle);
             ff.once("close", settle);
@@ -441,14 +428,15 @@ function writeFrame(ff, png) {
 function exitOf(ff) {
     return fromContinuations((tupledArg) => {
         const ok = tupledArg[0];
-        const matchValue = exitStatus(ff);
-        if (matchValue == null) {
+        const activePatternResult = $007CExited$007C_$007C(ff);
+        if (activePatternResult != null) {
+            const code = activePatternResult | 0;
+            ok(code);
+        }
+        else {
             ff.once("close", ((code_1) => {
                 ok(Operators_IsNull(code_1) ? 1 : code_1);
             }));
-        }
-        else {
-            ok(matchValue);
         }
     });
 }
@@ -464,7 +452,7 @@ function nextInOrder(state_mut, taken_mut) {
         else {
             const png = matchValue[0];
             const owed = matchValue[1];
-            state_mut = (new Writer(state.NextToGive, (state.Next + 1) | 0, FSharpMap__Remove(state.Waiting, state.Next), state.Failed));
+            state_mut = (new Writer(state.NextToGive, (state.Next + 1) | 0, state.Written, FSharpMap__Remove(state.Waiting, state.Next), state.Failed));
             taken_mut = cons([state.Next, png, owed], taken);
             continue nextInOrder;
         }
@@ -475,22 +463,9 @@ function nextInOrder(state_mut, taken_mut) {
 function startWriter(ff, pages, fps, r) {
     const window$ = (pages * 8) | 0;
     const seconds = (frames) => toFixed(0, frames / fps);
-    const writeAll = (frames_1) => singleton.Delay(() => {
+    const writeAll = (written, frames_1) => singleton.Delay(() => {
         let i;
-        if (!isEmpty(frames_1)) {
-            return singleton.Bind((i = (head(frames_1)[0] | 0), singleton.Delay(() => singleton.Bind(writeFrame(ff, head(frames_1)[1]), () => {
-                if (((i - r.First) % ~~fps) === 0) {
-                    stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `));
-                    return singleton.Zero();
-                }
-                else {
-                    return singleton.Zero();
-                }
-            }))), () => singleton.ReturnFrom(writeAll(tail(frames_1))));
-        }
-        else {
-            return singleton.Zero();
-        }
+        return !isEmpty(frames_1) ? singleton.Bind((i = (head(frames_1)[0] | 0), singleton.Delay(() => singleton.Bind(writeFrame(ff, head(frames_1)[1]), (_arg) => singleton.Combine((((i - r.First) % ~~fps) === 0) ? ((stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `)), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return(_arg)))))), (_arg_1) => singleton.ReturnFrom(writeAll(_arg_1 ? ((written + 1) | 0) : written, tail(frames_1)))) : singleton.Return(written);
     });
     return start_1((inbox) => {
         const loop = (state_2) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg_6) => {
@@ -503,13 +478,14 @@ function startWriter(ff, pages, fps, r) {
                         case 1:
                             if (matchValue == null) {
                                 const atOnce = (msg.fields[0] - state.Next) <= window$;
-                                const patternInput = nextInOrder(new Writer(state.NextToGive, state.Next, FSharpMap__Add(state.Waiting, msg.fields[0], [msg.fields[1], atOnce ? undefined : msg.fields[2]]), state.Failed), empty());
+                                const patternInput = nextInOrder(new Writer(state.NextToGive, state.Next, state.Written, FSharpMap__Add(state.Waiting, msg.fields[0], [msg.fields[1], atOnce ? undefined : msg.fields[2]]), state.Failed), empty());
+                                const next = patternInput[0];
                                 const frames_2 = patternInput[1];
-                                return singleton.Bind(writeAll(frames_2), () => {
+                                return singleton.Bind(writeAll(next.Written, frames_2), (_arg_2) => {
                                     const owed_1 = map((r_1) => (() => {
                                         r_1.reply(undefined);
                                     }), choose((tupledArg) => tupledArg[2], frames_2));
-                                    return singleton.Return([patternInput[0], append(atOnce ? singleton_1(() => {
+                                    return singleton.Return([new Writer(next.NextToGive, next.Next, _arg_2, next.Waiting, next.Failed), append(atOnce ? singleton_1(() => {
                                         msg.fields[2].reply(undefined);
                                     }) : empty(), owed_1)]);
                                 });
@@ -525,7 +501,7 @@ function startWriter(ff, pages, fps, r) {
                                 return singleton.Bind(exitOf(ff), (_arg_5) => {
                                     const code = _arg_5 | 0;
                                     return singleton.Combine((code !== 0) ? ((eprint(concat("\nffmpeg failed on ", r.Label)), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return([state, singleton_1(() => {
-                                        msg.fields[0].reply(new FSharpResult$2(/* Ok */ 0, [(code === 0) && (state.Next === r.End)]));
+                                        msg.fields[0].reply(new FSharpResult$2(/* Ok */ 0, [(code === 0) && (state.Written === r.End)]));
                                     })])));
                                 });
                             }
@@ -536,13 +512,29 @@ function startWriter(ff, pages, fps, r) {
                                 })]);
                             }
                         default:
-                            return (matchValue == null) ? (((state.NextToGive < r.End) && (exitStatus(ff) == null)) ? singleton.Return([new Writer((state.NextToGive + 1) | 0, state.Next, state.Waiting, state.Failed), singleton_1(() => {
-                                msg.fields[0].reply(state.NextToGive);
-                            })]) : singleton.Return([state, singleton_1(() => {
-                                msg.fields[0].reply(undefined);
-                            })])) : singleton.Return([state, singleton_1(() => {
-                                msg.fields[0].reply(undefined);
-                            })]);
+                            if (matchValue == null) {
+                                if ($007CExited$007C_$007C(ff) != null) {
+                                    return singleton.Return([state, singleton_1(() => {
+                                        msg.fields[0].reply(undefined);
+                                    })]);
+                                }
+                                else if (state.NextToGive < r.End) {
+                                    const given = state.NextToGive | 0;
+                                    return singleton.Return([new Writer((given + 1) | 0, state.Next, state.Written, state.Waiting, state.Failed), singleton_1(() => {
+                                        msg.fields[0].reply(given);
+                                    })]);
+                                }
+                                else {
+                                    return singleton.Return([state, singleton_1(() => {
+                                        msg.fields[0].reply(undefined);
+                                    })]);
+                                }
+                            }
+                            else {
+                                return singleton.Return([state, singleton_1(() => {
+                                    msg.fields[0].reply(undefined);
+                                })]);
+                            }
                     }
                 }))));
             }), (_arg_7) => {
@@ -564,7 +556,7 @@ function startWriter(ff, pages, fps, r) {
                             reply_9.reply(undefined);
                         });
                     }
-                }, state_1.Waiting))), [new Writer(state_1.NextToGive, state_1.Next, empty_2({
+                }, state_1.Waiting))), [new Writer(state_1.NextToGive, state_1.Next, state_1.Written, empty_2({
                     Compare: (x, y) => (comparePrimitives(x, y) | 0),
                 }), e_1), cons(own, waiting)]))))));
             })), (_arg_8) => {
@@ -572,7 +564,7 @@ function startWriter(ff, pages, fps, r) {
                 return singleton.ReturnFrom(loop(_arg_8[0]));
             });
         }));
-        return loop(new Writer(r.First, r.First, empty_2({
+        return loop(new Writer(r.First, r.First, r.First, empty_2({
             Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
         }), undefined));
     });

@@ -3,9 +3,9 @@ import { Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { union_type, class_type, list_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { postAndAsyncReply, post, receive, start } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
-import { iterate, length, filter, toArray, ofArray, tryItem, empty, cons, reverse } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { eprint, toJson, writeText, join, fromJs, requireFromHome, resolve, deliver } from "./Node.js";
+import { iterate, length, filter, toArray, ofArray, tryItem, empty, cons, singleton as singleton_1, reverse } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { eprint, toJson, writeText, join, fromJs, requireFromHome, resolve } from "./Node.js";
 import { toFixed, findChrome, ServeFor, startServer } from "./Render.js";
 import { min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
@@ -29,12 +29,17 @@ function LogMsg_$reflection() {
 
 function startLog() {
     return start((inbox) => {
-        const loop = (lines) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg) => ((_arg.tag === 1) ? singleton.Combine(singleton.TryWith(singleton.Delay(() => {
-            _arg.fields[0].reply(reverse(lines));
-            return singleton.Zero();
-        }), (_arg_1) => {
-            return singleton.Zero();
-        }), singleton.Delay(() => singleton.ReturnFrom(loop(lines)))) : singleton.ReturnFrom(loop(cons(_arg.fields[0], lines))))));
+        const loop = (lines) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg) => {
+            if (_arg.tag === 1) {
+                deliver(singleton_1(() => {
+                    _arg.fields[0].reply(reverse(lines));
+                }));
+                return singleton.ReturnFrom(loop(lines));
+            }
+            else {
+                return singleton.ReturnFrom(loop(cons(_arg.fields[0], lines)));
+            }
+        }));
         return loop(empty());
     });
 }

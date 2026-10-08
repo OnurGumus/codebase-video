@@ -78,10 +78,7 @@ let private startLog () : MailboxProcessor<LogMsg> =
                 match! inbox.Receive() with
                 | Line line -> return! loop (line :: lines)
                 | Lines reply ->
-                    try
-                        reply.Reply(List.rev lines)
-                    with _ ->
-                        () // the caller's continuation, not the log's
+                    deliver [ fun () -> reply.Reply(List.rev lines) ]
                     return! loop lines
             }
         loop [])

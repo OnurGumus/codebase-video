@@ -1,6 +1,7 @@
-/// Thin bindings to the Node built-ins the engine uses, plus the engine's paths and the bridge from a JS library's
-/// promise to an Async. Everything else (puppeteer-core, kokoro-js) is installed by `setup` into the tool home and
-/// loaded with `requireFromHome`, so the engine itself can sit in a read-only plugin cache.
+/// Thin bindings to the Node built-ins the engine uses, plus the engine's paths, the bridge from a JS library's
+/// promise to an Async, and how an agent gives its replies. Everything else (puppeteer-core, kokoro-js) is installed
+/// by `setup` into the tool home and loaded with `requireFromHome`, so the engine itself can sit in a read-only plugin
+/// cache.
 module Node
 
 open Fable.Core
@@ -145,3 +146,20 @@ let private markHandled (p: obj) : unit = jsNative
 let fromJs (p: obj) : Async<'T> =
     markHandled p
     Async.AwaitPromise(awaitJs p)
+
+// Agents -------------------------------------------------------------------------------------------------------
+
+/// The replies a message owes, as functions: the agent gives them once its next state is settled.
+type Answers = (unit -> unit) list
+
+/// Gives each reply an agent owes, after the message is handled and outside any `try` around the handling: a reply
+/// runs its caller's continuation at once, up to that caller's next await, so a reply given inside the `try` could
+/// come back as the handler's own failure and be answered a second time. What escapes a reply (only a caller whose
+/// computation is already over can throw back here) is that caller's, not the agent's: it is dropped, so the agent
+/// goes on and the other replies are still given.
+let deliver (answers: Answers) : unit =
+    for answer in answers do
+        try
+            answer ()
+        with _ ->
+            ()

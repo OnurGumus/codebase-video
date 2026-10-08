@@ -10,7 +10,7 @@ import { toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0
 import { option_type, float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { iterate, sumBy, last as last_2, tryFind, item as item_1, indexed, length, sort, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve, readJson, dirname, requireFromHome, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
+import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve, readJson, dirname, requireFromHome, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
 import { defaultArg, some, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
@@ -821,12 +821,13 @@ class EspeakState extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["Loaded", "LoadFailed"];
+        return ["NotLoaded", "Loaded", "LoadFailed"];
     }
+    static NotLoaded = new EspeakState(0, []);
 }
 
 function EspeakState_$reflection() {
-    return union_type("Narrate.EspeakState", [], EspeakState, () => [[["Item1", Espeak_$reflection()], ["voice", string_type]], [["Item", class_type("System.Exception")]]]);
+    return union_type("Narrate.EspeakState", [], EspeakState, () => [[], [["Item1", Espeak_$reflection()], ["voice", string_type]], [["Item", class_type("System.Exception")]]]);
 }
 
 class EspeakMsg extends Union {
@@ -859,8 +860,8 @@ function load() {
         }, worker.list_voices())), {
             Compare: (x, y) => (comparePrimitives(x, y) | 0),
         });
-        return singleton_2.Return(new EspeakState(/* Loaded */ 0, [new Espeak(worker, () => instance.HEAPU8, voices), ""]));
-    }))), (_arg_2) => singleton_2.Return(new EspeakState(/* LoadFailed */ 1, [_arg_2]))));
+        return singleton_2.Return(new EspeakState(/* Loaded */ 1, [new Espeak(worker, () => instance.HEAPU8, voices), ""]));
+    }))), (_arg_2) => singleton_2.Return(new EspeakState(/* LoadFailed */ 2, [_arg_2]))));
 }
 
 function nulAt(heap, start) {
@@ -947,31 +948,32 @@ function speak(es, voice, text, lang) {
     }
 }
 
-function handle(state, text, lang) {
+function handleEspeak(state, text, lang) {
     return singleton_2.Delay(() => {
-        let s;
-        return singleton_2.Bind((state == null) ? load() : ((s = state, singleton_2.Return(s))), (_arg) => {
-            const loaded = _arg;
-            return singleton_2.TryWith(singleton_2.Delay(() => {
-                if (loaded.tag === 0) {
-                    const es = loaded.fields[0];
-                    const patternInput = speak(es, loaded.fields[1], text, lang);
-                    return singleton_2.Return([new EspeakState(/* Loaded */ 0, [es, patternInput[0]]), patternInput[1]]);
-                }
-                else {
-                    return singleton_2.Return([loaded, new FSharpResult$2(/* Error */ 1, [loaded.fields[0]])]);
-                }
-            }), (_arg_1) => singleton_2.Return([loaded, new FSharpResult$2(/* Error */ 1, [_arg_1])]));
-        });
+        switch (state.tag) {
+            case 2:
+                return singleton_2.Return([state, new FSharpResult$2(/* Error */ 1, [state.fields[0]])]);
+            case 1: {
+                const es = state.fields[0];
+                return singleton_2.TryWith(singleton_2.Delay(() => {
+                    const patternInput = speak(es, state.fields[1], text, lang);
+                    return singleton_2.Return([new EspeakState(/* Loaded */ 1, [es, patternInput[0]]), patternInput[1]]);
+                }), (_arg_1) => singleton_2.Return([state, new FSharpResult$2(/* Error */ 1, [_arg_1])]));
+            }
+            default:
+                return singleton_2.Bind(load(), (_arg) => singleton_2.ReturnFrom(handleEspeak(_arg, text, lang)));
+        }
     });
 }
 
 const espeakAgent = start_1((inbox) => {
-    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => singleton_2.Bind(handle(state, _arg.fields[0], _arg.fields[1]), (_arg_1) => {
-        _arg.fields[2].reply(_arg_1[1]);
+    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => singleton_2.Bind(handleEspeak(state, _arg.fields[0], _arg.fields[1]), (_arg_1) => {
+        deliver(singleton(() => {
+            _arg.fields[2].reply(_arg_1[1]);
+        }));
         return singleton_2.ReturnFrom(loop(_arg_1[0]));
     })));
-    return loop(undefined);
+    return loop(EspeakState.NotLoaded);
 });
 
 /**
@@ -1198,23 +1200,6 @@ function handleVoice(agent, state, msg) {
                 })]);
         }
     }));
-}
-
-function deliver(answers) {
-    const enumerator = getEnumerator(answers);
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const answer = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            try {
-                answer();
-            }
-            catch (matchValue) {
-            }
-        }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
 }
 
 const voiceAgent = start_1((inbox) => {
