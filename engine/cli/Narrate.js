@@ -1,7 +1,7 @@
 
 import { read, write, concat as concat_3, trim as trim_1, roundHalfEven } from "./Wav.js";
 import { max, isNegativeInfinity, isPositiveInfinity, parse } from "./fable_modules/fable-library-js.5.19.0/Double.js";
-import { toConsole, trim, concat, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { toConsole, concat as concat_1, trim, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { concat as concat_2, truncate, fold as fold_1, choose, reverse as reverse_1, mapIndexed as mapIndexed_1, map as map_1, item, equalsWith } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { round, disposeSafe, getEnumerator, Lazy, Exception, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { op_UnaryNegation_Int32, parse as parse_1 } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
@@ -9,16 +9,20 @@ import { empty as empty_1, singleton as singleton_1, collect, append as append_1
 import { FSharpRef, toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { sumBy, last as last_2, tryFind, item as item_1, indexed, length, sort, ofSeq as ofSeq_1, concat as concat_1, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { sumBy, last as last_2, tryFind, item as item_1, indexed, length, sort, ofSeq as ofSeq_1, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve as resolve_1, readJson, dirname, requireFromHome, url, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
 import { defaultArg, some, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { empty as empty_2, FSharpMap__ContainsKey, FSharpMap__TryFind, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
-import { PromiseBuilder__For_1565554B, PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
-import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
+import { empty as empty_2, FSharpMap__TryFind, FSharpMap__ContainsKey, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
+import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
+import { startAsPromise, awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
+import { postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import * as node$003Aworker_threads from "node:worker_threads";
+import { PromiseBuilder__For_1565554B, PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
+import { promise as promise_2 } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
 import { tryGetValue } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
-import { apply, load } from "./Glossary.js";
+import { apply, load as load_1 } from "./Glossary.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 
 /**
@@ -800,56 +804,90 @@ function restore(text, marks) {
 }
 
 class Espeak extends Record {
-    constructor(worker, heap, voices, current) {
+    constructor(worker, heap, voices) {
         super();
         this.worker = worker;
         this.heap = heap;
         this.voices = voices;
-        this.current = current;
     }
 }
 
 function Espeak_$reflection() {
-    return record_type("Narrate.Espeak", [], Espeak, () => [["worker", obj_type], ["heap", lambda_type(unit_type, array_type(uint8_type))], ["voices", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, string_type])], ["current", string_type]]);
+    return record_type("Narrate.Espeak", [], Espeak, () => [["worker", obj_type], ["heap", lambda_type(unit_type, array_type(uint8_type))], ["voices", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, string_type])]]);
 }
 
-let espeakLoaded = undefined;
+class EspeakState extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Loaded", "LoadFailed"];
+    }
+}
 
-function espeak() {
-    if (espeakLoaded == null) {
-        const p_1 = PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (importFromHome("@echogarden/espeak-ng-emscripten").then((_arg) => ((_arg.default()).then((_arg_1) => {
-            const instance = _arg_1;
-            const worker = new instance.eSpeakNGWorker();
-            const voices = ofArray_1(reverse_1(choose((v) => {
-                const langs = v.languages;
-                if (langs.length > 0) {
-                    return [toString(item(0, langs).name), toString(v.identifier)];
-                }
-                else {
-                    return undefined;
-                }
-            }, worker.list_voices())), {
-                Compare: (x, y) => (comparePrimitives(x, y) | 0),
-            });
-            return Promise.resolve(new Espeak(worker, () => instance.HEAPU8, voices, ""));
-        }))))));
-        espeakLoaded = p_1;
-        return p_1;
+function EspeakState_$reflection() {
+    return union_type("Narrate.EspeakState", [], EspeakState, () => [[["Item1", Espeak_$reflection()], ["voice", string_type]], [["Item", class_type("System.Exception")]]]);
+}
+
+class EspeakMsg extends Union {
+    constructor(text, lang, Item3) {
+        super();
+        this.tag = 0;
+        this.fields = [text, lang, Item3];
     }
-    else {
-        return espeakLoaded;
+    cases() {
+        return ["Phonemize"];
     }
+}
+
+function EspeakMsg_$reflection() {
+    return union_type("Narrate.EspeakMsg", [], EspeakMsg, () => [[["text", string_type], ["lang", string_type], ["Item3", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [union_type("Microsoft.FSharp.Core.FSharpResult`2", [string_type, class_type("System.Exception")], FSharpResult$2, () => [[["ResultValue", string_type]], [["ErrorValue", class_type("System.Exception")]]])])]]]);
+}
+
+function load() {
+    return singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(awaitPromise(importFromHome("@echogarden/espeak-ng-emscripten")), (_arg) => singleton_2.Bind(awaitPromise(_arg.default()), (_arg_1) => {
+        const instance = _arg_1;
+        const worker = new instance.eSpeakNGWorker();
+        const voices = ofArray_1(reverse_1(choose((v) => {
+            const langs = v.languages;
+            if (langs.length > 0) {
+                return [toString(item(0, langs).name), toString(v.identifier)];
+            }
+            else {
+                return undefined;
+            }
+        }, worker.list_voices())), {
+            Compare: (x, y) => (comparePrimitives(x, y) | 0),
+        });
+        return singleton_2.Return(new EspeakState(/* Loaded */ 0, [new Espeak(worker, () => instance.HEAPU8, voices), ""]));
+    }))), (_arg_2) => singleton_2.Return(new EspeakState(/* LoadFailed */ 1, [_arg_2]))));
+}
+
+function nulAt(heap, start) {
+    const go = (e_mut) => {
+        go:
+        while (true) {
+            const e = e_mut;
+            if (item(e, heap) !== 0) {
+                e_mut = (e + 1);
+                continue go;
+            }
+            else {
+                return e | 0;
+            }
+            break;
+        }
+    };
+    return go(start) | 0;
 }
 
 function textToPhonemes(es, line) {
     let array;
     const ptr = (es.worker.text_to_phonemes(line, 1)).ptr | 0;
     const heap = es.heap();
-    let e = ptr;
-    while (item(e, heap) !== 0) {
-        e = ((e + 1) | 0);
-    }
-    return join(" ", (array = split_1(new TextDecoder().decode(heap.subarray(ptr, e)), [" | "], undefined, 0), array.filter((c) => (c !== ""))));
+    return join(" ", (array = split_1(new TextDecoder().decode(heap.subarray(ptr, nulAt(heap, ptr))), [" | "], undefined, 0), array.filter((c) => (c !== ""))));
 }
 
 function postprocessLine(line) {
@@ -863,29 +901,83 @@ function postprocessLine(line) {
     }
 }
 
+function phonemesOf(es, text) {
+    let array_4;
+    let lines;
+    const array_1 = map_1((l) => trim(l, "\n"), split_1(trim(text.trim(), "\n"), ["\n"], undefined, 0));
+    lines = array_1.filter((l_1) => (l_1.trim() !== ""));
+    let patternInput;
+    const tupledArg = unzip(ofArray(mapIndexed_1((num_1, line) => preserveLine(line, num_1), lines)));
+    patternInput = [filter((c_1) => (c_1 !== ""), concat(tupledArg[0])), concat(tupledArg[1])];
+    const phonemized = map_2((arg) => postprocessLine(textToPhonemes(es, arg)), patternInput[0]);
+    const joined = (lines.length === 0) ? "" : join("\n", restore(phonemized, patternInput[1]));
+    return join("", (array_4 = (Array.from(joined)), array_4.filter((key) => FSharpMap__ContainsKey(VOCAB, key)))).trim();
+}
+
+function attempt(f) {
+    try {
+        return new FSharpResult$2(/* Ok */ 0, [f()]);
+    }
+    catch (e) {
+        return new FSharpResult$2(/* Error */ 1, [e]);
+    }
+}
+
+function speak(es, voice_1, text, lang) {
+    const matchValue = attempt(() => FSharpMap__TryFind(es.voices, lang));
+    if (matchValue.tag === 0) {
+        if (matchValue.fields[0] != null) {
+            const id = matchValue.fields[0];
+            const matchValue_1 = attempt(() => {
+                if (voice_1 !== id) {
+                    es.worker.set_voice(id);
+                }
+            });
+            if (matchValue_1.tag === 0) {
+                return [id, attempt(() => phonemesOf(es, text))];
+            }
+            else {
+                return [voice_1, new FSharpResult$2(/* Error */ 1, [matchValue_1.fields[0]])];
+            }
+        }
+        else {
+            return [voice_1, new FSharpResult$2(/* Error */ 1, [new Exception(concat_1("language \"", lang, "\" is not supported by the espeak backend"))])];
+        }
+    }
+    else {
+        return [voice_1, new FSharpResult$2(/* Error */ 1, [matchValue.fields[0]])];
+    }
+}
+
+const espeakAgent = start_1((inbox) => {
+    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => {
+        let s;
+        const reply = _arg.fields[2];
+        return singleton_2.Bind((state == null) ? load() : ((s = state, singleton_2.Return(s))), (_arg_1) => {
+            const state_1 = _arg_1;
+            if (state_1.tag === 0) {
+                const es = state_1.fields[0];
+                const patternInput = speak(es, state_1.fields[1], _arg.fields[0], _arg.fields[1]);
+                reply.reply(patternInput[1]);
+                return singleton_2.ReturnFrom(loop(new EspeakState(/* Loaded */ 0, [es, patternInput[0]])));
+            }
+            else {
+                reply.reply(new FSharpResult$2(/* Error */ 1, [state_1.fields[0]]));
+                return singleton_2.ReturnFrom(loop(state_1));
+            }
+        });
+    }));
+    return loop(undefined);
+});
+
 /**
- * Tokenizer.phonemize of kokoro-onnx: phonemizer.phonemize(text, lang, preserve_punctuation=True,
- * with_stress=True), then only the symbols in Kokoro's vocabulary.
+ * Tokenizer.phonemize of kokoro-onnx: the phonemes of a text in a language ("en-us", "fr-fr"). Raises what went
+ * wrong, as the promise version rejected with it.
  */
 export function phonemize(text, lang) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (espeak().then((_arg) => {
-        let matchValue, id;
-        const es = _arg;
-        return ((matchValue = FSharpMap__TryFind(es.voices, lang), (matchValue != null) ? ((id = matchValue, (es.current !== id) ? ((void (es.worker.set_voice(id)), (es.current = id, Promise.resolve()))) : (Promise.resolve()))) : (((() => {
-            throw new Exception(concat("language \"", lang, "\" is not supported by the espeak backend"));
-        })(), Promise.resolve())))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-            let array_4;
-            let lines;
-            const array_1 = map_1((l) => trim(l, "\n"), split_1(trim(text.trim(), "\n"), ["\n"], undefined, 0));
-            lines = array_1.filter((l_1) => (l_1.trim() !== ""));
-            let patternInput;
-            const tupledArg = unzip(ofArray(mapIndexed_1((num_1, line) => preserveLine(line, num_1), lines)));
-            patternInput = [filter((c_1) => (c_1 !== ""), concat_1(tupledArg[0])), concat_1(tupledArg[1])];
-            const phonemized = map_2((arg) => postprocessLine(textToPhonemes(es, arg)), patternInput[0]);
-            const joined = (lines.length === 0) ? "" : join("\n", restore(phonemized, patternInput[1]));
-            return Promise.resolve(join("", (array_4 = (Array.from(joined)), array_4.filter((key) => FSharpMap__ContainsKey(VOCAB, key)))).trim());
-        }));
-    }))));
+    return singleton_2.Delay(() => singleton_2.Bind(postAndAsyncReply(espeakAgent, (reply) => (new EspeakMsg(text, lang, reply))), (_arg) => ((_arg.tag === 1) ? singleton_2.Return((() => {
+        throw _arg.fields[0];
+    })()) : singleton_2.Return(_arg.fields[0]))));
 }
 
 const MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
@@ -928,7 +1020,7 @@ function serveVoice() {
         let pr_2;
         queue.contents = ((pr_2 = queue.contents, pr_2.then(() => {
             const msg = msg_1;
-            const pr_1 = PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (model.Value.then((_arg) => {
+            const pr_1 = PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => (model.Value.then((_arg) => {
                 const input = new _arg[1]('int64', BigInt64Array.from(msg.ids, BigInt), [1, msg.ids.length]);
                 return (_arg[0].generate_from_ids(input, {
                     voice: msg.voice,
@@ -1053,7 +1145,7 @@ function voiceFile(name) {
 }
 
 function foldP(step, state, items) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (!isEmpty(items) ? (step(state, head(items)).then((_arg) => (foldP(step, _arg, tail_1(items))))) : (Promise.resolve(state)))));
+    return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => (!isEmpty(items) ? (step(state, head(items)).then((_arg) => (foldP(step, _arg, tail_1(items))))) : (Promise.resolve(state)))));
 }
 
 function splitPhonemes(phonemes) {
@@ -1077,11 +1169,11 @@ function splitPhonemes(phonemes) {
 }
 
 function create(phonemes, voiceName, speed) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => ((!((speed >= 0.5) && (speed <= 2)) ? (((() => {
+    return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => ((!((speed >= 0.5) && (speed <= 2)) ? (((() => {
         throw new Exception("Speed should be between 0.5 and 2.0");
-    })(), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => ((!exists(voiceFile(voiceName)) ? (((() => {
-        throw new Exception(concat("Voice ", voiceName, " not found in available voices"));
-    })(), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (foldP((parts, batch) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+    })(), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise_2, () => ((!exists(voiceFile(voiceName)) ? (((() => {
+        throw new Exception(concat_1("Voice ", voiceName, " not found in available voices"));
+    })(), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise_2, () => (foldP((parts, batch) => PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
         const ids = choose((key) => FSharpMap__TryFind(VOCAB, key), truncate(MAX_PHONEMES, Array.from(batch)), Int32Array);
         return generate(concat_2([new Int32Array([0]), ids, new Int32Array([0])], Int32Array), voiceName, speed).then((_arg) => (Promise.resolve(cons(trim_1(_arg), parts))));
     })), empty(), splitPhonemes(phonemes)).then((_arg_1) => (Promise.resolve(concat_3(reverse(_arg_1))))))))))))));
@@ -1091,7 +1183,7 @@ function create(phonemes, voiceName, speed) {
  * Voices a short phrase end to end (setup's check that the voice works).
  */
 export function selfTest() {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (phonemize("Ready.", "en-us").then((_arg) => (create(_arg, "af_heart", 1).then((_arg_1) => (release().then(() => {
+    return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => (startAsPromise(phonemize("Ready.", "en-us")).then((_arg) => (create(_arg, "af_heart", 1).then((_arg_1) => (release().then(() => {
         if (_arg_1.length === 0) {
             throw new Exception("the voice produced no audio");
             return Promise.resolve();
@@ -1338,20 +1430,20 @@ export function run(ws) {
     finally {
         disposeSafe(enumerator);
     }
-    const glossary = load(clip);
+    const glossary = load_1(clip);
     const build = join_1(ofArray([clip, "build"]));
     const cache = join_1(ofArray([build, "tts-cache"]));
     mkdirp(cache);
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+    return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
         const sceneObjs = script.scenes;
         const markedScenes_1 = marked.scenes;
         return foldP((tupledArg, tupledArg_1) => {
             const track = tupledArg[0];
             const finished = tupledArg[1];
             const sc = tupledArg_1[1];
-            return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+            return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                 const id = sc.id;
-                return (exists_1((f) => (toJson(f.id) === toJson(id)), finished) ? ((fail(concat("duplicate scene id ", Py_repr(id))), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                return (exists_1((f) => (toJson(f.id) === toJson(id)), finished) ? ((fail(concat_1("duplicate scene id ", Py_repr(id))), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                     let option_11, option_9;
                     const startFrame = ~~(track.pos / FRAME) | 0;
                     const track_1 = silence(getFloat(sc, "lead", 0.4), track);
@@ -1360,7 +1452,7 @@ export function run(ws) {
                         const track_6 = tupledArg_4[0];
                         const i_1 = tupledArg_5[0] | 0;
                         const s = tupledArg_5[1];
-                        return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                        return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                             const track_7 = (i_1 > 0) ? silence(GAP, track_6) : track_6;
                             const sentenceStart = now(startFrame, track_7);
                             const after = breaks(s);
@@ -1374,12 +1466,12 @@ export function run(ws) {
                                 const _arg_4 = tupledArg_3[1];
                                 const text_2 = _arg_4[1];
                                 const code_3 = _arg_4[0];
-                                return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                                return PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                                     const track_3 = (tupledArg_3[0] > 0) ? silence(max(tupledArg_2[2], PART_GAP), track_2) : track_2;
                                     const partStart = now(startFrame, track_3);
-                                    return ((voiceName != null) ? PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                                    return ((voiceName != null) ? PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                                         let code_2, text, where;
-                                        return ((code_2 = code_3, (text = spoken(text_2), (where = (`${Py_str(id)}[${i_1}]`), PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                                        return ((code_2 = code_3, (text = spoken(text_2), (where = (`${Py_str(id)}[${i_1}]`), PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                                             let c;
                                             let patternInput;
                                             const code = code_2;
@@ -1405,20 +1497,20 @@ export function run(ws) {
                                             option_7 = ((option_5 != null) ? (Py_truthy(value_8(option_5)) ? option_5 : undefined) : undefined);
                                             phonemes = ((option_7 != null) ? toString(value_8(option_7)) : undefined);
                                             const text_1 = ((phonemes == null) && l.toLocaleLowerCase().startsWith("en")) ? voiced(text) : text;
-                                            return ((code_2 == null) ? (Promise.resolve(undefined)) : ((c = code_2, PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                                            return ((code_2 == null) ? (Promise.resolve(undefined)) : ((c = code_2, PromiseBuilder__Run_212F1D4B(promise_2, PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                                                 let p_3;
-                                                return ((phonemes == null) ? phonemize(text_1, l) : ((p_3 = phonemes, Promise.resolve(p_3)))).then((_arg) => {
+                                                return ((phonemes == null) ? startAsPromise(phonemize(text_1, l)) : ((p_3 = phonemes, Promise.resolve(p_3)))).then((_arg) => {
                                                     const source = (phonemes != null) ? "pinned" : "auto";
                                                     return Promise.resolve(`${where}	${c}	${text_1}	${_arg}	${source}`);
                                                 });
                                             }))))).then((_arg_1) => {
                                                 let p_4;
                                                 const path = join_1(ofArray([cache, substring(sha1Hex(toJson(["kokoro-js 1.2.1 fp32", v_2, l, speed, defaultArg(phonemes, text_1)])), 0, 16) + ".wav"]));
-                                                return (!exists(path) ? (((phonemes == null) ? phonemize(text_1, l) : ((p_4 = phonemes, Promise.resolve(p_4)))).then((_arg_2) => (create(_arg_2, v_2, speed).then((_arg_3) => {
+                                                return (!exists(path) ? (((phonemes == null) ? startAsPromise(phonemize(text_1, l)) : ((p_4 = phonemes, Promise.resolve(p_4)))).then((_arg_2) => (create(_arg_2, v_2, speed).then((_arg_3) => {
                                                     write(path + ".part", _arg_3);
                                                     rename(path + ".part", path);
                                                     return Promise.resolve();
-                                                })))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve([read(path), _arg_1]))));
+                                                })))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise_2, () => (Promise.resolve([read(path), _arg_1]))));
                                             });
                                         })))))).then((_arg_5) => {
                                             const line_1 = _arg_5[1];
@@ -1512,11 +1604,11 @@ export function run(ws) {
                 }
                 let poster;
                 const matchValue_7 = tryFind((s_2) => (toJson(s_2.id) === toJson(posterId)), scenes);
-                poster = ((matchValue_7 != null) ? (isEmpty(matchValue_7.sentences) ? ((ps_2 = matchValue_7, ps_2.finish - 0.1)) : ((ps_3 = matchValue_7, last_2(ps_3.sentences).finish))) : fail(concat("poster scene ", Py_repr(posterId), " not found")));
+                poster = ((matchValue_7 != null) ? (isEmpty(matchValue_7.sentences) ? ((ps_2 = matchValue_7, ps_2.finish - 0.1)) : ((ps_3 = matchValue_7, last_2(ps_3.sentences).finish))) : fail(concat_1("poster scene ", Py_repr(posterId), " not found")));
                 const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_8 = get$(script, "title"), (matchValue_8 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_8)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_9 = get$(script, "captions"), (matchValue_9 == null) ? false : Py_truthy(value_8(matchValue_9)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes)])]]), append((matchValue_10 = get$(script, "card"), (matchValue_10 != null) ? (Py_truthy(value_8(matchValue_10)) ? ((c_3 = value_8(matchValue_10), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty()) : empty()), append((matchValue_11 = get$(script, "kind"), (matchValue_11 != null) ? (Py_truthy(value_8(matchValue_11)) ? ((k_4 = value_8(matchValue_11), singleton(["kind", Py_ofJs(k_4)]))) : empty()) : empty()), (matchValue_12 = get$(script, "map"), (matchValue_12 != null) ? (Py_truthy(value_8(matchValue_12)) ? ((m_1 = value_8(matchValue_12), singleton(["map", Py_ofJs(m_1)]))) : empty()) : empty()))))]);
                 writeText(join_1(ofArray([build, "timing.json"])), Py_dumpsIndented(2, timing));
                 writeText(join_1(ofArray([build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
-                const cues = toList(delay(() => append_1(singleton_1("WEBVTT"), delay(() => append_1(singleton_1(""), delay(() => collect((s_4) => collect((c_4) => append_1(singleton_1(concat(vttTime(c_4.start), " --> ", vttTime(c_4.finish))), delay(() => append_1(singleton_1(c_4.text), delay(() => singleton_1(""))))), s_4.sentences), scenes)))))));
+                const cues = toList(delay(() => append_1(singleton_1("WEBVTT"), delay(() => append_1(singleton_1(""), delay(() => collect((s_4) => collect((c_4) => append_1(singleton_1(concat_1(vttTime(c_4.start), " --> ", vttTime(c_4.finish))), delay(() => append_1(singleton_1(c_4.text), delay(() => singleton_1(""))))), s_4.sentences), scenes)))))));
                 writeText(join_1(ofArray([build, "captions.vtt"])), join("\n", cues));
                 writeText(join_1(ofArray([build, "phonemes.txt"])), ("where\tvoice\tphrase\tphonemes\tsource\n" + join("\n", reverse(track_15.report))) + (isEmpty(track_15.report) ? "" : "\n"));
                 const words = sumBy((s_5) => (sumBy((c_5) => ((c_5.text.split(/\s+/).filter(w => w).length) | 0), s_5.sentences, {
@@ -1528,12 +1620,12 @@ export function run(ws) {
                 }) | 0;
                 const arg_2 = `${name_1}: ${Py_toFixed(duration, 1)}s, ${length(scenes)} scenes, ${words} words, poster at ${Py_toFixed(poster, 1)}s`;
                 toConsole(printf("%s"))(arg_2);
-                return PromiseBuilder__For_1565554B(promise, scenes, (_arg_11) => {
+                return PromiseBuilder__For_1565554B(promise_2, scenes, (_arg_11) => {
                     const s_6 = _arg_11;
                     const arg_3 = `  ${padRight(Py_str(s_6.id), 14)} ${padLeft(Py_toFixed(s_6.start, 1), 6)} - ${padLeft(Py_toFixed(s_6.finish, 1), 6)}  (${length(s_6.sentences)} sentences)`;
                     toConsole(printf("%s"))(arg_3);
                     return Promise.resolve();
-                }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+                }).then(() => PromiseBuilder__Delay_62FBFDE1(promise_2, () => {
                     if (!isEmpty(track_15.report)) {
                         const arg_4 = `  ${length(track_15.report)} phrase(s) in another voice - check build/phonemes.txt against the lesson`;
                         toConsole(printf("%s"))(arg_4);

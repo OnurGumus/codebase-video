@@ -546,45 +546,50 @@ let private restore (text: string list) (marks: Mark list) : string list =
         | t0 :: trest, marks -> go (t0 :: out) trest marks (pos + 1)
     go [] text marks 0 |> List.rev
 
-type private Espeak = { worker: obj; heap: unit -> byte[]; voices: Map<string, string>; mutable current: string }
+type private Espeak = { worker: obj; heap: unit -> byte[]; voices: Map<string, string> }
 
-let mutable private espeakLoaded: JS.Promise<Espeak> option = None
+/// What the agent knows: the module loaded and the voice it is set to, or the error the load ended in (a failed load
+/// is never retried: every later message gets the same error).
+type private EspeakState =
+    | Loaded of Espeak * voice: string
+    | LoadFailed of exn
 
-/// The eSpeak NG module, loaded once. Voices are picked as phonemizer picked them: the first voice whose main
-/// language is the code ("en-us" -> gmw/en-US, "fr-fr" -> roa/fr).
-let private espeak () : JS.Promise<Espeak> =
-    match espeakLoaded with
-    | Some p -> p
-    | None ->
-        let p =
-            promise {
-                let! m = importFromHome "@echogarden/espeak-ng-emscripten"
-                let! instance = (m?``default``: unit -> JS.Promise<obj>) ()
-                let worker = createNew instance?eSpeakNGWorker ()
-                let voices =
-                    (worker?list_voices(): obj[])
-                    |> Array.choose (fun v ->
-                        let langs: obj[] = v?languages
-                        if langs.Length > 0 then Some(string langs[0]?name, string v?identifier) else None)
-                    |> Array.rev // the first voice of a language wins
-                    |> Map.ofArray
-                return { worker = worker; heap = (fun () -> instance?HEAPU8); voices = voices; current = "" }
-            }
-        espeakLoaded <- Some p
-        p
+type private EspeakMsg = Phonemize of text: string * lang: string * AsyncReplyChannel<Result<string, exn>>
+
+/// The eSpeak NG module. Voices are picked as phonemizer picked them: the first voice whose main language is the code
+/// ("en-us" -> gmw/en-US, "fr-fr" -> roa/fr).
+let private load () : Async<EspeakState> =
+    async {
+        try
+            let! m = importFromHome "@echogarden/espeak-ng-emscripten" |> Async.AwaitPromise
+            let! instance = (m?``default``: unit -> JS.Promise<obj>) () |> Async.AwaitPromise
+            let worker = createNew instance?eSpeakNGWorker ()
+            let voices =
+                (worker?list_voices(): obj[])
+                |> Array.choose (fun v ->
+                    let langs: obj[] = v?languages
+                    if langs.Length > 0 then Some(string langs[0]?name, string v?identifier) else None)
+                |> Array.rev // the first voice of a language wins
+                |> Map.ofArray
+            return Loaded({ worker = worker; heap = (fun () -> instance?HEAPU8); voices = voices }, "")
+        with e ->
+            return LoadFailed e
+    }
 
 [<Emit("new TextDecoder().decode($0)")>]
 let private utf8 (bytes: byte[]) : string = jsNative
+
+/// The index of the terminating NUL byte of the string at `start` in the heap.
+let private nulAt (heap: byte[]) (start: int) : int =
+    let rec go e = if heap[e] <> 0uy then go (e + 1) else e
+    go start
 
 /// espeak_TextToPhonemes over every clause of a line (IPA, "_" between phonemes), joined by " " as phonemizer's
 /// wrapper joins them; the emscripten build returns the clauses joined by " | ".
 let private textToPhonemes (es: Espeak) (line: string) : string =
     let ptr: int = es.worker?text_to_phonemes(line, 1)?ptr
     let heap = es.heap ()
-    let mutable e = ptr
-    while heap[e] <> 0uy do
-        e <- e + 1
-    let raw = utf8 (heap?subarray(ptr, e))
+    let raw = utf8 (heap?subarray(ptr, nulAt heap ptr))
     raw.Split([| " | " |], System.StringSplitOptions.None) |> Array.filter (fun c -> c <> "") |> String.concat " "
 
 /// EspeakBackend._postprocess_line with with_stress=True, no tie and the default separator.
@@ -598,29 +603,67 @@ let private postprocessLine (line: string) : string =
     else
         line.Split(' ') |> Array.map (fun w -> (w.Trim() + "_").Replace("_", "") + " ") |> String.concat ""
 
-/// Tokenizer.phonemize of kokoro-onnx: phonemizer.phonemize(text, lang, preserve_punctuation=True,
-/// with_stress=True), then only the symbols in Kokoro's vocabulary.
-let phonemize (text: string) (lang: string) : JS.Promise<string> =
-    promise {
-        let! es = espeak ()
-        match es.voices.TryFind lang with
-        | None -> failwith $"language \"{lang}\" is not supported by the espeak backend"
-        | Some id ->
-            if es.current <> id then
-                es.worker?set_voice(id) |> ignore
-                es.current <- id
-        let text = text.Trim()
-        let lines =
-            text.Trim('\n').Split('\n') |> Array.map (fun l -> l.Trim('\n')) |> Array.filter (fun l -> l.Trim() <> "")
-        let chunks, marks =
-            lines
-            |> Array.mapi (fun num line -> preserveLine line num)
-            |> Array.toList
-            |> List.unzip
-            |> fun (c, m) -> List.concat c |> List.filter (fun c -> c <> ""), List.concat m
-        let phonemized = chunks |> List.map (textToPhonemes es >> postprocessLine)
-        let joined = if lines.Length = 0 then "" else restore phonemized marks |> String.concat "\n"
-        return (codePoints joined |> Array.filter VOCAB.ContainsKey |> String.concat "").Trim()
+/// Tokenizer.phonemize of kokoro-onnx once the voice is set: phonemizer.phonemize(text, lang,
+/// preserve_punctuation=True, with_stress=True), then only the symbols in Kokoro's vocabulary.
+let private phonemesOf (es: Espeak) (text: string) : string =
+    let text = text.Trim()
+    let lines =
+        text.Trim('\n').Split('\n') |> Array.map (fun l -> l.Trim('\n')) |> Array.filter (fun l -> l.Trim() <> "")
+    let chunks, marks =
+        lines
+        |> Array.mapi (fun num line -> preserveLine line num)
+        |> Array.toList
+        |> List.unzip
+        |> fun (c, m) -> List.concat c |> List.filter (fun c -> c <> ""), List.concat m
+    let phonemized = chunks |> List.map (textToPhonemes es >> postprocessLine)
+    let joined = if lines.Length = 0 then "" else restore phonemized marks |> String.concat "\n"
+    (codePoints joined |> Array.filter VOCAB.ContainsKey |> String.concat "").Trim()
+
+/// The result of one step, or the exception it raised.
+let private attempt (f: unit -> 'a) : Result<'a, exn> =
+    try
+        Ok(f ())
+    with e ->
+        Error e
+
+/// One message on the loaded module: the voice set when the language needs another one (only then), then the phonemes.
+/// An exception comes back as the reply; the voice already set stays set.
+let private speak (es: Espeak) (voice: string) (text: string) (lang: string) : string * Result<string, exn> =
+    match attempt (fun () -> es.voices.TryFind lang) with
+    | Error e -> voice, Error e
+    | Ok None -> voice, Error(exn $"language \"{lang}\" is not supported by the espeak backend")
+    | Ok(Some id) ->
+        match attempt (fun () -> if voice <> id then es.worker?set_voice(id) |> ignore) with
+        | Error e -> voice, Error e
+        | Ok() -> id, attempt (fun () -> phonemesOf es text)
+
+/// The only holder of the eSpeak module: one message at a time, so the voice it is set to cannot change between a
+/// message's set_voice and its phonemes. It loads the module on the first message; the loop state is the module and
+/// its current voice, or the failed load.
+let private espeakAgent: MailboxProcessor<EspeakMsg> =
+    MailboxProcessor.Start(fun inbox ->
+        let rec loop (state: EspeakState option) : Async<unit> =
+            async {
+                let! (Phonemize(text, lang, reply)) = inbox.Receive()
+                let! state = match state with Some s -> async.Return s | None -> load ()
+                match state with
+                | LoadFailed e ->
+                    reply.Reply(Error e)
+                    return! loop (Some state)
+                | Loaded(es, voice) ->
+                    let voice, result = speak es voice text lang
+                    reply.Reply result
+                    return! loop (Some(Loaded(es, voice)))
+            }
+        loop None)
+
+/// Tokenizer.phonemize of kokoro-onnx: the phonemes of a text in a language ("en-us", "fr-fr"). Raises what went
+/// wrong, as the promise version rejected with it.
+let phonemize (text: string) (lang: string) : Async<string> =
+    async {
+        match! espeakAgent.PostAndAsyncReply(fun reply -> Phonemize(text, lang, reply)) with
+        | Ok phonemes -> return phonemes
+        | Error e -> return raise e
     }
 
 // The voice -----------------------------------------------------------------------------------------------------
@@ -782,7 +825,7 @@ let private create (phonemes: string) (voiceName: string) (speed: float) : JS.Pr
 /// Voices a short phrase end to end (setup's check that the voice works).
 let selfTest () : JS.Promise<unit> =
     promise {
-        let! ph = phonemize "Ready." "en-us"
+        let! ph = phonemize "Ready." "en-us" |> Async.StartAsPromise
         let! samples = create ph "af_heart" 1.0
         do! release ()
         if samples.Length = 0 then failwith "the voice produced no audio"
@@ -947,7 +990,7 @@ let run (ws: string) : JS.Promise<unit> =
                         let! ph =
                             match phonemes with
                             | Some p -> Promise.lift p
-                            | None -> phonemize text l
+                            | None -> phonemize text l |> Async.StartAsPromise
                         let source = if phonemes.IsSome then "pinned" else "auto"
                         return Some $"{where}\t{c}\t{text}\t{ph}\t{source}"
                     }
@@ -961,7 +1004,7 @@ let run (ws: string) : JS.Promise<unit> =
                 let! ph =
                     match phonemes with
                     | Some p -> Promise.lift p
-                    | None -> phonemize text l
+                    | None -> phonemize text l |> Async.StartAsPromise
                 let! samples = create ph v speed
                 Wav.write (path + ".part") samples
                 rename (path + ".part") path
