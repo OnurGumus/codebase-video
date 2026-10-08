@@ -346,64 +346,181 @@ type Range =
       /// called when ffmpeg has written its files and exited with 0
       Done: unit -> unit }
 
-/// Renders one run. Pages render frames in parallel; a reorder buffer hands them to ffmpeg in order.
-/// False when a page failed or ffmpeg did.
-let private renderRange (session: Session) (workers: obj list) (fps: float) (r: Range) : JS.Promise<bool> =
-    promise {
+// The frame writer -------------------------------------------------------------------------------------------
+
+/// What the pages say to the writer, the one holder of ffmpeg's stdin for a run.
+type private WriterMsg =
+    /// the next frame to draw: None at the run's end, or once ffmpeg has exited or the writer has failed
+    | Take of AsyncReplyChannel<int option>
+    /// a drawn frame (a PNG); answered once it is written, or at once when it is within the window
+    | Frame of index: int * png: obj * AsyncReplyChannel<unit>
+    /// every page has stopped: closes stdin and waits for ffmpeg to exit; whether every frame went in and ffmpeg
+    /// exited with 0, or what made the writer fail
+    | Finish of AsyncReplyChannel<Result<bool, exn>>
+
+/// The writer's state: the next frame to hand out, the next to write, and the frames drawn ahead of it, each with the
+/// answer it is still owed (None: it was answered when it came, being within the window). Waiting is only looked up
+/// by the next index.
+type private Writer =
+    { NextToGive: int
+      Next: int
+      Waiting: Map<int, obj * AsyncReplyChannel<unit> option>
+      /// what went wrong in the writer: from then on nothing is written and every message is answered at once
+      Failed: exn option }
+
+/// ffmpeg's exit status once it has exited (1 when a signal ended it), else None.
+let private exitStatus (ff: obj) : int option =
+    if not (isNull ff?exitCode) then Some(unbox ff?exitCode)
+    elif not (isNull ff?signalCode) then Some 1
+    else None
+
+/// Writes a frame into ffmpeg's stdin (nothing once ffmpeg has exited). After a write that fills the pipe, completes
+/// when it takes more ("drain") or ffmpeg goes ("close"), whichever comes first. The write and the listening are one
+/// step: an Async step can be put off to a later turn of the event loop (Fable's trampoline does that every 2000
+/// steps), and a drain that came in between would never be heard.
+let private writeFrame (ff: obj) (png: obj) : Async<unit> =
+    Async.FromContinuations(fun (ok, _, _) ->
+        if (exitStatus ff).IsSome || ff?stdin?write (png) then
+            ok ()
+        else
+            let stdin: obj = ff?stdin
+            // The first of the two events takes both handlers away, so `ok` runs once.
+            let rec settle (_: obj) : unit =
+                stdin?removeListener ("drain", settle) |> ignore
+                ff?removeListener ("close", settle) |> ignore
+                ok ()
+            stdin?once ("drain", settle) |> ignore
+            ff?once ("close", settle) |> ignore)
+
+/// ffmpeg's exit status (1 when a signal ended it), once it has exited. (Node sets exitCode before the close event,
+/// so the check and the listener cannot miss it, whenever this step runs.)
+let private exitOf (ff: obj) : Async<int> =
+    Async.FromContinuations(fun (ok, _, _) ->
+        match exitStatus ff with
+        | Some code -> ok code
+        | None -> ff?once ("close", (fun (code: obj) -> ok (if isNull code then 1 else unbox code))) |> ignore)
+
+/// The frames that are next in order, taken out of the waiting ones (each with the answer it is owed), and the state
+/// without them.
+let rec private nextInOrder (state: Writer) (taken: (int * obj * AsyncReplyChannel<unit> option) list) =
+    match state.Waiting.TryFind state.Next with
+    | Some(png, owed) ->
+        let rest = { state with Next = (state.Next + 1) ||| 0; Waiting = state.Waiting.Remove state.Next }
+        nextInOrder rest ((state.Next, png, owed) :: taken)
+    | None -> state, List.rev taken
+
+/// The writer of one run: the one holder of ffmpeg's stdin. It hands out the frame indices, writes each frame as soon
+/// as the ones before it are written, waiting for room in the pipe after a write that filled it, and prints the
+/// progress line on whole seconds. A page whose frame is more than `pages * 8` ahead of the next to write waits for
+/// its answer until that frame is written, which bounds the frames held.
+let private startWriter (ff: obj) (pages: int) (fps: float) (r: Range) : MailboxProcessor<WriterMsg> =
+    let window = pages * 8
+    let seconds (frames: int) = toFixed 0 (float frames / fps)
+    /// Frame i into the pipe, then the progress line.
+    let write (i: int) (png: obj) : Async<unit> =
+        async {
+            do! writeFrame ff png
+            if (i - r.First) % int fps = 0 then
+                stdoutWrite ("\r" + $"{r.Label}  {seconds (i - r.First)}s / {seconds (r.End - r.First)}s  ")
+        }
+    let rec writeAll (frames: (int * obj * AsyncReplyChannel<unit> option) list) : Async<unit> =
+        async {
+            match frames with
+            | [] -> ()
+            | (i, png, _) :: rest ->
+                do! write i png
+                return! writeAll rest
+        }
+    /// One message: the state it leaves and the answers it owes, given once the state is settled.
+    let handle (state: Writer) (msg: WriterMsg) : Async<Writer * (unit -> unit) list> =
+        async {
+            match msg, state.Failed with
+            | Take reply, Some _ -> return state, [ fun () -> reply.Reply None ]
+            | Frame(_, _, reply), Some _ -> return state, [ fun () -> reply.Reply() ]
+            | Finish reply, Some e -> return state, [ fun () -> reply.Reply(Error e) ]
+            | Take reply, None ->
+                if state.NextToGive < r.End && (exitStatus ff).IsNone then
+                    return { state with NextToGive = (state.NextToGive + 1) ||| 0 }, [ fun () -> reply.Reply(Some state.NextToGive) ]
+                else
+                    return state, [ fun () -> reply.Reply None ]
+            | Frame(i, png, reply), None ->
+                let atOnce = i - state.Next <= window
+                let held = { state with Waiting = state.Waiting.Add(i, (png, (if atOnce then None else Some reply))) }
+                let next, frames = nextInOrder held []
+                do! writeAll frames
+                let owed = frames |> List.choose (fun (_, _, owed) -> owed) |> List.map (fun r -> fun () -> r.Reply())
+                return next, (if atOnce then [ fun () -> reply.Reply() ] else []) @ owed
+            | Finish reply, None ->
+                ff?stdin?``end`` () |> ignore
+                let! code = exitOf ff
+                if code <> 0 then eprint $"\nffmpeg failed on {r.Label}"
+                return state, [ fun () -> reply.Reply(Ok(code = 0 && state.Next = r.End)) ]
+        }
+    /// The writer after `e`, whatever `handle` threw (a write, say; nothing there is expected to): nothing more is
+    /// written, the message's caller and every page still waiting are answered (the one place Waiting is walked, and
+    /// nothing is printed), and later messages are answered at once. So the agent never stops and no page waits for
+    /// ever; Finish gives `e` back, and renderRange raises it, as the old reorder buffer's rejection did.
+    let failed (state: Writer) (msg: WriterMsg) (e: exn) : Writer * (unit -> unit) list =
+        let own =
+            match msg with
+            | Take reply -> fun () -> reply.Reply None
+            | Frame(_, _, reply) -> fun () -> reply.Reply()
+            | Finish reply -> fun () -> reply.Reply(Error e)
+        let waiting =
+            [ for KeyValue(_, (_, owed)) in state.Waiting do
+                  match owed with
+                  | Some reply -> fun () -> reply.Reply()
+                  | None -> () ]
+        { state with Waiting = Map.empty; Failed = Some e }, own :: waiting
+    MailboxProcessor.Start(fun inbox ->
+        let rec loop (state: Writer) : Async<unit> =
+            async {
+                let! msg = inbox.Receive()
+                let! next, answers =
+                    async {
+                        try
+                            return! handle state msg
+                        with e ->
+                            return failed state msg e
+                    }
+                deliver answers
+                return! loop next
+            }
+        loop { NextToGive = r.First; Next = r.First; Waiting = Map.empty; Failed = None })
+
+/// Renders one run: the pages draw frames in parallel, each taking the next index from the writer, which pipes them
+/// to ffmpeg in order. False when a page failed or ffmpeg did.
+let private renderRange (session: Session) (pages: obj list) (fps: float) (r: Range) : Async<bool> =
+    async {
         let ff =
             childProcess?spawn (
                 "ffmpeg",
                 List.toArray ([ "-hide_banner"; "-loglevel"; "error"; "-y"; "-f"; "image2pipe"; "-framerate"; string fps; "-i"; "-" ] @ r.Output),
                 createObj [ "stdio" ==> [| "pipe"; "inherit"; "inherit" |] ]
             )
-        let exited: int option ref = ref None
-        let closed: JS.Promise<unit> =
-            Promise.create (fun ok _ ->
-                ff?on ("close", (fun (code: obj) ->
-                    exited.Value <- Some(if isNull code then 1 else unbox code)
-                    ok ()))
-                |> ignore)
         // ffmpeg going away early shows as its exit code, not as an unhandled EPIPE.
         ff?stdin?on ("error", (fun (_: obj) -> ())) |> ignore
-        let ready = JS.Constructors.Map.Create<int, obj>()
-        let next = ref r.First
-        let written = ref r.First
-        let seconds (frames: int) = toFixed 0 (float frames / fps)
-        let flush () =
-            promise {
-                while ready.has written.Value && exited.Value.IsNone do
-                    let buf = ready.get written.Value
-                    ready.delete written.Value |> ignore
-                    written.Value <- written.Value + 1
-                    if not (ff?stdin?write (buf)) then
-                        do! Promise.race [ Promise.create (fun ok _ -> ff?stdin?once ("drain", (fun () -> ok ())) |> ignore); closed ]
+        let writer = startWriter ff pages.Length fps r
+        /// One page: takes the next frame, draws it and hands it to the writer, until there is none or a page failed.
+        let rec draw (page: obj) : Async<unit> =
+            async {
+                let! failed = session.IsFailed()
+                if not failed then
+                    match! writer.PostAndAsyncReply Take with
+                    | Some i ->
+                        let! png = frame page (frameTime fps i)
+                        do! writer.PostAndAsyncReply(fun reply -> Frame(i, png, reply))
+                        return! draw page
+                    | None -> ()
             }
-        let rec work (page: obj) =
-            promise {
-                // Ruling 3: the session answers in an Async; renderRange becomes one in the next task.
-                let! failed = session.IsFailed() |> Async.StartAsPromise
-                if next.Value < r.End && not failed && exited.Value.IsNone then
-                    let i = next.Value
-                    next.Value <- i + 1
-                    let! png = frame page (frameTime fps i) |> Async.StartAsPromise
-                    ready.set (i, png) |> ignore
-                    // Keep the reorder buffer bounded: a fast worker waits for the writer to catch up.
-                    while i - written.Value > workers.Length * 8 && exited.Value.IsNone do
-                        do! Promise.sleep 5
-                    do! flush ()
-                    if (i - r.First) % int fps = 0 then
-                        stdoutWrite ("\r" + $"{r.Label}  {seconds (i - r.First)}s / {seconds (r.End - r.First)}s  ")
-                    return! work page
-            }
-        let! _ = workers |> Seq.map work |> Promise.all
-        do! flush ()
-        ff?stdin?``end`` () |> ignore
-        do! closed
-        let! failed = session.IsFailed() |> Async.StartAsPromise
-        let ok = not failed && exited.Value = Some 0 && written.Value = r.End
-        if ok then r.Done()
-        elif exited.Value <> Some 0 then eprint $"\nffmpeg failed on {r.Label}"
-        return ok
+        let! _ = pages |> List.map draw |> Async.Parallel
+        match! writer.PostAndAsyncReply Finish with
+        | Error e -> return raise e
+        | Ok complete ->
+            let! failed = session.IsFailed()
+            let ok = not failed && complete
+            if ok then r.Done()
+            return ok
     }
 
 // Entry --------------------------------------------------------------------------------------------------------
@@ -502,7 +619,7 @@ let rec private renderAll (session: Session) (pages: obj list) (fps: float) (job
         match jobs with
         | [] -> return frames, true
         | job :: rest ->
-            let! finished = renderRange session pages fps job |> Async.AwaitPromise
+            let! finished = renderRange session pages fps job
             // the old frame counter wrapped at 32 bits (`| 0`); Fable leaves it out for an argument
             if finished then return! renderAll session pages fps rest ((frames + job.End - job.First) ||| 0)
             else return frames, false

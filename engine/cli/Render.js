@@ -1,21 +1,20 @@
 
-import { startAsPromise, fromContinuations, awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
-import { toArray, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { parallel, fromContinuations, awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
+import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, extname, fsp, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
-import { FSharpRef, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { int32ToString, Exception, disposeSafe, getEnumerator, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { map as map_1, empty as empty_1, singleton as singleton_2, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { empty as empty_1, singleton as singleton_2, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
-import { PromiseBuilder__While_2044D34, PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { promise as promise_1 } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 
 export function toFixed(digits, x) {
@@ -387,56 +386,230 @@ export function Range$_$reflection() {
     return record_type("Render.Range", [], Range$, () => [["Label", string_type], ["First", int32_type], ["End", int32_type], ["Output", list_type(string_type)], ["Done", lambda_type(unit_type, unit_type)]]);
 }
 
-function renderRange(session, workers, fps, r) {
-    return PromiseBuilder__Run_212F1D4B(promise_1, PromiseBuilder__Delay_62FBFDE1(promise_1, () => {
-        let pr;
+class WriterMsg extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Take", "Frame", "Finish"];
+    }
+}
+
+function WriterMsg_$reflection() {
+    return union_type("Render.WriterMsg", [], WriterMsg, () => [[["Item", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [option_type(int32_type)])]], [["index", int32_type], ["png", obj_type], ["Item3", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])]], [["Item", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [union_type("Microsoft.FSharp.Core.FSharpResult`2", [bool_type, class_type("System.Exception")], FSharpResult$2, () => [[["ResultValue", bool_type]], [["ErrorValue", class_type("System.Exception")]]])])]]]);
+}
+
+class Writer extends Record {
+    constructor(NextToGive, Next, Waiting, Failed) {
+        super();
+        this.NextToGive = (NextToGive | 0);
+        this.Next = (Next | 0);
+        this.Waiting = Waiting;
+        this.Failed = Failed;
+    }
+}
+
+function Writer_$reflection() {
+    return record_type("Render.Writer", [], Writer, () => [["NextToGive", int32_type], ["Next", int32_type], ["Waiting", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [int32_type, tuple_type(obj_type, option_type(class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])))])], ["Failed", option_type(class_type("System.Exception"))]]);
+}
+
+function exitStatus(ff) {
+    if (!Operators_IsNull(ff.exitCode)) {
+        return ff.exitCode;
+    }
+    else if (!Operators_IsNull(ff.signalCode)) {
+        return 1;
+    }
+    else {
+        return undefined;
+    }
+}
+
+function writeFrame(ff, png) {
+    return fromContinuations((tupledArg) => {
+        const ok = tupledArg[0];
+        if ((exitStatus(ff) != null) ? true : (ff.stdin.write(png))) {
+            ok();
+        }
+        else {
+            const stdin = ff.stdin;
+            const settle = (_arg_2) => {
+                stdin.removeListener("drain", settle);
+                ff.removeListener("close", settle);
+                ok();
+            };
+            stdin.once("drain", settle);
+            ff.once("close", settle);
+        }
+    });
+}
+
+function exitOf(ff) {
+    return fromContinuations((tupledArg) => {
+        const ok = tupledArg[0];
+        const matchValue = exitStatus(ff);
+        if (matchValue == null) {
+            ff.once("close", ((code_1) => {
+                ok(Operators_IsNull(code_1) ? 1 : code_1);
+            }));
+        }
+        else {
+            ok(matchValue);
+        }
+    });
+}
+
+function nextInOrder(state_mut, taken_mut) {
+    nextInOrder:
+    while (true) {
+        const state = state_mut, taken = taken_mut;
+        const matchValue = FSharpMap__TryFind(state.Waiting, state.Next);
+        if (matchValue == null) {
+            return [state, reverse(taken)];
+        }
+        else {
+            const png = matchValue[0];
+            const owed = matchValue[1];
+            state_mut = (new Writer(state.NextToGive, (state.Next + 1) | 0, FSharpMap__Remove(state.Waiting, state.Next), state.Failed));
+            taken_mut = cons([state.Next, png, owed], taken);
+            continue nextInOrder;
+        }
+        break;
+    }
+}
+
+function startWriter(ff, pages, fps, r) {
+    const window$ = (pages * 8) | 0;
+    const seconds = (frames) => toFixed(0, frames / fps);
+    const writeAll = (frames_1) => singleton.Delay(() => {
+        let i;
+        if (!isEmpty(frames_1)) {
+            return singleton.Bind((i = (head(frames_1)[0] | 0), singleton.Delay(() => singleton.Bind(writeFrame(ff, head(frames_1)[1]), () => {
+                if (((i - r.First) % ~~fps) === 0) {
+                    stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `));
+                    return singleton.Zero();
+                }
+                else {
+                    return singleton.Zero();
+                }
+            }))), () => singleton.ReturnFrom(writeAll(tail(frames_1))));
+        }
+        else {
+            return singleton.Zero();
+        }
+    });
+    return start_1((inbox) => {
+        const loop = (state_2) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg_6) => {
+            const msg_2 = _arg_6;
+            return singleton.Bind(singleton.Delay(() => singleton.TryWith(singleton.Delay(() => {
+                let state, msg;
+                return singleton.ReturnFrom((state = state_2, (msg = msg_2, singleton.Delay(() => {
+                    const matchValue = state.Failed;
+                    switch (msg.tag) {
+                        case 1:
+                            if (matchValue == null) {
+                                const atOnce = (msg.fields[0] - state.Next) <= window$;
+                                const patternInput = nextInOrder(new Writer(state.NextToGive, state.Next, FSharpMap__Add(state.Waiting, msg.fields[0], [msg.fields[1], atOnce ? undefined : msg.fields[2]]), state.Failed), empty());
+                                const frames_2 = patternInput[1];
+                                return singleton.Bind(writeAll(frames_2), () => {
+                                    const owed_1 = map((r_1) => (() => {
+                                        r_1.reply(undefined);
+                                    }), choose((tupledArg) => tupledArg[2], frames_2));
+                                    return singleton.Return([patternInput[0], append(atOnce ? singleton_1(() => {
+                                        msg.fields[2].reply(undefined);
+                                    }) : empty(), owed_1)]);
+                                });
+                            }
+                            else {
+                                return singleton.Return([state, singleton_1(() => {
+                                    msg.fields[2].reply(undefined);
+                                })]);
+                            }
+                        case 2:
+                            if (matchValue == null) {
+                                ff.stdin.end();
+                                return singleton.Bind(exitOf(ff), (_arg_5) => {
+                                    const code = _arg_5 | 0;
+                                    return singleton.Combine((code !== 0) ? ((eprint(concat("\nffmpeg failed on ", r.Label)), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return([state, singleton_1(() => {
+                                        msg.fields[0].reply(new FSharpResult$2(/* Ok */ 0, [(code === 0) && (state.Next === r.End)]));
+                                    })])));
+                                });
+                            }
+                            else {
+                                const e = matchValue;
+                                return singleton.Return([state, singleton_1(() => {
+                                    msg.fields[0].reply(new FSharpResult$2(/* Error */ 1, [e]));
+                                })]);
+                            }
+                        default:
+                            return (matchValue == null) ? (((state.NextToGive < r.End) && (exitStatus(ff) == null)) ? singleton.Return([new Writer((state.NextToGive + 1) | 0, state.Next, state.Waiting, state.Failed), singleton_1(() => {
+                                msg.fields[0].reply(state.NextToGive);
+                            })]) : singleton.Return([state, singleton_1(() => {
+                                msg.fields[0].reply(undefined);
+                            })])) : singleton.Return([state, singleton_1(() => {
+                                msg.fields[0].reply(undefined);
+                            })]);
+                    }
+                }))));
+            }), (_arg_7) => {
+                let state_1, msg_1, e_1, own, waiting;
+                return singleton.Return((state_1 = state_2, (msg_1 = msg_2, (e_1 = _arg_7, (own = ((msg_1.tag === 1) ? (() => {
+                    msg_1.fields[2].reply(undefined);
+                }) : ((msg_1.tag === 2) ? (() => {
+                    msg_1.fields[0].reply(new FSharpResult$2(/* Error */ 1, [e_1]));
+                }) : (() => {
+                    msg_1.fields[0].reply(undefined);
+                }))), (waiting = toList(delay(() => collect((matchValue_2) => {
+                    const matchValue_3 = matchValue_2[1][1];
+                    if (matchValue_3 == null) {
+                        return empty_1();
+                    }
+                    else {
+                        const reply_9 = matchValue_3;
+                        return singleton_2(() => {
+                            reply_9.reply(undefined);
+                        });
+                    }
+                }, state_1.Waiting))), [new Writer(state_1.NextToGive, state_1.Next, empty_2({
+                    Compare: (x, y) => (comparePrimitives(x, y) | 0),
+                }), e_1), cons(own, waiting)]))))));
+            })), (_arg_8) => {
+                deliver(_arg_8[1]);
+                return singleton.ReturnFrom(loop(_arg_8[0]));
+            });
+        }));
+        return loop(new Writer(r.First, r.First, empty_2({
+            Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+        }), undefined));
+    });
+}
+
+function renderRange(session, pages, fps, r) {
+    return singleton.Delay(() => {
         const ff = childProcess.spawn("ffmpeg", toArray(append(ofArray(["-hide_banner", "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", fps.toString(), "-i", "-"]), r.Output)), {
             stdio: ["pipe", "inherit", "inherit"],
         });
-        const exited = new FSharpRef(undefined);
-        const closed = new Promise((ok, _arg) => {
-            ff.on("close", ((code) => {
-                exited.contents = (Operators_IsNull(code) ? 1 : code);
-                ok();
-            }));
-        });
-        ff.stdin.on("error", ((_arg_1) => {
+        ff.stdin.on("error", ((_arg) => {
         }));
-        const ready = new Map();
-        const next = new FSharpRef(r.First);
-        const written = new FSharpRef(r.First);
-        const seconds = (frames) => toFixed(0, frames / fps);
-        const flush = () => PromiseBuilder__Run_212F1D4B(promise_1, PromiseBuilder__Delay_62FBFDE1(promise_1, () => PromiseBuilder__While_2044D34(promise_1, () => (ready.has(written.contents) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise_1, () => {
-            const buf = ready.get(written.contents);
-            ready.delete(written.contents);
-            written.contents = ((written.contents + 1) | 0);
-            return !(ff.stdin.write(buf)) ? ((Promise.race([new Promise((ok_1, _arg_2) => {
-                ff.stdin.once("drain", (() => {
-                    ok_1();
-                }));
-            }), closed])).then(() => (Promise.resolve(undefined)))) : (Promise.resolve());
-        }))));
-        const work = (page) => PromiseBuilder__Run_212F1D4B(promise_1, PromiseBuilder__Delay_62FBFDE1(promise_1, () => (startAsPromise(Session__IsFailed(session)).then((_arg_4) => {
-            if (((next.contents < r.End) && !_arg_4) && (exited.contents == null)) {
-                const i = next.contents | 0;
-                next.contents = ((i + 1) | 0);
-                return startAsPromise(frame(page, frameTime(fps, i))).then((_arg_5) => {
-                    ready.set(i, _arg_5);
-                    return PromiseBuilder__While_2044D34(promise_1, () => (((i - written.contents) > (length(workers) * 8)) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise_1, () => ((new Promise(resolve => setTimeout(resolve, 5))).then(() => (Promise.resolve(undefined)))))).then(() => PromiseBuilder__Delay_62FBFDE1(promise_1, () => (flush().then(() => (((((i - r.First) % ~~fps) === 0) ? ((stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `)), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise_1, () => (work(page)))))))));
-                });
+        const writer = startWriter(ff, length(pages), fps, r);
+        const draw = (page) => singleton.Delay(() => singleton.Bind(Session__IsFailed(session), (_arg_1) => (!_arg_1 ? singleton.Bind(postAndAsyncReply(writer, (Item) => (new WriterMsg(/* Take */ 0, [Item]))), (_arg_2) => {
+            if (_arg_2 == null) {
+                return singleton.Zero();
             }
             else {
-                return Promise.resolve();
+                const i = _arg_2 | 0;
+                return singleton.Bind(frame(page, frameTime(fps, i)), (_arg_3) => singleton.Bind(postAndAsyncReply(writer, (reply) => (new WriterMsg(/* Frame */ 1, [i, _arg_3, reply]))), () => singleton.ReturnFrom(draw(page))));
             }
-        }))));
-        return ((pr = map_1(work, workers), Promise.all(pr))).then((_arg_8) => (flush().then(() => {
-            ff.stdin.end();
-            return closed.then(() => (startAsPromise(Session__IsFailed(session)).then((_arg_11) => {
-                const ok_2 = (!_arg_11 && equals(exited.contents, 0)) && (written.contents === r.End);
-                return (ok_2 ? ((r.Done(), Promise.resolve())) : (!equals(exited.contents, 0) ? ((eprint(concat("\nffmpeg failed on ", r.Label)), Promise.resolve())) : (Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise_1, () => (Promise.resolve(ok_2))));
-            })));
-        })));
-    }));
+        }) : singleton.Zero())));
+        return singleton.Bind(parallel(map(draw, pages)), (_arg_5) => singleton.Bind(postAndAsyncReply(writer, (Item_1) => (new WriterMsg(/* Finish */ 2, [Item_1]))), (_arg_6) => ((_arg_6.tag === 0) ? singleton.Bind(Session__IsFailed(session), (_arg_7) => {
+            const ok = !_arg_7 && _arg_6.fields[0];
+            return singleton.Combine(ok ? ((r.Done(), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return(ok)));
+        }) : singleton.Return((() => {
+            throw _arg_6.fields[0];
+        })()))));
+    });
 }
 
 function clearUnfilteredSheets(ws) {
@@ -529,7 +702,7 @@ function renderAll(session, pages, fps, jobs, frames) {
     return singleton.Delay(() => {
         if (!isEmpty(jobs)) {
             const job = head(jobs);
-            return singleton.Bind(awaitPromise(renderRange(session, pages, fps, job)), (_arg) => (_arg ? singleton.ReturnFrom(renderAll(session, pages, fps, tail(jobs), ((frames + job.End) - job.First) | 0)) : singleton.Return([frames, false])));
+            return singleton.Bind(renderRange(session, pages, fps, job), (_arg) => (_arg ? singleton.ReturnFrom(renderAll(session, pages, fps, tail(jobs), ((frames + job.End) - job.First) | 0)) : singleton.Return([frames, false])));
         }
         else {
             return singleton.Return([frames, true]);
