@@ -9,6 +9,7 @@ import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { ranges, Range$, findChrome } from "./Render.js";
 import { wholeFrames, plan } from "./Segments.js";
+import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { FSharpSet__Contains, ofList } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 
@@ -282,7 +283,7 @@ export function run(ws, args) {
                     writeText(file(s_1.Key, "json"), s_1.Input);
                 })));
             }, indexed(missing))));
-            const pr = isEmpty(jobs) ? (Promise.resolve(0)) : ranges(ws, 30, jobs);
+            const pr = isEmpty(jobs) ? (Promise.resolve(0)) : startAsPromise(ranges(ws, 30, jobs));
             return pr.then((code) => {
                 let args_1, args_2, args_3, args_4;
                 if (code !== 0) {

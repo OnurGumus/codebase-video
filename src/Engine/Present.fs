@@ -245,7 +245,6 @@ let private slideWriter () : Result<unit, Failure> =
 /// Draws each slide's still at its step's hold.
 let private shoot (ws: string) (slides: Slide list) : Async<Result<unit, Failure>> =
     Render.shots ws [ for s in slides -> s.Step.Hold, s.Still ]
-    |> Async.AwaitPromise
     |> Async.map (function
         | 0 -> Ok()
         | code -> Error(RenderFailed code))
@@ -253,7 +252,7 @@ let private shoot (ws: string) (slides: Slide list) : Async<Result<unit, Failure
 /// Serves the click-through deck until Ctrl+C: never returns.
 let private serve (ws: string) : Async<unit> =
     async {
-        let! server = Render.startServer ws Render.ForRender |> Async.AwaitPromise
+        let! server = Render.startServer ws Render.ForRender
         JS.console.log $"{server.Url}?present   click-through deck: → or click next, ← back, S speaker notes, N notes on the slide, F full screen"
         JS.console.log "Ctrl+C to stop."
         return! Async.FromContinuations(fun _ -> ())

@@ -133,7 +133,7 @@ export function main() {
                 case "stills":
                 case "sheet":
                 case "serve": {
-                    finish((pr_1 = ensureTiming(ws), pr_1.then(() => run_3(ws, step, rest))));
+                    finish((pr_1 = ensureTiming(ws), pr_1.then(() => startAsPromise(run_3(ws, step, rest)))));
                     break;
                 }
                 case "new-long": {

@@ -67,7 +67,7 @@ let run (ws: string) (args: string list) : JS.Promise<int> =
     let t0, t1, step = jsNumber (arg 0 "0"), jsNumber (arg 1 "1e9"), jsNumber (arg 2 "0.25")
     let clip = resolve ws
     promise {
-        let! server = startServer clip ForScan
+        let! server = startServer clip ForScan |> Async.StartAsPromise
         match findChrome () with
         | None ->
             eprint "no Chrome found: set CHROME to the browser's executable"

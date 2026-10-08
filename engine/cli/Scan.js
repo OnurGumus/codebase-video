@@ -4,6 +4,7 @@ import { length, ofSeq, ofArray, tryItem } from "./fable_modules/fable-library-j
 import { eprint, toJson, writeText, join, requireFromHome, resolve } from "./Node.js";
 import { PromiseBuilder__For_1565554B, PromiseBuilder__While_2044D34, PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
 import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
+import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { toFixed, awaitJs, findChrome, ServeFor, startServer } from "./Render.js";
 import { FSharpRef } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
@@ -18,7 +19,7 @@ export function run(ws, args) {
     const matchValue_1 = Number(arg(1, "1e9"));
     const step = Number(arg(2, "0.25"));
     const clip = resolve(ws);
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (startServer(clip, ServeFor.ForScan).then((_arg) => {
+    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (startAsPromise(startServer(clip, ServeFor.ForScan)).then((_arg) => {
         const server = _arg;
         const matchValue_3 = findChrome();
         if (matchValue_3 != null) {

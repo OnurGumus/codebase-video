@@ -197,7 +197,7 @@ let run (ws: string) (args: string list) : JS.Promise<int> =
                           for ext in exts do
                               rename (temp ext) (file s.Key ext)
                           writeText (file s.Key "json") s.Input } ]
-        (if jobs.IsEmpty then Promise.lift 0 else Render.ranges ws (float fps) jobs)
+        (if jobs.IsEmpty then Promise.lift 0 else Render.ranges ws (float fps) jobs |> Async.StartAsPromise)
         |> Promise.map (fun code ->
             if code <> 0 then code
             else

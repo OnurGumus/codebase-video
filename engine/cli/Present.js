@@ -346,7 +346,7 @@ function slideWriter() {
 }
 
 function shoot(ws, slides) {
-    const input = awaitPromise(shots(ws, toList(delay(() => map((s) => [s.Step.Hold, s.Still], slides)))));
+    const input = shots(ws, toList(delay(() => map((s) => [s.Step.Hold, s.Still], slides))));
     return singleton_2.Bind(input, (x$0027) => {
         let value;
         const _arg = x$0027 | 0;
@@ -356,7 +356,7 @@ function shoot(ws, slides) {
 }
 
 function serve(ws) {
-    return singleton_2.Delay(() => singleton_2.Bind(awaitPromise(startServer(ws, ServeFor.ForRender)), (_arg) => {
+    return singleton_2.Delay(() => singleton_2.Bind(startServer(ws, ServeFor.ForRender), (_arg) => {
         console.log(concat(_arg.Url, "?present   click-through deck: → or click next, ← back, S speaker notes, N notes on the slide, F full screen"));
         console.log("Ctrl+C to stop.");
         return singleton_2.ReturnFrom(fromContinuations((_arg_1) => {

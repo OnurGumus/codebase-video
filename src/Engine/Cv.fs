@@ -88,7 +88,7 @@ let main () =
         match step with
         | "narrate" -> finish (voiced (Narrate.run ws) |> Promise.map (fun () -> 0))
         | "check" -> finish (Promise.lift (Check.run ws rest))
-        | "stills" | "sheet" | "serve" -> finish (ensureTiming ws |> Promise.bind (fun () -> Render.run ws step rest))
+        | "stills" | "sheet" | "serve" -> finish (ensureTiming ws |> Promise.bind (fun () -> Render.run ws step rest |> Async.StartAsPromise))
         | "new-long" ->
             let dst = join [ ws; "clip.html" ]
             if exists dst then
