@@ -871,7 +871,7 @@ function nulAt(heap, start) {
         while (true) {
             const e = e_mut;
             if (item(e, heap) !== 0) {
-                e_mut = (e + 1);
+                e_mut = ((e + 1) | 0);
                 continue go;
             }
             else {
@@ -949,24 +949,30 @@ function speak(es, voice_1, text, lang) {
     }
 }
 
-const espeakAgent = start_1((inbox) => {
-    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => {
+function handle(state, text, lang) {
+    return singleton_2.Delay(() => {
         let s;
-        const reply = _arg.fields[2];
-        return singleton_2.Bind((state == null) ? load() : ((s = state, singleton_2.Return(s))), (_arg_1) => {
-            const state_1 = _arg_1;
-            if (state_1.tag === 0) {
-                const es = state_1.fields[0];
-                const patternInput = speak(es, state_1.fields[1], _arg.fields[0], _arg.fields[1]);
-                reply.reply(patternInput[1]);
-                return singleton_2.ReturnFrom(loop(new EspeakState(/* Loaded */ 0, [es, patternInput[0]])));
-            }
-            else {
-                reply.reply(new FSharpResult$2(/* Error */ 1, [state_1.fields[0]]));
-                return singleton_2.ReturnFrom(loop(state_1));
-            }
+        return singleton_2.Bind((state == null) ? load() : ((s = state, singleton_2.Return(s))), (_arg) => {
+            const loaded = _arg;
+            return singleton_2.TryWith(singleton_2.Delay(() => {
+                if (loaded.tag === 0) {
+                    const es = loaded.fields[0];
+                    const patternInput = speak(es, loaded.fields[1], text, lang);
+                    return singleton_2.Return([new EspeakState(/* Loaded */ 0, [es, patternInput[0]]), patternInput[1]]);
+                }
+                else {
+                    return singleton_2.Return([loaded, new FSharpResult$2(/* Error */ 1, [loaded.fields[0]])]);
+                }
+            }), (_arg_1) => singleton_2.Return([loaded, new FSharpResult$2(/* Error */ 1, [_arg_1])]));
         });
-    }));
+    });
+}
+
+const espeakAgent = start_1((inbox) => {
+    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => singleton_2.Bind(handle(state, _arg.fields[0], _arg.fields[1]), (_arg_1) => {
+        _arg.fields[2].reply(_arg_1[1]);
+        return singleton_2.ReturnFrom(loop(_arg_1[0]));
+    })));
     return loop(undefined);
 });
 

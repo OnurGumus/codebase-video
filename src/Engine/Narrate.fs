@@ -579,9 +579,10 @@ let private load () : Async<EspeakState> =
 [<Emit("new TextDecoder().decode($0)")>]
 let private utf8 (bytes: byte[]) : string = jsNative
 
-/// The index of the terminating NUL byte of the string at `start` in the heap.
+/// The index of the terminating NUL byte of the string at `start` in the heap. The index wraps at 32 bits, as the
+/// old loop's `e + 1` did in the compiled JS (Fable drops the `| 0` from a tail call's argument).
 let private nulAt (heap: byte[]) (start: int) : int =
-    let rec go e = if heap[e] <> 0uy then go (e + 1) else e
+    let rec go e = if heap[e] <> 0uy then go ((e + 1) ||| 0) else e
     go start
 
 /// espeak_TextToPhonemes over every clause of a line (IPA, "_" between phonemes), joined by " " as phonemizer's
@@ -637,6 +638,23 @@ let private speak (es: Espeak) (voice: string) (text: string) (lang: string) : s
         | Error e -> voice, Error e
         | Ok() -> id, attempt (fun () -> phonemesOf es text)
 
+/// One message: the module loaded if it is not yet, then `speak`. Whatever is thrown while handling it is the reply
+/// and the state stays as the message found it (`speak` returns the voice it set, so nothing that can throw lies
+/// between its set_voice and its result): the agent does not stop. `load` catches its own errors (a failed load is
+/// the state, not an exception).
+let private handle (state: EspeakState option) (text: string) (lang: string) : Async<EspeakState * Result<string, exn>> =
+    async {
+        let! loaded = match state with Some s -> async.Return s | None -> load ()
+        try
+            match loaded with
+            | LoadFailed e -> return loaded, Error e
+            | Loaded(es, voice) ->
+                let voice, result = speak es voice text lang
+                return Loaded(es, voice), result
+        with e ->
+            return loaded, Error e
+    }
+
 /// The only holder of the eSpeak module: one message at a time, so the voice it is set to cannot change between a
 /// message's set_voice and its phonemes. It loads the module on the first message; the loop state is the module and
 /// its current voice, or the failed load.
@@ -645,15 +663,9 @@ let private espeakAgent: MailboxProcessor<EspeakMsg> =
         let rec loop (state: EspeakState option) : Async<unit> =
             async {
                 let! (Phonemize(text, lang, reply)) = inbox.Receive()
-                let! state = match state with Some s -> async.Return s | None -> load ()
-                match state with
-                | LoadFailed e ->
-                    reply.Reply(Error e)
-                    return! loop (Some state)
-                | Loaded(es, voice) ->
-                    let voice, result = speak es voice text lang
-                    reply.Reply result
-                    return! loop (Some(Loaded(es, voice)))
+                let! next, result = handle state text lang
+                reply.Reply result
+                return! loop (Some next)
             }
         loop None)
 
