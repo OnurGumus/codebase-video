@@ -31,7 +31,7 @@ let browserFn (source: string) : obj = jsNative
 let awaitJs (p: obj) : JS.Promise<'T> = unbox p
 
 /// What a JS library's promise resolves to, as an Async.
-let private fromJs (p: obj) : Async<'T> = Async.AwaitPromise(awaitJs p)
+let fromJs (p: obj) : Async<'T> = Async.AwaitPromise(awaitJs p)
 
 let private stdoutWrite (s: string) : unit = proc?stdout?write (s) |> ignore
 

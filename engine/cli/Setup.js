@@ -1,15 +1,15 @@
 
-import { exists as exists_1, map, tryFind, isEmpty, filter, toArray as toArray_1, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { writeText, readText, exists, join as join_1, runCapture, hasCommand, toolHome, mkdirp, exit, eprint, platform, childProcess, fs, env, toJsonIndented } from "./Node.js";
-import { disposeSafe, getEnumerator, createObj } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { iterate, exists as exists_1, map, singleton as singleton_1, tryFind, isEmpty, filter, toArray as toArray_1, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { eprint, writeText, readText, exists, join as join_1, runCapture, hasCommand, toolHome, mkdirp, platform, childProcess, fs, env, toJsonIndented } from "./Node.js";
+import { createObj } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { append, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { toArray } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { printf, toConsole, concat, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { requirePackages, selfTest, modelDir, modelFile, packageInstalled } from "./Narrate.js";
-import { PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
-import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
-import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
+import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
+import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 
 const dependencies = ofArray([["puppeteer-core", "^25.12.0"], ["kokoro-js", "1.2.1"], ["@echogarden/espeak-ng-emscripten", "0.3.5"], ["pptxgenjs", "4.0.1"], ["jszip", "3.10.1"]]);
 
@@ -53,73 +53,85 @@ function runIn(dir, cmd, args) {
     }
 }
 
-function failWith(message) {
-    eprint(message);
-    return exit(2);
-}
-
+/**
+ * Checks the system tools and installs the packages at once, as setup always has; a check that fails ends setup with
+ * the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns an exit code.
+ * (The checks stay in `run` itself: an exception there, e.g. a tool home that cannot be made, is reported from `run`
+ * as before.)
+ */
 export function run() {
     mkdirp(toolHome);
     const missing = filter((arg) => !hasCommand(arg), ofArray(["node", "npm", "ffmpeg"]));
-    if (!isEmpty(missing)) {
-        eprint("missing system tools: " + join(" ", missing));
-        eprint("  macOS:  brew install node ffmpeg");
-        failWith("  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg");
+    let prepared;
+    const input_8 = isEmpty(missing) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [ofArray(["missing system tools: " + join(" ", missing), "  macOS:  brew install node ffmpeg", "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg"])]));
+    if (input_8.tag === 1) {
+        prepared = (new FSharpResult$2(/* Error */ 1, [input_8.fields[0]]));
     }
-    const patternInput = runCapture("ffmpeg", ofArray(["-hide_banner", "-encoders"]));
-    const enumerator = getEnumerator(["libx264", "libvpx-vp9", "libopus"]);
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const codec = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            if (!(patternInput[1].indexOf(codec) >= 0)) {
-                failWith(concat("ffmpeg lacks the ", codec, " encoder"));
+    else {
+        const patternInput = runCapture("ffmpeg", ofArray(["-hide_banner", "-encoders"]));
+        let input_6;
+        const matchValue = tryFind((codec) => !(patternInput[1].indexOf(codec) >= 0), ofArray(["libx264", "libvpx-vp9", "libopus"]));
+        input_6 = ((matchValue == null) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [singleton_1(concat("ffmpeg lacks the ", matchValue, " encoder"))])));
+        if (input_6.tag === 1) {
+            prepared = (new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]));
+        }
+        else {
+            let input_4;
+            const option_1 = tryFind((c) => {
+                if (c !== "") {
+                    return executable(c);
+                }
+                else {
+                    return false;
+                }
+            }, chromeCandidates());
+            input_4 = ((option_1 == null) ? (new FSharpResult$2(/* Error */ 1, [singleton_1("no Chrome or Chromium found: install one, or set CHROME to its executable")])) : (new FSharpResult$2(/* Ok */ 0, [option_1])));
+            if (input_4.tag === 1) {
+                prepared = (new FSharpResult$2(/* Error */ 1, [input_4.fields[0]]));
+            }
+            else {
+                const nodeDir = join_1(ofArray([toolHome, "node"]));
+                mkdirp(nodeDir);
+                const manifest = join_1(ofArray([nodeDir, "package.json"]));
+                const wanted = packageJson();
+                const stale = !exists(manifest) ? true : (readText(manifest) !== wanted);
+                const names = map((tuple) => tuple[0], dependencies);
+                let input_2;
+                if (stale ? true : exists_1((arg_1) => !packageInstalled(arg_1), names)) {
+                    const arg_2 = "installing " + join(", ", names);
+                    toConsole(printf("%s"))(arg_2);
+                    writeText(manifest, wanted);
+                    const input = (runIn(nodeDir, "npm", ofArray(["install", "--silent", "--no-audit", "--no-fund"])) !== 0) ? (new FSharpResult$2(/* Error */ 1, [singleton_1(concat("npm install failed in ", nodeDir))])) : (new FSharpResult$2(/* Ok */ 0, [undefined]));
+                    input_2 = ((input.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
+                }
+                else {
+                    input_2 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+                }
+                prepared = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_2.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [input_4.fields[0]])));
             }
         }
     }
-    finally {
-        disposeSafe(enumerator);
+    if (prepared.tag === 0) {
+        return singleton_2.Delay(() => {
+            let arg_3;
+            return singleton_2.Combine(!exists(modelFile()) ? (((arg_3 = concat("downloading the Kokoro model (about 330 MB) into ", modelDir()), toConsole(printf("%s"))(arg_3)), singleton_2.Bind(selfTest(), () => singleton_2.Return(undefined)))) : singleton_2.Zero(), singleton_2.Delay(() => {
+                toConsole(printf("%s"))(`ready: voice, renderer and encoder are set up in ${toolHome} (browser: ${prepared.fields[0]})`);
+                return singleton_2.Return(0);
+            }));
+        });
     }
-    let chrome;
-    const matchValue = tryFind((c) => {
-        if (c !== "") {
-            return executable(c);
-        }
-        else {
-            return false;
-        }
-    }, chromeCandidates());
-    chrome = ((matchValue == null) ? failWith("no Chrome or Chromium found: install one, or set CHROME to its executable") : matchValue);
-    const nodeDir = join_1(ofArray([toolHome, "node"]));
-    mkdirp(nodeDir);
-    const manifest = join_1(ofArray([nodeDir, "package.json"]));
-    const wanted = packageJson();
-    const stale = !exists(manifest) ? true : (readText(manifest) !== wanted);
-    const names = map((tuple) => tuple[0], dependencies);
-    if (stale ? true : exists_1((arg_1) => !packageInstalled(arg_1), names)) {
-        const arg_2 = "installing " + join(", ", names);
-        toConsole(printf("%s"))(arg_2);
-        writeText(manifest, wanted);
-        if (runIn(nodeDir, "npm", ofArray(["install", "--silent", "--no-audit", "--no-fund"])) !== 0) {
-            failWith(concat("npm install failed in ", nodeDir));
-        }
+    else {
+        iterate((s) => {
+            eprint(s);
+        }, prepared.fields[0]);
+        return singleton_2.Return(2);
     }
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
-        let arg_3;
-        return (!exists(modelFile()) ? (((arg_3 = concat("downloading the Kokoro model (about 330 MB) into ", modelDir()), toConsole(printf("%s"))(arg_3)), startAsPromise(selfTest()).then(() => (Promise.resolve(undefined))))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-            toConsole(printf("%s"))(`ready: voice, renderer and encoder are set up in ${toolHome} (browser: ${chrome})`);
-            return Promise.resolve(0);
-        }));
-    }));
 }
 
 /**
- * Exits 2 with a hint to run setup when the tool home is not ready.
+ * The setup hint when the tool home is not ready (every step but `present` needs these packages).
  */
 export function requireReady() {
-    const matchValue = requirePackages(core);
-    if (matchValue.tag === 1) {
-        eprint(matchValue.fields[0]);
-        exit(2);
-    }
+    return requirePackages(core);
 }
 

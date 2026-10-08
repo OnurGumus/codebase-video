@@ -74,7 +74,7 @@ let upgradeClip (ws: string) =
 
 let main () =
     match argv with
-    | [ "setup" ] -> finish (Setup.run ())
+    | [ "setup" ] -> finish (Setup.run () |> Async.StartAsPromise)
     | wsArg :: step :: rest ->
         let ws = resolve wsArg
         if not (isDir ws) then
@@ -83,7 +83,11 @@ let main () =
         mkdirp (join [ ws; "build" ])
         mkdirp (join [ ws; "out" ])
         if step <> "narrate" && step <> "check" && step <> "new-long" && step <> "fill" && step <> "fix" && step <> "history" then
-            Setup.requireReady ()
+            match Setup.requireReady () with
+            | Ok() -> ()
+            | Error hint ->
+                eprint hint
+                exit 2
         if step <> "new-long" then upgradeClip ws
         match step with
         | "narrate" -> finish (voiced (Narrate.run ws) |> Promise.map (fun () -> 0))
@@ -98,10 +102,10 @@ let main () =
             printfn "%s (write script.json and one <key>.js per module; see KIT.md)" dst
             exit 0
         | "chapters" -> finish (Promise.lift (Video.chapters ws))
-        | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws rest))
+        | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws rest |> Async.StartAsPromise))
         | "present" -> finish (ensureTiming ws |> Promise.bind (fun () -> Present.run ws rest))
-        | "all" -> finish (voiced (Narrate.run ws) |> Promise.bind (fun () -> Video.run ws rest))
-        | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest))
+        | "all" -> finish (voiced (Narrate.run ws) |> Promise.bind (fun () -> Video.run ws rest |> Async.StartAsPromise))
+        | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest |> Async.StartAsPromise))
         | "report" -> finish (Promise.lift (ScanReport.run ws rest))
         | "fill" -> finish (Promise.lift (Fill.run ws))
         | "history" -> finish (Promise.lift (History.run ws rest))

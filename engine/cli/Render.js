@@ -25,7 +25,10 @@ export function awaitJs(p) {
     return p;
 }
 
-function fromJs(p) {
+/**
+ * What a JS library's promise resolves to, as an Async.
+ */
+export function fromJs(p) {
     return awaitPromise(awaitJs(p));
 }
 

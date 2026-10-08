@@ -104,7 +104,7 @@ export function main() {
     }
     switch (matchResult) {
         case 0: {
-            finish(run_1());
+            finish(startAsPromise(run_1()));
             break;
         }
         case 1: {
@@ -116,7 +116,11 @@ export function main() {
             mkdirp(join(ofArray([ws, "build"])));
             mkdirp(join(ofArray([ws, "out"])));
             if ((((((step !== "narrate") && (step !== "check")) && (step !== "new-long")) && (step !== "fill")) && (step !== "fix")) && (step !== "history")) {
-                requireReady();
+                const matchValue = requireReady();
+                if (matchValue.tag === 1) {
+                    eprint(matchValue.fields[0]);
+                    exit(2);
+                }
             }
             if (step !== "new-long") {
                 upgradeClip(ws);
@@ -152,7 +156,7 @@ export function main() {
                     break;
                 }
                 case "video": {
-                    finish((pr_2 = ensureTiming(ws), pr_2.then(() => run_4(ws, rest))));
+                    finish((pr_2 = ensureTiming(ws), pr_2.then(() => startAsPromise(run_4(ws, rest)))));
                     break;
                 }
                 case "present": {
@@ -160,11 +164,11 @@ export function main() {
                     break;
                 }
                 case "all": {
-                    finish((pr_4 = voiced(run(ws)), pr_4.then(() => run_4(ws, rest))));
+                    finish((pr_4 = voiced(run(ws)), pr_4.then(() => startAsPromise(run_4(ws, rest)))));
                     break;
                 }
                 case "scan": {
-                    finish((pr_5 = ensureTiming(ws), pr_5.then(() => run_6(ws, rest))));
+                    finish((pr_5 = ensureTiming(ws), pr_5.then(() => startAsPromise(run_6(ws, rest)))));
                     break;
                 }
                 case "report": {
