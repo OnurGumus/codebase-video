@@ -1,16 +1,16 @@
 
 import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { class_type, record_type, array_type, float64_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { class_type, bool_type, obj_type, record_type, array_type, float64_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Py_flush, Py_fail, Py_print, Py_repr, Py_jsonNum, Py_fmtF, Py_isStr, Py_numStr, Py_cmpStr, Py_sortWith, Py_reprStr, Py_fixedW, Py_take, Py_round, Py_list, Py_get, Py_truthy, Py_str } from "./Check.js";
 import { sortBy, contains as contains_1, tryFind as tryFind_1, exists, filter, collect as collect_1, fold, last as last_1, map, sort, indexed, singleton as singleton_1, length, toArray, ofArray, empty, reverse, cons, head, tail, isEmpty } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { concat, join as join_1, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { fold as fold_1, min, map as map_1, item, tryLast, tryFind, scan, contains } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { disposeSafe, getEnumerator, comparePrimitives, defaultOf, equals, stringHash } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { toJson, join, readJson } from "./Node.js";
-import { disposeSafe, getEnumerator, stringHash, comparePrimitives, defaultOf, equals } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { empty as empty_1, toList, singleton, collect, delay, toArray as toArray_1 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { fold as fold_1, min, map as map_1, contains, item, tryLast, tryFind, scan as scan_1 } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { List_distinctBy, List_groupBy } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 import { min as min_1, parse, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { concat, join as join_1, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 import { ofList, empty as empty_2, add, tryFind as tryFind_2 } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 
@@ -138,6 +138,87 @@ function stretches(held, start, frames) {
     return go(undefined, empty(), ofArray(frames));
 }
 
+class Overlap extends Record {
+    constructor(A, B, W, WFloat, H, HFloat) {
+        super();
+        this.A = A;
+        this.B = B;
+        this.W = W;
+        this.WFloat = WFloat;
+        this.H = H;
+        this.HFloat = HFloat;
+    }
+}
+
+function Overlap_$reflection() {
+    return record_type("ScanReport.Overlap", [], Overlap, () => [["A", obj_type], ["B", obj_type], ["W", float64_type], ["WFloat", bool_type], ["H", float64_type], ["HFloat", bool_type]]);
+}
+
+function overlapOf(A, B) {
+    let patternInput_3, T_1, S_1;
+    const A_1 = A;
+    const B_1 = B;
+    const shape = (it) => {
+        if (has(it, "svg")) {
+            return true;
+        }
+        else {
+            return has(it, "box");
+        }
+    };
+    const shapes = [shape(A_1), shape(B_1)];
+    if (shapes[0] && shapes[1]) {
+        return undefined;
+    }
+    else {
+        const matchValue = split(A_1.path, ["/"], undefined, 0);
+        const matchValue_1 = split(B_1.path, ["/"], undefined, 0);
+        if (contains(Py_str(A_1.id), matchValue_1, {
+            Equals: (x, y) => (x === y),
+            GetHashCode: (x) => (stringHash(x) | 0),
+        }) ? true : contains(Py_str(B_1.id), matchValue, {
+            Equals: (x_1, y_1) => (x_1 === y_1),
+            GetHashCode: (x_1) => (stringHash(x_1) | 0),
+        })) {
+            return undefined;
+        }
+        else {
+            const matchValue_2 = num(A_1, "r");
+            const matchValue_3 = num(B_1, "r");
+            const matchValue_4 = num(A_1, "x");
+            const xB = num(B_1, "x");
+            const xA = matchValue_4;
+            const rB = matchValue_3;
+            const rA = matchValue_2;
+            const r = (rB < rA) ? rB : rA;
+            const x_2 = (xB > xA) ? xB : xA;
+            const w = r - x_2;
+            const matchValue_6 = num(A_1, "b");
+            const matchValue_7 = num(B_1, "b");
+            const matchValue_8 = num(A_1, "y");
+            const yB = num(B_1, "y");
+            const yA = matchValue_8;
+            const bB = matchValue_7;
+            const bA = matchValue_6;
+            const bb = (bB < bA) ? bB : bA;
+            const y_2 = (yB > yA) ? yB : yA;
+            const h = bb - y_2;
+            const isF = (v) => !(Number.isInteger(v));
+            if ((w > 4) && (h > 6)) {
+                if ((shapes[0] ? true : shapes[1]) && ((patternInput_3 = (shapes[0] ? [B_1, A_1] : [A_1, B_1]), (T_1 = patternInput_3[0], (S_1 = patternInput_3[1], (((num(T_1, "x") >= (num(S_1, "x") - 2)) && (num(T_1, "r") <= (num(S_1, "r") + 2))) && (num(T_1, "y") >= (num(S_1, "y") - 2))) && (num(T_1, "b") <= (num(S_1, "b") + 2))))))) {
+                    return undefined;
+                }
+                else {
+                    return new Overlap(A_1, B_1, w, isF(r) ? true : isF(x_2), h, isF(bb) ? true : isF(y_2));
+                }
+            }
+            else {
+                return undefined;
+            }
+        }
+    }
+}
+
 class Report {
     constructor(clip) {
         let matchValue;
@@ -153,7 +234,7 @@ class Report {
                 const sp = Py_get(u, "spoken");
                 text = (Py_truthy(sp) ? sp : Py_get(u, "text"));
                 const cps = Array.from(text);
-                return singleton(new Unit(s_1.id, matchValue_1[0], num(u, "start"), num(u, "end"), cps, scan_1((w, c) => (((w + 1) + PAUSE(c)) | 0), 0, cps, Int32Array)));
+                return singleton(new Unit(s_1.id, matchValue_1[0], num(u, "start"), num(u, "end"), cps, scan((w, c) => (((w + 1) + PAUSE(c)) | 0), 0, cps, Int32Array)));
             }, (length(parts) > 1) ? parts : singleton_1(se));
         }, indexed(Py_list(s_1, "sentences"))), Py_list(timing, "scenes"))));
         this.sceneStarts = sort(map((s_2) => num(s_2, "start"), Py_list(timing, "scenes")), {
@@ -303,19 +384,12 @@ function Report__short(r) {
 
 function Report__overlap(_) {
     Report__line_Z721C83C5(_, "== overlaps (text over text, text over part of a drawing, text straddling a box border)");
-    const shape = (it) => {
-        if (has(it, "svg")) {
-            return true;
-        }
-        else {
-            return has(it, "box");
-        }
-    };
     const byNum = parse;
-    const enumerator = getEnumerator(Py_sortWith((tupledArg_2, tupledArg_3) => (defaultArg(tryFind_1((y_4) => (0 !== y_4), ofArray([comparePrimitives(tupledArg_2[0], tupledArg_3[0]), comparePrimitives(tupledArg_2[1], tupledArg_3[1]), Py_cmpStr(tupledArg_2[2], tupledArg_3[2]), Py_cmpStr(tupledArg_2[3], tupledArg_3[3]), comparePrimitives(byNum(tupledArg_2[4]), byNum(tupledArg_3[4])), comparePrimitives(byNum(tupledArg_2[5]), byNum(tupledArg_3[5]))])), 0) | 0), map((tupledArg_1) => {
+    const enumerator = getEnumerator(Py_sortWith((tupledArg_2, tupledArg_3) => (defaultArg(tryFind_1((y_1) => (0 !== y_1), ofArray([comparePrimitives(tupledArg_2[0], tupledArg_3[0]), comparePrimitives(tupledArg_2[1], tupledArg_3[1]), Py_cmpStr(tupledArg_2[2], tupledArg_3[2]), Py_cmpStr(tupledArg_2[3], tupledArg_3[3]), comparePrimitives(byNum(tupledArg_2[4]), byNum(tupledArg_3[4])), comparePrimitives(byNum(tupledArg_2[5]), byNum(tupledArg_3[5]))])), 0) | 0), map((tupledArg_1) => {
         const group = tupledArg_1[1];
-        const patternInput_5 = head(group);
-        return [patternInput_5[1], last_1(group)[1], patternInput_5[2], patternInput_5[3], patternInput_5[4], patternInput_5[5]];
+        const patternInput = head(group);
+        const o_1 = patternInput[2];
+        return [patternInput[1], last_1(group)[1], Py_take(45, txt(o_1.A)), Py_take(45, txt(o_1.B)), Py_numStr(o_1.W, o_1.WFloat), Py_numStr(o_1.H, o_1.HFloat)];
     }, List_groupBy((tupledArg) => tupledArg[0], collect_1((f) => {
         const its = toArray(filter((i) => {
             if ((op(i) >= 0.5) && isModule(i)) {
@@ -326,55 +400,18 @@ function Report__overlap(_) {
             }
         }, items(f)));
         return toList(delay(() => collect((i_1) => collect((j) => {
-            let patternInput_4, T_1, S_1;
-            const matchValue = item(i_1, its);
-            const B = item(j, its);
-            const A = matchValue;
-            const shapes = [shape(A), shape(B)];
-            if (!(shapes[0] && shapes[1])) {
-                const matchValue_2 = split(A.path, ["/"], undefined, 0);
-                const matchValue_3 = split(B.path, ["/"], undefined, 0);
-                if (!(contains(Py_str(A.id), matchValue_3, {
-                    Equals: (x, y) => (x === y),
-                    GetHashCode: (x) => (stringHash(x) | 0),
-                }) ? true : contains(Py_str(B.id), matchValue_2, {
-                    Equals: (x_1, y_1) => (x_1 === y_1),
-                    GetHashCode: (x_1) => (stringHash(x_1) | 0),
-                }))) {
-                    const matchValue_4 = num(A, "r");
-                    const matchValue_5 = num(B, "r");
-                    const matchValue_6 = num(A, "x");
-                    const xB = num(B, "x");
-                    const xA = matchValue_6;
-                    const rB = matchValue_5;
-                    const rA = matchValue_4;
-                    const r = (rB < rA) ? rB : rA;
-                    const x_2 = (xB > xA) ? xB : xA;
-                    const w = r - x_2;
-                    const matchValue_8 = num(A, "b");
-                    const matchValue_9 = num(B, "b");
-                    const matchValue_10 = num(A, "y");
-                    const yB = num(B, "y");
-                    const yA = matchValue_10;
-                    const bB = matchValue_9;
-                    const bA = matchValue_8;
-                    const bb = (bB < bA) ? bB : bA;
-                    const y_2 = (yB > yA) ? yB : yA;
-                    const h = bb - y_2;
-                    const isF = (v) => !(Number.isInteger(v));
-                    return ((w > 4) && (h > 6)) ? (!((shapes[0] ? true : shapes[1]) && ((patternInput_4 = (shapes[0] ? [B, A] : [A, B]), (T_1 = patternInput_4[0], (S_1 = patternInput_4[1], (((num(T_1, "x") >= (num(S_1, "x") - 2)) && (num(T_1, "r") <= (num(S_1, "r") + 2))) && (num(T_1, "y") >= (num(S_1, "y") - 2))) && (num(T_1, "b") <= (num(S_1, "b") + 2))))))) ? singleton([toJson([A.id, B.id]), t(f), Py_take(45, txt(A)), Py_take(45, txt(B)), Py_numStr(w, isF(r) ? true : isF(x_2)), Py_numStr(h, isF(bb) ? true : isF(y_2))]) : empty_1()) : empty_1();
-                }
-                else {
-                    return empty_1();
-                }
+            const matchValue = overlapOf(item(i_1, its), item(j, its));
+            if (matchValue == null) {
+                return empty_1();
             }
             else {
-                return empty_1();
+                const o = matchValue;
+                return singleton([toJson([o.A.id, o.B.id]), t(f), o]);
             }
         }, rangeDouble(i_1 + 1, 1, its.length - 1)), rangeDouble(0, 1, its.length - 1))));
     }, ofArray(_.frames)), {
-        Equals: (x_3, y_3) => (x_3 === y_3),
-        GetHashCode: (x_3) => (stringHash(x_3) | 0),
+        Equals: (x, y) => (x === y),
+        GetHashCode: (x) => (stringHash(x) | 0),
     }))));
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
@@ -580,8 +617,8 @@ function Report__blink(r) {
                     return matchValue_1;
                 }
             }, ts);
-            const scan = (i_1_mut, found_mut) => {
-                scan:
+            const walk = (i_1_mut, found_mut) => {
+                walk:
                 while (true) {
                     const i_1 = i_1_mut, found = found_mut;
                     if (i_1 >= n) {
@@ -600,23 +637,23 @@ function Report__blink(r) {
                             const moved = ((y0 == null) ? true : (y1 == null)) ? !((y0 == null) && (y1 == null)) : (y0 !== y1);
                             i_1_mut = j;
                             found_mut = cons(`${r.f72(item(j, ts))}-${r.f72(item(k2, ts))} min ${Py_fmtF(2, low)}${moved ? " moved" : ""}  ${Py_reprStr(patternInput[1])}`, found);
-                            continue scan;
+                            continue walk;
                         }
                         else {
                             i_1_mut = j;
                             found_mut = found;
-                            continue scan;
+                            continue walk;
                         }
                     }
                     else {
                         i_1_mut = (i_1 + 1);
                         found_mut = found;
-                        continue scan;
+                        continue walk;
                     }
                     break;
                 }
             };
-            const enumerator_1 = getEnumerator(scan(0, empty()));
+            const enumerator_1 = getEnumerator(walk(0, empty()));
             try {
                 while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
                     Report__line_Z721C83C5(r, enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]());

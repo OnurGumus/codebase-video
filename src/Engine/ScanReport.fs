@@ -63,6 +63,47 @@ let private stretches (held: obj -> bool) (start: obj -> 'a) (frames: obj[]) : (
             | _ -> go current finished rest
     go None [] (List.ofArray frames)
 
+/// Two items of a frame that overlap, as the overlap report sees them: the items, and the width and height of the
+/// overlap, each with whether it prints as a float (min()/max() return the first of equals, and a float there makes
+/// it one).
+type private Overlap =
+    { A: Item
+      B: Item
+      W: float
+      WFloat: bool
+      H: float
+      HFloat: bool }
+
+/// Where A and B (two module items of one frame, A first) overlap, when it is worth reporting: text over text, text
+/// over part of a drawing, or text straddling a box border. Not two drawings or boxes, not an item and one it sits
+/// in, and not text inside its own drawing or box.
+let private overlapOf (A: Item) (B: Item) : Overlap option =
+    let inside (T: Item) (S: Item) =
+        num T "x" >= num S "x" - 2.0 && num T "r" <= num S "r" + 2.0 && num T "y" >= num S "y" - 2.0 && num T "b" <= num S "b" + 2.0
+    let shape (it: Item) = has it "svg" || has it "box"
+    let shapes = shape A, shape B
+    if fst shapes && snd shapes then None
+    else
+        let pa, pb = (unbox<string> A?path).Split('/'), (unbox<string> B?path).Split('/')
+        if Array.contains (Py.str A?id) pb || Array.contains (Py.str B?id) pa then None
+        else
+            // min()/max() return the first of equals
+            let rA, rB, xA, xB = num A "r", num B "r", num A "x", num B "x"
+            let r = if rB < rA then rB else rA
+            let x = if xB > xA then xB else xA
+            let w = r - x
+            let bA, bB, yA, yB = num A "b", num B "b", num A "y", num B "y"
+            let bb = if bB < bA then bB else bA
+            let y = if yB > yA then yB else yA
+            let h = bb - y
+            let isF v = not (Py.isInteger v)
+            if w > 4.0 && h > 6.0 then
+                // text inside its own drawing or box is normal; report only text that straddles the edge
+                let skip = (fst shapes || snd shapes) && (let T, S = if fst shapes then B, A else A, B in inside T S)
+                if skip then None
+                else Some { A = A; B = B; W = w; WFloat = isF r || isF x; H = h; HFloat = isF bb || isF y }
+            else None
+
 type private Report(clip: string) =
     let scan = readJson (join [ clip; "build"; "scan.json" ])
     let timing = readJson (join [ clip; "build"; "timing.json" ])
@@ -159,10 +200,7 @@ type private Report(clip: string) =
 
     member _.overlap() =
         line "== overlaps (text over text, text over part of a drawing, text straddling a box border)"
-        let inside (T: Item) (S: Item) =
-            num T "x" >= num S "x" - 2.0 && num T "r" <= num S "r" + 2.0 && num T "y" >= num S "y" - 2.0 && num T "b" <= num S "b" + 2.0
-        let shape (it: Item) = has it "svg" || has it "box"
-        // Every overlapping pair in every frame: (A id, B id), the time, A text, B text, w, h.
+        // Every overlapping pair in every frame: (A id, B id), the time, the overlap.
         let hits =
             frames
             |> Array.toList
@@ -170,42 +208,18 @@ type private Report(clip: string) =
                 let its = items f |> List.filter (fun i -> op i >= 0.5 && isModule i && not (has i "pk")) |> List.toArray
                 [ for i in 0 .. its.Length - 1 do
                       for j in i + 1 .. its.Length - 1 do
-                          let A, B = its.[i], its.[j]
-                          let shapes = shape A, shape B
-                          if not (fst shapes && snd shapes) then
-                              let pa, pb = (unbox<string> A?path).Split('/'), (unbox<string> B?path).Split('/')
-                              if not (Array.contains (Py.str A?id) pb || Array.contains (Py.str B?id) pa) then
-                                  // min()/max() return the first of equals, and a float there makes w print as a float
-                                  let rA, rB, xA, xB = num A "r", num B "r", num A "x", num B "x"
-                                  let r = if rB < rA then rB else rA
-                                  let x = if xB > xA then xB else xA
-                                  let w = r - x
-                                  let bA, bB, yA, yB = num A "b", num B "b", num A "y", num B "y"
-                                  let bb = if bB < bA then bB else bA
-                                  let y = if yB > yA then yB else yA
-                                  let h = bb - y
-                                  let isF v = not (Py.isInteger v)
-                                  if w > 4.0 && h > 6.0 then
-                                      // text inside its own drawing or box is normal; report only text that straddles the edge
-                                      let skip =
-                                          (fst shapes || snd shapes)
-                                          && (let T, S = if fst shapes then B, A else A, B in inside T S)
-                                      if not skip then
-                                          yield
-                                              toJson [| A?id; B?id |],
-                                              t f,
-                                              Py.take 45 (txt A),
-                                              Py.take 45 (txt B),
-                                              Py.numStr w (isF r || isF x),
-                                              Py.numStr h (isF bb || isF y) ])
-        // One row per pair, pairs in the order first seen: first time, last time, the two texts, w, h (as first seen)
+                          match overlapOf its.[i] its.[j] with
+                          | Some o -> toJson [| o.A?id; o.B?id |], t f, o
+                          | None -> () ])
+        // One row per pair, pairs in the order first seen: first time, last time, and the two texts, w and h as first
+        // seen (formatted once per pair)
         let values =
             hits
-            |> List.groupBy (fun (key, _, _, _, _, _) -> key)
+            |> List.groupBy (fun (key, _, _) -> key)
             |> List.map (fun (_, group) ->
-                let _, first, ta, tb, ws, hs = List.head group
-                let _, last, _, _, _, _ = List.last group
-                first, last, ta, tb, ws, hs)
+                let _, first, o = List.head group
+                let _, last, _ = List.last group
+                first, last, Py.take 45 (txt o.A), Py.take 45 (txt o.B), Py.numStr o.W o.WFloat, Py.numStr o.H o.HFloat)
         // sorted(found.values()): by first time, last time, the two texts, then w and h
         let byNum (s: string) = float s
         let sorted =
@@ -290,7 +304,7 @@ type private Report(clip: string) =
                     Map.empty
             let vals = ts |> Array.map (fun time -> match Map.tryFind time series with Some v -> v | None -> (0.0, (null: obj)))
             // Walks the frames: a stretch at full opacity, then a dip, then back to full within a second.
-            let rec scan (i: int) (found: string list) : string list =
+            let rec walk (i: int) (found: string list) : string list =
                 if i >= n then List.rev found
                 elif fst vals.[i] >= 0.95 then
                     let j = advance (fun x -> fst vals.[x] >= 0.95) (i + 1)
@@ -300,10 +314,10 @@ type private Report(clip: string) =
                         let low = vals.[j .. k2 - 1] |> Array.map fst |> Array.min
                         let y0, y1 = snd vals.[j - 1], snd vals.[k2]
                         let moved = if Py.isNone y0 || Py.isNone y1 then not (Py.isNone y0 && Py.isNone y1) else unbox<float> y0 <> unbox<float> y1
-                        scan j ($"""{f72 ts.[j]}-{f72 ts.[k2]} min {Py.fmtF 2 low}{if moved then " moved" else ""}  {Py.reprStr name}""" :: found)
-                    else scan j found
-                else scan (i + 1) found
-            for l in scan 0 [] do
+                        walk j ($"""{f72 ts.[j]}-{f72 ts.[k2]} min {Py.fmtF 2 low}{if moved then " moved" else ""}  {Py.reprStr name}""" :: found)
+                    else walk j found
+                else walk (i + 1) found
+            for l in walk 0 [] do
                 line l
 
     member _.ending() =

@@ -94,13 +94,11 @@ let write (path: string) (samples: float32[]) : unit = Node.writeBytes path (enc
 /// The samples of several pieces, one after another.
 let concat (pieces: float32[] list) : float32[] =
     let out: float32[] = Array.zeroCreate (pieces |> List.sumBy (fun p -> p.Length))
-    pieces
-    |> List.fold
-        (fun at p ->
-            out?set(p, at) |> ignore
-            at + p.Length)
-        0
-    |> ignore
+    // each piece with where it starts; the offsets wrap at 32 bits like every int sum (`||| 0`: Fable drops `| 0` on
+    // a tuple's element)
+    let placed, _ = pieces |> List.mapFold (fun at p -> (at, p), (at + p.Length) ||| 0) 0
+    for at, p in placed do
+        out?set(p, at) |> ignore
     out
 
 /// Leading and trailing silence cut off, exactly as kokoro-onnx did to every generated piece with librosa's

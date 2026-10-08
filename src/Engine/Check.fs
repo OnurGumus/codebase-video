@@ -684,7 +684,7 @@ let private spokenOf (se: Json) : string =
     if Py.truthy sp then unbox sp else textOf se
 let private num (o: Json) (k: string) : float = o?(k)
 
-let private checkCuesWith (timing: Json) (jsFiles: string list) : Finding list =
+let private reportCues (timing: Json) (jsFiles: string list) : Finding list =
     let scenes = Py.list timing "scenes"
     // A scene by its id, the last scene with that id winning, ids compared as they are in the JSON (strictly: an
     // id can be missing or a number there), not ordered, so no F# Map.
@@ -830,7 +830,7 @@ let private checkCuesWith (timing: Json) (jsFiles: string list) : Finding list =
 let private checkCues (timing: Json option) (jsFiles: string list) : Finding list =
     match timing with
     | None -> [ Warning "no build/timing.json yet: cue checks skipped (run narrate first)" ]
-    | Some timing -> checkCuesWith timing jsFiles
+    | Some timing -> reportCues timing jsFiles
 
 // ── lesson grounding ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -912,7 +912,7 @@ let private chapters (scenes: Json list) (each: Json -> 'a) : (string * 'a list)
     List.rev ((name, List.rev current) :: finished)
 
 let private reportFlow (glossary: Glossary.Glossary) (script: Json) (longVideo: bool) : Finding list =
-    // per chapter, per scene, per sentence: the connectives it opens with
+    // per chapter, per scene, per sentence: every connective in it
     let perChapter =
         chapters (Py.list script "scenes") (fun s ->
             sentences (say glossary s)

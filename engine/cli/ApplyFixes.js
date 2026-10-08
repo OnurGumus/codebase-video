@@ -17,19 +17,19 @@ function isAbsolutePath(p) {
 }
 
 function unmatched(a, b) {
-    const b2j = foldBack((tupledArg, m) => {
+    const occurrences = foldBack((tupledArg, m) => {
         const elt = tupledArg[1];
         return FSharpMap__Add(m, elt, cons(tupledArg[0], defaultArg(FSharpMap__TryFind(m, elt), empty())));
     }, indexed(b), empty_1({
         Compare: (x, y) => (comparePrimitives(x, y) | 0),
     }));
-    let b2j_1;
+    let b2j;
     if (b.length >= 200) {
         const ntest = (~~(b.length / 100) + 1) | 0;
-        b2j_1 = filter((_arg, idxs) => (length_1(idxs) <= ntest), b2j);
+        b2j = filter((_arg, idxs) => (length_1(idxs) <= ntest), occurrences);
     }
     else {
-        b2j_1 = b2j;
+        b2j = occurrences;
     }
     const blocks = (queue_mut, found_mut) => {
         blocks:
@@ -81,7 +81,7 @@ function unmatched(a, b) {
                     }
                 };
                 matchValue = forward(back(fold((tupledArg_1, i_1) => {
-                    const inRange = filter_1((j_1) => (j_1 >= blo), takeWhile((j) => (j < bhi), defaultArg(tryFind(item(i_1, a), b2j_1), empty())));
+                    const inRange = filter_1((j_1) => (j_1 >= blo), takeWhile((j) => (j < bhi), defaultArg(tryFind(item(i_1, a), b2j), empty())));
                     return fold((tupledArg_2, j_2) => {
                         const best_2 = tupledArg_2[1];
                         const k = (defaultArg(tryFind(j_2 - 1, tupledArg_1[0]), 0) + 1) | 0;

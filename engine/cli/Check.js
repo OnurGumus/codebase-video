@@ -1087,7 +1087,7 @@ function num(o, k) {
     return o[k];
 }
 
-function checkCuesWith(timing, jsFiles) {
+function reportCues(timing, jsFiles) {
     const scenes = Py_list(timing, "scenes");
     const byId = map_3((s) => [idOf(s), s], scenes);
     const sceneOf = (sid) => {
@@ -1276,7 +1276,7 @@ function checkCuesWith(timing, jsFiles) {
 
 function checkCues(timing, jsFiles) {
     if (timing != null) {
-        return checkCuesWith(value_1(timing), jsFiles);
+        return reportCues(value_1(timing), jsFiles);
     }
     else {
         return singleton(new Finding(/* Warning */ 1, ["no build/timing.json yet: cue checks skipped (run narrate first)"]));

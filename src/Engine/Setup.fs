@@ -61,22 +61,20 @@ let private runIn (dir: string) (cmd: string) (args: string list) : int =
         )
     if isNull r?error then (r?status: int) else 127
 
-/// Checks the system tools and installs the packages at once, as setup always has; a check that fails ends setup with
-/// the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns an exit code.
-/// (The checks stay in `run` itself: an exception there, e.g. a tool home that cannot be made, is reported from `run`
-/// as before.)
+/// Checks the system tools and installs the packages as `run` is called, before the Async starts; a check that fails
+/// ends setup with the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns
+/// an exit code. (An exception in the checks, e.g. a tool home that cannot be made, is thrown from `run` itself.)
 let run () : Async<int> =
     mkdirp toolHome
     let missing = [ "node"; "npm"; "ffmpeg" ] |> List.filter (hasCommand >> not)
     let prepared: Result<string, string list> =
         result {
             do!
-                if missing.IsEmpty then Ok()
-                else
-                    Error
-                        [ "missing system tools: " + String.concat " " missing
-                          "  macOS:  brew install node ffmpeg"
-                          "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg" ]
+                missing
+                |> Result.requireEmpty
+                    [ "missing system tools: " + String.concat " " missing
+                      "  macOS:  brew install node ffmpeg"
+                      "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg" ]
             let _, encoders, _ = runCapture "ffmpeg" [ "-hide_banner"; "-encoders" ]
             do!
                 match [ "libx264"; "libvpx-vp9"; "libopus" ] |> List.tryFind (fun codec -> not (encoders.Contains codec)) with

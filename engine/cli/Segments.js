@@ -456,9 +456,9 @@ export function plan(ws, fps, size, browser, encoder) {
             wholeTiming = defaultOf();
         }
         else {
-            const fields = toList(delay(() => collect((k_5) => {
-                const x_13 = timing[k_5];
-                return singleton([k_5, (k_5 === "duration") ? rel(duration) : ((k_5 === "poster") ? (((typeof x_13) === "number") ? rel(x_13) : shiftedField(rel, k_5, x_13)) : shiftedField(rel, k_5, x_13))]);
+            const fields = toList(delay(() => collect((key) => {
+                const x_13 = timing[key];
+                return singleton([key, (key === "duration") ? rel(duration) : ((key === "poster") ? (((typeof x_13) === "number") ? rel(x_13) : shiftedField(rel, key, x_13)) : shiftedField(rel, key, x_13))]);
             }, Object.keys(timing))));
             wholeTiming = createObj(contains_1("duration", Object.keys(timing), {
                 Equals: (x_14, y_10) => (x_14 === y_10),

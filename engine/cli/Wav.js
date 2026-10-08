@@ -1,9 +1,9 @@
 
 import { getSubArray, tryFindIndexBack, tryFindIndex, map, max as max_1, initialize, setItem, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { min, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
-import { comparePrimitives, Exception } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { comparePrimitives, disposeSafe, getEnumerator, Exception } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { writeBytes, readBytes } from "./Node.js";
-import { fold, sumBy } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { mapFold, sumBy } from "./fable_modules/fable-library-js.5.19.0/List.js";
 
 /**
  * Round half to even: C's lrint in the default rounding mode, and Python's round().
@@ -130,10 +130,16 @@ export function concat(pieces) {
         GetZero: () => 0,
         Add: (x, y) => ((x + y) | 0),
     }));
-    fold((at, p_1) => {
-        out.set(p_1, at);
-        return (at + p_1.length) | 0;
-    }, 0, pieces);
+    const enumerator = getEnumerator(mapFold((at, p_1) => [[at, p_1], (at + p_1.length) | 0], 0, pieces)[0]);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            out.set(forLoopVar[1], forLoopVar[0]);
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
     return out;
 }
 

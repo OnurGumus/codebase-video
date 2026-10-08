@@ -455,7 +455,7 @@ let private startWriter (ff: obj) (pages: int) (fps: float) (r: Range) : Mailbox
     /// The writer after `e`, whatever `handle` threw (a write, say; nothing there is expected to): nothing more is
     /// written, the message's caller and every page still waiting are answered (the one place Waiting is walked, and
     /// nothing is printed), and later messages are answered at once. So the agent never stops and no page waits for
-    /// ever; Finish gives `e` back, and renderRange raises it, as the old reorder buffer's rejection did.
+    /// ever; Finish gives `e` back, and renderRange raises it (the command fails with it).
     let failed (state: Writer) (msg: WriterMsg) (e: exn) : Writer * Answers =
         let own =
             match msg with
@@ -616,7 +616,7 @@ let rec private renderAll (session: Session) (pages: obj list) (fps: float) (job
         | [] -> return frames, true
         | job :: rest ->
             let! finished = renderRange session pages fps job
-            // the old frame counter wrapped at 32 bits (`| 0`); Fable leaves it out for an argument
+            // the count wraps at 32 bits like every int sum (`||| 0`: Fable drops `| 0` on a call argument)
             if finished then return! renderAll session pages fps rest ((frames + job.End - job.First) ||| 0)
             else return frames, false
     }

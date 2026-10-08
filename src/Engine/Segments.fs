@@ -333,13 +333,13 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
               else
                   // the timing shifted, with its duration and poster as times too
                   let fields =
-                      [ for k in keys timing do
-                            let x: obj = timing?(k)
+                      [ for key in keys timing do
+                            let x: obj = timing?(key)
                             yield
-                                k ==> (match k with
-                                       | "duration" -> rel duration
-                                       | "poster" when jsTypeof x = "number" -> rel (unbox x)
-                                       | _ -> shiftedField rel k x) ]
+                                key ==> (match key with
+                                         | "duration" -> rel duration
+                                         | "poster" when jsTypeof x = "number" -> rel (unbox x)
+                                         | _ -> shiftedField rel key x) ]
                   createObj (if Array.contains "duration" (keys timing) then fields else fields @ [ "duration" ==> rel duration ])
 
           let input =

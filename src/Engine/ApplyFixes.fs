@@ -24,14 +24,14 @@ let private isAbsolutePath (p: string) : bool = path?isAbsolute(p)
 /// a line in more than 1% of b (b of 200+ lines) is "popular" and never starts a match.
 let private unmatched (a: string[]) (b: string[]) : bool[] * bool[] =
     // Where each line occurs in b, the indices ascending (folding from the end puts each in front of the later ones).
-    let b2j: Map<string, int list> =
+    let occurrences: Map<string, int list> =
         (Array.indexed b, Map.empty)
         ||> Array.foldBack (fun (i, elt) m -> m.Add(elt, i :: defaultArg (m.TryFind elt) []))
     let b2j =
         if b.Length >= 200 then
             let ntest = b.Length / 100 + 1
-            b2j |> Map.filter (fun _ idxs -> idxs.Length <= ntest)
-        else b2j
+            occurrences |> Map.filter (fun _ idxs -> idxs.Length <= ntest)
+        else occurrences
 
     // The longest block a[i:i+k] = b[j:j+k] inside a[alo:ahi] and b[blo:bhi] as (i, j, k).
     let findLongestMatch alo ahi blo bhi =

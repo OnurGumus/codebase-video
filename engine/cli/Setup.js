@@ -1,12 +1,12 @@
 
-import { iterate, exists as exists_1, map, singleton as singleton_1, tryFind, isEmpty, filter, toArray as toArray_1, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { iterate, exists as exists_1, map, singleton as singleton_1, tryFind, filter, toArray as toArray_1, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { eprint, writeText, readText, exists, join as join_1, runCapture, hasCommand, toolHome, mkdirp, platform, childProcess, fs, env, toJsonIndented } from "./Node.js";
 import { createObj } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { append, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { isEmpty, append, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { toArray } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { printf, toConsole, concat, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { requirePackages, selfTest, modelDir, modelFile, packageInstalled } from "./Narrate.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
@@ -54,16 +54,17 @@ function runIn(dir, cmd, args) {
 }
 
 /**
- * Checks the system tools and installs the packages at once, as setup always has; a check that fails ends setup with
- * the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns an exit code.
- * (The checks stay in `run` itself: an exception there, e.g. a tool home that cannot be made, is reported from `run`
- * as before.)
+ * Checks the system tools and installs the packages as `run` is called, before the Async starts; a check that fails
+ * ends setup with the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns
+ * an exit code. (An exception in the checks, e.g. a tool home that cannot be made, is thrown from `run` itself.)
  */
 export function run() {
     mkdirp(toolHome);
     const missing = filter((arg) => !hasCommand(arg), ofArray(["node", "npm", "ffmpeg"]));
     let prepared;
-    const input_8 = isEmpty(missing) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [ofArray(["missing system tools: " + join(" ", missing), "  macOS:  brew install node ffmpeg", "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg"])]));
+    let input_8;
+    const error = ofArray(["missing system tools: " + join(" ", missing), "  macOS:  brew install node ffmpeg", "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg"]);
+    input_8 = (isEmpty(missing) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error])));
     if (input_8.tag === 1) {
         prepared = (new FSharpResult$2(/* Error */ 1, [input_8.fields[0]]));
     }

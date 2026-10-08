@@ -117,8 +117,8 @@ let private scan (g: Glossary) (text: string) : string * (string * string) list 
         | [] -> String.concat "" (List.rev (text.Substring pos :: built)), List.rev said
         | (i, whole, name, term) :: rest ->
             let spoken = if isNull name || jsTypeof name = "undefined" then g.Terms.[term] else dotted g name
-            let shown, said' = if spoken = whole then whole, said else $"[{whole}]({spoken})", (whole, spoken) :: said
-            walk (i + whole.Length) rest (shown :: text.Substring(pos, i - pos) :: built) said'
+            let shown, saidNow = if spoken = whole then whole, said else $"[{whole}]({spoken})", (whole, spoken) :: said
+            walk (i + whole.Length) rest (shown :: text.Substring(pos, i - pos) :: built) saidNow
     walk 0 (List.ofArray (finds text g.Finder)) [] []
 
 /// A scene's "say" with every term the glossary knows written as `[term](how it is said)`.
