@@ -440,11 +440,9 @@ let setupHint () : string =
     let cv = join [ engineDir; "cli"; "Cv.js" ]
     $"the tool is not set up yet: run: node {cv} setup (installs the Kokoro voice and puppeteer-core into {toolHome})"
 
-/// Exits 2 with the setup hint when a package is missing from the tool home.
-let requirePackages (names: string list) : unit =
-    if names |> List.exists (packageInstalled >> not) then
-        eprint (setupHint ())
-        exit 2
+/// The setup hint as the error when a package is missing from the tool home.
+let requirePackages (names: string list) : Result<unit, string> =
+    if names |> List.exists (packageInstalled >> not) then Error(setupHint ()) else Ok()
 
 [<Emit("import($0)")>]
 let private importDynamic (specifier: string) : JS.Promise<obj> = jsNative
@@ -705,9 +703,14 @@ let private thisModule: string = jsNative
 [<Emit("new $0('int64', BigInt64Array.from($1, BigInt), [1, $1.length])")>]
 let private idsTensor (tensorClass: obj) (ids: int[]) : obj = jsNative
 
+/// Ends the worker thread with an unhandled rejection of `e`: the main thread's `error` handler then fails every
+/// pending request with it.
+[<Emit("void Promise.reject($0)")>]
+let private crashWith (e: exn) : unit = jsNative
+
 /// The worker's side: loads kokoro-js and its model on the first request (downloading the model into
 /// <tool home>/models the first time), then answers {id, ids, voice, speed} with {id, audio} or {id, error},
-/// one request at a time.
+/// one request at a time (an agent: the next request waits until this one is answered).
 let private serveVoice () =
     let port: obj = workerThreads?parentPort
     let model =
@@ -719,79 +722,165 @@ let private serveVoice () =
              let kokoro = requireFromHome "kokoro-js"
              kokoro?KokoroTTS?from_pretrained(MODEL, createObj [ "dtype" ==> DTYPE; "device" ==> "cpu" ])
              |> Promise.map (fun tts -> tts, transformers?Tensor))
-    let queue = ref (Promise.lift ())
-    let handle (msg: obj) =
-        promise {
-            let! tts, tensor = model.Force()
-            let input = idsTensor tensor msg?ids
-            let! audio = tts?generate_from_ids(input, createObj [ "voice" ==> msg?voice; "speed" ==> msg?speed ])
-            let samples: obj = audio?audio
-            port?postMessage(createObj [ "id" ==> msg?id; "audio" ==> samples ], [| samples?buffer |])
+    /// One request answered: its audio, or the text of what went wrong (the model's load failing included: a load
+    /// that throws is tried again on the next request, a load that rejects is not).
+    let answer (msg: obj) : Async<unit> =
+        async {
+            try
+                let! tts, tensor = model.Force() |> Async.AwaitPromise
+                let input = idsTensor tensor msg?ids
+                let! audio =
+                    (tts?generate_from_ids(input, createObj [ "voice" ==> msg?voice; "speed" ==> msg?speed ]): JS.Promise<obj>)
+                    |> Async.AwaitPromise
+                let samples: obj = audio?audio
+                port?postMessage(createObj [ "id" ==> msg?id; "audio" ==> samples ], [| samples?buffer |])
+            with e ->
+                try
+                    port?postMessage(createObj [ "id" ==> msg?id; "error" ==> string e ])
+                with unsent ->
+                    crashWith unsent
         }
-        |> Promise.catch (fun e -> port?postMessage(createObj [ "id" ==> msg?id; "error" ==> string e ]))
-    port?on("message", fun (msg: obj) -> queue.Value <- queue.Value |> Promise.bind (fun () -> handle msg))
+    let agent =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop () =
+                async {
+                    let! msg = inbox.Receive()
+                    do! answer msg
+                    return! loop ()
+                }
+            loop ())
+    port?on("message", fun (msg: obj) -> agent.Post msg)
 
 do
     if not (workerThreads?isMainThread: bool) && not (isNull workerThreads?workerData) && workerThreads?workerData?kokoro = true then
         serveVoice ()
 
-type private VoiceWorker =
-    { worker: obj
-      pending: System.Collections.Generic.Dictionary<int, (float32[] -> unit) * (exn -> unit)>
-      mutable next: int }
+/// Where a request's audio, or the text of what went wrong, is sent.
+type private VoiceReply = AsyncReplyChannel<Result<float32[], string>>
 
-let mutable private voiceWorker: VoiceWorker option = None
+type private VoiceMsg =
+    /// token ids, voice and speed
+    | Generate of int[] * string * float * VoiceReply
+    /// the worker's answer to request `id` (posted from its `message` event)
+    | Reply of id: int * Result<float32[], string>
+    /// the worker thread died of an uncaught error, with this text (posted from its `error` event)
+    | Crashed of string
+    /// end the worker thread, if one was started
+    | Stop of AsyncReplyChannel<unit>
 
-let private voice () : VoiceWorker =
-    match voiceWorker with
-    | Some v -> v
-    | None ->
-        let worker =
-            createNew workerThreads?Worker (createNew url?URL thisModule, createObj [ "workerData" ==> createObj [ "kokoro" ==> true ] ])
-        let v = { worker = worker; pending = System.Collections.Generic.Dictionary(); next = 0 }
-        worker?on("message", fun (msg: obj) ->
-            let id: int = msg?id
-            let ok, (resolve, reject) = v.pending.TryGetValue id
-            if ok then
-                v.pending.Remove id |> ignore
-                if isNull msg?error then resolve msg?audio else reject (exn (string msg?error)))
-        worker?on("error", fun (e: obj) ->
-            for KeyValue(_, (_, reject)) in List.ofSeq v.pending do
-                reject (exn (string e))
-            v.pending.Clear())
-        voiceWorker <- Some v
-        v
+/// The worker thread (started on the first request), the id the next request gets (from 0 for each worker), and the
+/// requests sent to it that are waiting for its answer.
+type private VoiceState =
+    { Worker: obj option
+      Next: int
+      Pending: Map<int, VoiceReply> }
 
-/// Kokoro's raw audio for token ids (pads included).
-let private generate (ids: int[]) (voiceName: string) (speed: float) : JS.Promise<float32[]> =
-    let v = voice ()
-    Promise.create (fun resolve reject ->
-        let id = v.next
-        v.next <- id + 1
-        v.pending[id] <- (resolve, reject)
-        v.worker?postMessage(createObj [ "id" ==> id; "ids" ==> ids; "voice" ==> voiceName; "speed" ==> speed ]))
+let private noWorker = { Worker = None; Next = 0; Pending = Map.empty }
+
+/// The model's worker thread, with its answers and its death posted to the agent. A worker that has died stays the
+/// agent's worker (a request sent to it is never answered); after a release the next request starts a new one.
+let private startWorker (agent: MailboxProcessor<VoiceMsg>) : obj =
+    let worker =
+        createNew workerThreads?Worker (createNew url?URL thisModule, createObj [ "workerData" ==> createObj [ "kokoro" ==> true ] ])
+    worker?on("message", fun (msg: obj) ->
+        let id: int = msg?id
+        agent.Post(Reply(id, (if isNull msg?error then Ok msg?audio else Error(string msg?error)))))
+    worker?on("error", fun (e: obj) -> agent.Post(Crashed(string e)))
+    worker
+
+/// The answers a message owes, given as functions so that the agent calls them once its state is settled.
+type private Answers = (unit -> unit) list
+
+let private failAll (pending: Map<int, VoiceReply>) (text: string) : Answers =
+    [ for KeyValue(_, reply) in pending -> fun () -> reply.Reply(Error text) ]
+
+/// A request sent to the worker, which is started first if there is none. A worker that started and the id taken
+/// stay in the state even when sending fails; the request then fails with the error's text.
+let private send agent (state: VoiceState) (ids: int[]) (voiceName: string) (speed: float) (reply: VoiceReply) : VoiceState * Answers =
+    match attempt (fun () -> match state.Worker with Some w -> w | None -> startWorker agent) with
+    | Error e -> state, [ fun () -> reply.Reply(Error(string e)) ]
+    | Ok worker ->
+        let id = state.Next
+        let state = { state with Worker = Some worker; Next = (id + 1) ||| 0 }
+        let request = createObj [ "id" ==> id; "ids" ==> ids; "voice" ==> voiceName; "speed" ==> speed ]
+        match attempt (fun () -> worker?postMessage(request) |> ignore) with
+        | Ok() -> { state with Pending = state.Pending.Add(id, reply) }, []
+        | Error e -> state, [ fun () -> reply.Reply(Error(string e)) ]
+
+/// One message: the state it leaves and the answers it owes. Whatever it throws fails the message's own caller (a Stop
+/// that fails still forgets the worker), so the agent does not stop.
+let private handleVoice (agent: MailboxProcessor<VoiceMsg>) (state: VoiceState) (msg: VoiceMsg) : Async<VoiceState * Answers> =
+    async {
+        try
+            match msg with
+            | Generate(ids, voiceName, speed, reply) -> return send agent state ids voiceName speed reply
+            | Reply(id, result) ->
+                match state.Pending.TryFind id with
+                | Some reply -> return { state with Pending = state.Pending.Remove id }, [ fun () -> reply.Reply result ]
+                | None -> return state, []
+            | Crashed text -> return { state with Pending = Map.empty }, failAll state.Pending text
+            | Stop reply ->
+                match state.Worker with
+                | None -> return state, [ fun () -> reply.Reply() ]
+                | Some worker ->
+                    let! _ = (worker?terminate(): JS.Promise<obj>) |> Async.AwaitPromise
+                    // Nothing is waiting when the voice is released; anything still waiting fails, as no answer can come.
+                    return noWorker, failAll state.Pending "the voice was released before it answered" @ [ fun () -> reply.Reply() ]
+        with e ->
+            match msg with
+            | Generate(_, _, _, reply) -> return state, [ fun () -> reply.Reply(Error(string e)) ]
+            | Stop reply -> return noWorker, failAll state.Pending (string e) @ [ fun () -> reply.Reply() ]
+            | Reply _
+            | Crashed _ -> return state, []
+    }
+
+/// Gives each answer. An answer runs its caller's continuation up to that caller's next await; what escapes it (only
+/// a caller whose computation is already over can throw back here) is the caller's, not the agent's or the others'.
+let private deliver (answers: Answers) : unit =
+    for answer in answers do
+        try
+            answer ()
+        with _ ->
+            ()
+
+/// The only holder of the model's worker thread: requests, the worker's answers and its death, and the release, one
+/// at a time. Every request gets one reply: its audio, the worker's error, or the error that killed the worker.
+let private voiceAgent: MailboxProcessor<VoiceMsg> =
+    MailboxProcessor.Start(fun inbox ->
+        let rec loop (state: VoiceState) : Async<unit> =
+            async {
+                let! msg = inbox.Receive()
+                let! next, answers = handleVoice inbox state msg
+                deliver answers
+                return! loop next
+            }
+        loop noWorker)
+
+/// Kokoro's raw audio for token ids (pads included). Raises what went wrong, with the text the worker gave.
+let private generate (ids: int[]) (voiceName: string) (speed: float) : Async<float32[]> =
+    async {
+        match! voiceAgent.PostAndAsyncReply(fun reply -> Generate(ids, voiceName, speed, reply)) with
+        | Ok audio -> return audio
+        | Error text -> return raise (exn text)
+    }
 
 /// Stops the model's worker thread, if it was started.
-let release () : JS.Promise<unit> =
-    match voiceWorker with
-    | None -> Promise.lift ()
-    | Some v ->
-        voiceWorker <- None
-        v.worker?terminate() |> Promise.map ignore
+let release () : Async<unit> =
+    async { return! voiceAgent.PostAndAsyncReply Stop }
 
 let private voiceFile (name: string) : string =
     let req: obj = nodeModule?createRequire(join [ toolHome; "node"; "package.json" ])
     let entry: string = req?resolve("kokoro-js")
     join [ dirname entry; ".."; "voices"; name + ".bin" ]
 
-/// List.fold where each step returns a promise: the steps run one after another, each on the state the one before made.
-let rec private foldP (step: 's -> 'a -> JS.Promise<'s>) (state: 's) (items: 'a list) : JS.Promise<'s> =
-    promise {
+/// List.fold where each step is an Async: the steps run one after another, each on the state the one before made.
+let rec private foldA (step: 's -> 'a -> Async<'s>) (state: 's) (items: 'a list) : Async<'s> =
+    async {
         match items with
         | [] -> return state
         | x :: rest ->
             let! next = step state x
-            return! foldP step next rest
+            return! foldA step next rest
     }
 
 /// Kokoro._split_phonemes: batches of at most MAX_PHONEMES, split at punctuation. The fold's state is the batches
@@ -813,15 +902,15 @@ let private splitPhonemes (phonemes: string) : string list =
     List.rev (if current <> "" then current.Trim() :: batches else batches)
 
 /// Kokoro.create(phonemes, is_phonemes=True): each batch voiced, its silent edges trimmed, the batches joined.
-let private create (phonemes: string) (voiceName: string) (speed: float) : JS.Promise<float32[]> =
-    promise {
+let private create (phonemes: string) (voiceName: string) (speed: float) : Async<float32[]> =
+    async {
         if not (speed >= 0.5 && speed <= 2.0) then failwith "Speed should be between 0.5 and 2.0"
         if not (exists (voiceFile voiceName)) then failwith $"Voice {voiceName} not found in available voices"
         let! parts =
             splitPhonemes phonemes
-            |> foldP
+            |> foldA
                 (fun parts batch ->
-                    promise {
+                    async {
                         let ids =
                             codePoints batch
                             |> Array.truncate MAX_PHONEMES
@@ -835,9 +924,9 @@ let private create (phonemes: string) (voiceName: string) (speed: float) : JS.Pr
     }
 
 /// Voices a short phrase end to end (setup's check that the voice works).
-let selfTest () : JS.Promise<unit> =
-    promise {
-        let! ph = phonemize "Ready." "en-us" |> Async.StartAsPromise
+let selfTest () : Async<unit> =
+    async {
+        let! ph = phonemize "Ready." "en-us"
         let! samples = create ph "af_heart" 1.0
         do! release ()
         if samples.Length = 0 then failwith "the voice produced no audio"
@@ -941,8 +1030,12 @@ let private briefLength (ws: string) : string =
         if isNil v then "tour" else string v
     else ""
 
-let run (ws: string) : JS.Promise<unit> =
-    requirePackages voicePackages
+/// Voices the workspace, or the setup hint when the voice is not installed. Reading and checking script.json happen
+/// as `run` is called, before the Async starts: what throws there reaches the caller at once.
+let run (ws: string) : Async<Result<unit, string>> =
+    match requirePackages voicePackages with
+    | Error hint -> async { return Error hint }
+    | Ok() ->
     let clip = resolve ws
     let scriptText = readText (join [ clip; "script.json" ])
     let script = parseJson scriptText
@@ -989,8 +1082,8 @@ let run (ws: string) : JS.Promise<unit> =
                 fail ("{" + code + ":...} needs \"voices\": {\"" + code + "\": {\"voice\": ..., \"lang\": ...}} in script.json")
 
     /// The samples of a piece of speech, and the line it adds to phonemes.txt when it is in another language.
-    let synth (code: string option) (text: string) (where: string) : JS.Promise<float32[] * string option> =
-        promise {
+    let synth (code: string option) (text: string) (where: string) : Async<float32[] * string option> =
+        async {
             let v, l = specFor code
             let phonemes =
                 pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy |> Option.map (fun p -> string p)
@@ -998,15 +1091,15 @@ let run (ws: string) : JS.Promise<unit> =
             let! line =
                 match code with
                 | Some c ->
-                    promise {
+                    async {
                         let! ph =
                             match phonemes with
-                            | Some p -> Promise.lift p
-                            | None -> phonemize text l |> Async.StartAsPromise
+                            | Some p -> async.Return p
+                            | None -> phonemize text l
                         let source = if phonemes.IsSome then "pinned" else "auto"
                         return Some $"{where}\t{c}\t{text}\t{ph}\t{source}"
                     }
-                | None -> Promise.lift None
+                | None -> async.Return None
             // The key names the engine too, so pieces the Python engine (kokoro-onnx, fp16) cached are not mixed in.
             let key =
                 (sha1Hex (toJson [| box "kokoro-js 1.2.1 fp32"; box v; box l; box speed; box (defaultArg phonemes text) |]))
@@ -1015,8 +1108,8 @@ let run (ws: string) : JS.Promise<unit> =
             if not (exists path) then
                 let! ph =
                     match phonemes with
-                    | Some p -> Promise.lift p
-                    | None -> phonemize text l |> Async.StartAsPromise
+                    | Some p -> async.Return p
+                    | None -> phonemize text l
                 let! samples = create ph v speed
                 Wav.write (path + ".part") samples
                 rename (path + ".part") path
@@ -1026,8 +1119,8 @@ let run (ws: string) : JS.Promise<unit> =
     /// One scene's turn: the track and the scenes timed so far (the latest first) in, the same with this scene out.
     /// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
     /// with silence up to a whole frame.
-    let scene (markedScenes: obj[]) (track: Track, finished: Scene list) (si: int, sc: obj) : JS.Promise<Track * Scene list> =
-        promise {
+    let scene (markedScenes: obj[]) (track: Track, finished: Scene list) (si: int, sc: obj) : Async<Track * Scene list> =
+        async {
             let id: obj = sc?id
             if finished |> List.exists (fun f -> toJson f.id = toJson id) then fail $"duplicate scene id {Py.repr id}"
             let startFrame = track.pos / FRAME // every scene ends on a whole frame, and the next starts there
@@ -1041,18 +1134,18 @@ let run (ws: string) : JS.Promise<unit> =
             // One part of a sentence, voiced (or held for reading, in a silent clip) after the silence that its
             // neighbours ask for: the larger of the previous part's rest and the gap between voices.
             let voicePart (i: int) (track: Track, parts: Part list, gap: float) (k: int, (code: string option, text: string, rest: float)) =
-                promise {
+                async {
                     let track = if k > 0 then silence (max gap PART_GAP) track else track
                     let partStart = now startFrame track
                     let! track =
                         if voiceName.IsSome then
-                            promise {
+                            async {
                                 let! samples, line = synth code (spoken text) $"{Py.str id}[{i}]"
                                 let track = match line with Some l -> { track with report = l :: track.report } | None -> track
                                 return lay (Speech samples) track
                             }
                         else
-                            Promise.lift (silence (readingTime (shown text)) track)
+                            async.Return(silence (readingTime (shown text)) track)
                     let part =
                         { Part.text = shown text
                           spoken = heard text
@@ -1064,7 +1157,7 @@ let run (ws: string) : JS.Promise<unit> =
 
             // One sentence: its parts, then the silences it asks for ([pause], [think]) after it.
             let sentence (track: Track, lines: Sentence list, sceneBreaks: Break list) (i: int, s: string) =
-                promise {
+                async {
                     let track = if i > 0 then silence GAP track else track
                     let sentenceStart = now startFrame track
                     let after = breaks s
@@ -1074,7 +1167,7 @@ let run (ws: string) : JS.Promise<unit> =
                         [ for stretch, rest in rests s do
                               let ps = pieces stretch
                               for n, (code, text) in List.indexed ps -> code, text, (if n = ps.Length - 1 then rest else 0.0) ]
-                    let! track, parts, _ = foldP (voicePart i) (track, [], 0.0) (List.indexed voicedPieces)
+                    let! track, parts, _ = foldA (voicePart i) (track, [], 0.0) (List.indexed voicedPieces)
                     let line =
                         { Sentence.text = shown s
                           spoken = heard s
@@ -1092,7 +1185,7 @@ let run (ws: string) : JS.Promise<unit> =
                     return track, line :: lines, List.rev silences @ sceneBreaks
                 }
 
-            let! track, lines, sceneBreaks = foldP sentence (track, [], []) (List.indexed (sentences say))
+            let! track, lines, sceneBreaks = foldA sentence (track, [], []) (List.indexed (sentences say))
             let track = silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)) track
             // End on a whole frame (and never on the frame the scene started on).
             let over = track.pos % FRAME
@@ -1121,10 +1214,10 @@ let run (ws: string) : JS.Promise<unit> =
             return track, timed :: finished
         }
 
-    promise {
+    async {
         let sceneObjs: obj[] = script?scenes
         let markedScenes: obj[] = marked?scenes
-        let! track, finished = foldP (scene markedScenes) ({ audio = []; pos = 0; report = [] }, []) [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
+        let! track, finished = foldA (scene markedScenes) ({ audio = []; pos = 0; report = [] }, []) [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
 
         do! release ()
         let duration = float (track.pos / FRAME) / float FPS
@@ -1194,10 +1287,14 @@ let run (ws: string) : JS.Promise<unit> =
 
         let words = scenes |> List.sumBy (fun s -> s.sentences |> List.sumBy (fun c -> Py.wordCount c.text))
         printfn "%s" $"{name}: {Py.toFixed duration 1}s, {scenes.Length} scenes, {words} words, poster at {Py.toFixed poster 1}s"
-        for s in scenes do
+        // List.iter, not an async `for` (whose steps can give the event loop a turn): the summary is printed in one
+        // pass, and the command exits right after it.
+        scenes
+        |> List.iter (fun s ->
             printfn
                 "%s"
-                $"  {(Py.str s.id).PadRight 14} {(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}  ({s.sentences.Length} sentences)"
+                $"  {(Py.str s.id).PadRight 14} {(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}  ({s.sentences.Length} sentences)")
         if not track.report.IsEmpty then
             printfn "%s" $"  {track.report.Length} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+        return Ok()
     }

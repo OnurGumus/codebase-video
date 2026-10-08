@@ -37,8 +37,18 @@ let finish (p: JS.Promise<int>) =
         eprint (string e)
         exit 1)
 
+/// Narrate.run's Async as a promise; the setup hint (the voice is not installed) ends the command with status 2.
+let private voiced (narrate: Async<Result<unit, string>>) : JS.Promise<unit> =
+    narrate
+    |> Async.StartAsPromise
+    |> Promise.map (function
+        | Ok() -> ()
+        | Error hint ->
+            eprint hint
+            exit 2)
+
 let ensureTiming (ws: string) : JS.Promise<unit> =
-    if exists (join [ ws; "build"; "timing.json" ]) then Promise.lift () else Narrate.run ws
+    if exists (join [ ws; "build"; "timing.json" ]) then Promise.lift () else voiced (Narrate.run ws)
 
 /// Workspaces started before the kit moved to F# carry a clip.html that loads /engine/stage.js, /engine/stage-kit.js
 /// and the frame as an inline script. A long-video clip.html is the template copied verbatim, so its script block is
@@ -76,7 +86,7 @@ let main () =
             Setup.requireReady ()
         if step <> "new-long" then upgradeClip ws
         match step with
-        | "narrate" -> finish (Narrate.run ws |> Promise.map (fun () -> 0))
+        | "narrate" -> finish (voiced (Narrate.run ws) |> Promise.map (fun () -> 0))
         | "check" -> finish (Promise.lift (Check.run ws rest))
         | "stills" | "sheet" | "serve" -> finish (ensureTiming ws |> Promise.bind (fun () -> Render.run ws step rest))
         | "new-long" ->
@@ -90,7 +100,7 @@ let main () =
         | "chapters" -> finish (Promise.lift (Video.chapters ws))
         | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws rest))
         | "present" -> finish (ensureTiming ws |> Promise.bind (fun () -> Present.run ws rest))
-        | "all" -> finish (Narrate.run ws |> Promise.bind (fun () -> Video.run ws rest))
+        | "all" -> finish (voiced (Narrate.run ws) |> Promise.bind (fun () -> Video.run ws rest))
         | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest))
         | "report" -> finish (Promise.lift (ScanReport.run ws rest))
         | "fill" -> finish (Promise.lift (Fill.run ws))

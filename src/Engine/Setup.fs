@@ -96,11 +96,15 @@ let run () : JS.Promise<int> =
         // inside kokoro-js. Voicing a word checks the whole chain: eSpeak NG, the model and the voice.
         if not (exists (Narrate.modelFile ())) then
             printfn "%s" $"downloading the Kokoro model (about 330 MB) into {Narrate.modelDir ()}"
-            do! Narrate.selfTest ()
+            do! Narrate.selfTest () |> Async.StartAsPromise
         printfn "%s" $"ready: voice, renderer and encoder are set up in {toolHome} (browser: {chrome})"
         return 0
     }
 
-/// Exits with a hint to run setup when the tool home is not ready.
+/// Exits 2 with a hint to run setup when the tool home is not ready.
 let requireReady () : unit =
-    Narrate.requirePackages core
+    match Narrate.requirePackages core with
+    | Ok() -> ()
+    | Error hint ->
+        eprint hint
+        exit 2

@@ -9,6 +9,7 @@ import { printf, toConsole, concat, join } from "./fable_modules/fable-library-j
 import { requirePackages, selfTest, modelDir, modelFile, packageInstalled } from "./Narrate.js";
 import { PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
 import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
+import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 
 const dependencies = ofArray([["puppeteer-core", "^25.12.0"], ["kokoro-js", "1.2.1"], ["@echogarden/espeak-ng-emscripten", "0.3.5"], ["pptxgenjs", "4.0.1"], ["jszip", "3.10.1"]]);
 
@@ -104,7 +105,7 @@ export function run() {
     }
     return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
         let arg_3;
-        return (!exists(modelFile()) ? (((arg_3 = concat("downloading the Kokoro model (about 330 MB) into ", modelDir()), toConsole(printf("%s"))(arg_3)), selfTest().then(() => (Promise.resolve(undefined))))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+        return (!exists(modelFile()) ? (((arg_3 = concat("downloading the Kokoro model (about 330 MB) into ", modelDir()), toConsole(printf("%s"))(arg_3)), startAsPromise(selfTest()).then(() => (Promise.resolve(undefined))))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
             toConsole(printf("%s"))(`ready: voice, renderer and encoder are set up in ${toolHome} (browser: ${chrome})`);
             return Promise.resolve(0);
         }));
@@ -112,9 +113,13 @@ export function run() {
 }
 
 /**
- * Exits with a hint to run setup when the tool home is not ready.
+ * Exits 2 with a hint to run setup when the tool home is not ready.
  */
 export function requireReady() {
-    requirePackages(core);
+    const matchValue = requirePackages(core);
+    if (matchValue.tag === 1) {
+        eprint(matchValue.fields[0]);
+        exit(2);
+    }
 }
 

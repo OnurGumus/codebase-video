@@ -1,6 +1,7 @@
 
 import { argv, engineDir, copyFile, mkdirp, isDir, resolve, writeText, readText, join, exists, exit, eprint } from "./Node.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { tail, head, isEmpty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { run } from "./Narrate.js";
 import { printf, toConsole, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
@@ -28,12 +29,22 @@ export function finish(p) {
     }));
 }
 
+function voiced(narrate) {
+    const pr = startAsPromise(narrate);
+    return pr.then((_arg) => {
+        if (_arg.tag === 1) {
+            eprint(_arg.fields[0]);
+            exit(2);
+        }
+    });
+}
+
 export function ensureTiming(ws) {
     if (exists(join(ofArray([ws, "build", "timing.json"])))) {
         return Promise.resolve(undefined);
     }
     else {
-        return run(ws);
+        return voiced(run(ws));
     }
 }
 
@@ -112,7 +123,7 @@ export function main() {
             }
             switch (step) {
                 case "narrate": {
-                    finish((pr = run(ws), pr.then(() => 0)));
+                    finish((pr = voiced(run(ws)), pr.then(() => 0)));
                     break;
                 }
                 case "check": {
@@ -149,7 +160,7 @@ export function main() {
                     break;
                 }
                 case "all": {
-                    finish((pr_4 = run(ws), pr_4.then(() => run_4(ws, rest))));
+                    finish((pr_4 = voiced(run(ws)), pr_4.then(() => run_4(ws, rest))));
                     break;
                 }
                 case "scan": {
