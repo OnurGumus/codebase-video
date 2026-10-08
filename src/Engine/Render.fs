@@ -28,11 +28,6 @@ let toFixed (digits: int) (x: float) : string = (box x)?toFixed (digits)
 [<Emit("(0, eval)('(' + $0 + ')')")>]
 let browserFn (source: string) : obj = jsNative
 
-let awaitJs (p: obj) : JS.Promise<'T> = unbox p
-
-/// What a JS library's promise resolves to, as an Async.
-let fromJs (p: obj) : Async<'T> = Async.AwaitPromise(awaitJs p)
-
 let private stdoutWrite (s: string) : unit = proc?stdout?write (s) |> ignore
 
 /// console.log / console.error with two arguments, printed with a space between (a ParamArray would spread a string).

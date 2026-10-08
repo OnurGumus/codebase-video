@@ -444,14 +444,15 @@ let setupHint () : string =
 let requirePackages (names: string list) : Result<unit, string> =
     if names |> List.exists (packageInstalled >> not) then Error(setupHint ()) else Ok()
 
+/// import(): a promise of the module.
 [<Emit("import($0)")>]
-let private importDynamic (specifier: string) : JS.Promise<obj> = jsNative
+let private importDynamic (specifier: string) : obj = jsNative
 
 /// import() of an ES-module package installed in the tool home (require() cannot load those on Node 18-20).
-let private importFromHome (name: string) : JS.Promise<obj> =
+let private importFromHome (name: string) : Async<obj> =
     let req: obj = nodeModule?createRequire(join [ toolHome; "node"; "package.json" ])
     let resolved: string = req?resolve(name)
-    importDynamic (url?pathToFileURL(resolved)?href)
+    fromJs (importDynamic (url?pathToFileURL(resolved)?href))
 
 // Phonemes ----------------------------------------------------------------------------------------------------
 // kokoro-onnx phonemized with Python's phonemizer (espeak backend, preserve_punctuation=True, with_stress=True) on
@@ -559,8 +560,8 @@ type private EspeakMsg = Phonemize of text: string * lang: string * AsyncReplyCh
 let private load () : Async<EspeakState> =
     async {
         try
-            let! m = importFromHome "@echogarden/espeak-ng-emscripten" |> Async.AwaitPromise
-            let! instance = (m?``default``: unit -> JS.Promise<obj>) () |> Async.AwaitPromise
+            let! m = importFromHome "@echogarden/espeak-ng-emscripten"
+            let! (instance: obj) = fromJs (m?``default`` ())
             let worker = createNew instance?eSpeakNGWorker ()
             let voices =
                 (worker?list_voices(): obj[])
@@ -728,11 +729,10 @@ let private serveVoice () =
     let answer (msg: obj) : Async<unit> =
         async {
             try
-                let! tts, tensor = model.Force() |> Async.AwaitPromise
+                let! (tts: obj), (tensor: obj) = fromJs (model.Force())
                 let input = idsTensor tensor msg?ids
-                let! audio =
-                    (tts?generate_from_ids(input, createObj [ "voice" ==> msg?voice; "speed" ==> msg?speed ]): JS.Promise<obj>)
-                    |> Async.AwaitPromise
+                let! (audio: obj) =
+                    fromJs (tts?generate_from_ids(input, createObj [ "voice" ==> msg?voice; "speed" ==> msg?speed ]))
                 let samples: obj = audio?audio
                 port?postMessage(createObj [ "id" ==> msg?id; "audio" ==> samples ], [| samples?buffer |])
             with e ->
@@ -824,7 +824,7 @@ let private handleVoice (agent: MailboxProcessor<VoiceMsg>) (state: VoiceState) 
                 match state.Worker with
                 | None -> return state, [ fun () -> reply.Reply() ]
                 | Some worker ->
-                    let! _ = (worker?terminate(): JS.Promise<obj>) |> Async.AwaitPromise
+                    let! (_: obj) = fromJs (worker?terminate())
                     // Nothing is waiting when the voice is released; anything still waiting fails, as no answer can come.
                     return noWorker, failAll state.Pending "the voice was released before it answered" @ [ fun () -> reply.Reply() ]
         with e ->

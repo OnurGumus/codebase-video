@@ -1,7 +1,6 @@
 
-import { parallel, fromContinuations, awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, extname, fsp, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
+import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
@@ -9,6 +8,7 @@ import { int32ToString, Exception, disposeSafe, getEnumerator, equals, comparePr
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { parallel, fromContinuations } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { empty as empty_1, singleton as singleton_2, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
@@ -19,17 +19,6 @@ import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 
 export function toFixed(digits, x) {
     return x.toFixed(digits);
-}
-
-export function awaitJs(p) {
-    return p;
-}
-
-/**
- * What a JS library's promise resolves to, as an Async.
- */
-export function fromJs(p) {
-    return awaitPromise(awaitJs(p));
 }
 
 function stdoutWrite(s) {

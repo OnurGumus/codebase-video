@@ -5,8 +5,8 @@ import { postAndAsyncReply, post, receive, start } from "./fable_modules/fable-l
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { iterate, length, filter, toArray, ofArray, tryItem, empty, cons, reverse } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { eprint, toJson, writeText, join, requireFromHome, resolve } from "./Node.js";
-import { toFixed, fromJs, findChrome, ServeFor, startServer } from "./Render.js";
+import { eprint, toJson, writeText, join, fromJs, requireFromHome, resolve } from "./Node.js";
+import { toFixed, findChrome, ServeFor, startServer } from "./Render.js";
 import { min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 

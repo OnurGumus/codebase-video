@@ -1,6 +1,6 @@
-/// Thin bindings to the Node built-ins the engine uses, plus the engine's paths. Everything else (puppeteer-core,
-/// kokoro-js) is installed by `setup` into the tool home and loaded with `requireFromHome`, so the engine itself can
-/// sit in a read-only plugin cache.
+/// Thin bindings to the Node built-ins the engine uses, plus the engine's paths and the bridge from a JS library's
+/// promise to an Async. Everything else (puppeteer-core, kokoro-js) is installed by `setup` into the tool home and
+/// loaded with `requireFromHome`, so the engine itself can sit in a read-only plugin cache.
 module Node
 
 open Fable.Core
@@ -131,3 +131,17 @@ let hasCommand (cmd: string) : bool =
     let probe = if platform = "win32" then "where" else "which"
     let status, _, _ = runCapture probe [ cmd ]
     status = 0
+
+// JS promises --------------------------------------------------------------------------------------------------
+
+let awaitJs (p: obj) : JS.Promise<'T> = unbox p
+
+[<Emit("$0.catch(() => {})")>]
+let private markHandled (p: obj) : unit = jsNative
+
+/// What a JS library's promise resolves to, as an Async. The promise is marked handled at once: the Async attaches
+/// its own handlers when it runs, which Fable's trampoline can put off to a later turn, and a rejection in between
+/// would otherwise end the process as an uncaught error.
+let fromJs (p: obj) : Async<'T> =
+    markHandled p
+    Async.AwaitPromise(awaitJs p)

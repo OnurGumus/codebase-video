@@ -13,6 +13,7 @@ import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp
 import { singleton, map, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { defaultOf, uncurry2, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 
 export const fs = node$003Afs;
 
@@ -282,5 +283,19 @@ export function runCapture(cmd, args) {
  */
 export function hasCommand(cmd) {
     return runCapture((platform === "win32") ? "where" : "which", singleton_1(cmd))[0] === 0;
+}
+
+export function awaitJs(p) {
+    return p;
+}
+
+/**
+ * What a JS library's promise resolves to, as an Async. The promise is marked handled at once: the Async attaches
+ * its own handlers when it runs, which Fable's trampoline can put off to a later turn, and a rejection in between
+ * would otherwise end the process as an uncaught error.
+ */
+export function fromJs(p) {
+    p.catch(() => {});
+    return awaitPromise(awaitJs(p));
 }
 

@@ -10,13 +10,12 @@ import { toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0
 import { option_type, float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { iterate, sumBy, last as last_2, tryFind, item as item_1, indexed, length, sort, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve, readJson, dirname, requireFromHome, url, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
+import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve, readJson, dirname, requireFromHome, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
 import { defaultArg, some, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { FSharpMap__Remove, FSharpMap__Add, empty as empty_2, FSharpMap__TryFind, FSharpMap__ContainsKey, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
-import { awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import * as node$003Aworker_threads from "node:worker_threads";
 import { apply, load as load_1 } from "./Glossary.js";
@@ -659,7 +658,7 @@ export function requirePackages(names) {
 function importFromHome(name) {
     const req = nodeModule.createRequire(join_1(ofArray([toolHome, "node", "package.json"])));
     const resolved = req.resolve(name);
-    return import((url.pathToFileURL(resolved)).href);
+    return fromJs(import((url.pathToFileURL(resolved)).href));
 }
 
 const VOCAB = ofList(ofArray([[";", 1], [":", 2], [",", 3], [".", 4], ["!", 5], ["?", 6], ["—", 9], ["…", 10], ["\"", 11], ["(", 12], [")", 13], ["“", 14], ["”", 15], [" ", 16], ["̃", 17], ["ʣ", 18], ["ʥ", 19], ["ʦ", 20], ["ʨ", 21], ["ᵝ", 22], ["ꭧ", 23], ["A", 24], ["I", 25], ["O", 31], ["Q", 33], ["S", 35], ["T", 36], ["W", 39], ["Y", 41], ["ᵊ", 42], ["a", 43], ["b", 44], ["c", 45], ["d", 46], ["e", 47], ["f", 48], ["h", 50], ["i", 51], ["j", 52], ["k", 53], ["l", 54], ["m", 55], ["n", 56], ["o", 57], ["p", 58], ["q", 59], ["r", 60], ["s", 61], ["t", 62], ["u", 63], ["v", 64], ["w", 65], ["x", 66], ["y", 67], ["z", 68], ["ɑ", 69], ["ɐ", 70], ["ɒ", 71], ["æ", 72], ["β", 75], ["ɔ", 76], ["ɕ", 77], ["ç", 78], ["ɖ", 80], ["ð", 81], ["ʤ", 82], ["ə", 83], ["ɚ", 85], ["ɛ", 86], ["ɜ", 87], ["ɟ", 90], ["ɡ", 92], ["ɥ", 99], ["ɨ", 101], ["ɪ", 102], ["ʝ", 103], ["ɯ", 110], ["ɰ", 111], ["ŋ", 112], ["ɳ", 113], ["ɲ", 114], ["ɴ", 115], ["ø", 116], ["ɸ", 118], ["θ", 119], ["œ", 120], ["ɹ", 123], ["ɾ", 125], ["ɻ", 126], ["ʁ", 128], ["ɽ", 129], ["ʂ", 130], ["ʃ", 131], ["ʈ", 132], ["ʧ", 133], ["ʊ", 135], ["ʋ", 136], ["ʌ", 138], ["ɣ", 139], ["ɤ", 140], ["χ", 142], ["ʎ", 143], ["ʒ", 147], ["ʔ", 148], ["ˈ", 156], ["ˌ", 157], ["ː", 158], ["ʰ", 162], ["ʲ", 164], ["↓", 169], ["→", 171], ["↗", 172], ["↘", 173], ["ᵻ", 177]]), {
@@ -846,7 +845,7 @@ function EspeakMsg_$reflection() {
 }
 
 function load() {
-    return singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(awaitPromise(importFromHome("@echogarden/espeak-ng-emscripten")), (_arg) => singleton_2.Bind(awaitPromise(_arg.default()), (_arg_1) => {
+    return singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(importFromHome("@echogarden/espeak-ng-emscripten"), (_arg) => singleton_2.Bind(fromJs(_arg.default()), (_arg_1) => {
         const instance = _arg_1;
         const worker = new instance.eSpeakNGWorker();
         const voices = ofArray_1(reverse_1(choose((v) => {
@@ -1023,9 +1022,9 @@ function serveVoice() {
     const agent = start_1((inbox) => {
         const loop = () => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg_4) => {
             let msg;
-            return singleton_2.Bind((msg = _arg_4, singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(awaitPromise(model.Value), (_arg) => {
+            return singleton_2.Bind((msg = _arg_4, singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(fromJs(model.Value), (_arg) => {
                 const input = new _arg[1]('int64', BigInt64Array.from(msg.ids, BigInt), [1, msg.ids.length]);
-                return singleton_2.Bind(awaitPromise(_arg[0].generate_from_ids(input, {
+                return singleton_2.Bind(fromJs(_arg[0].generate_from_ids(input, {
                     voice: msg.voice,
                     speed: msg.speed,
                 })), (_arg_1) => {
@@ -1170,7 +1169,7 @@ function handleVoice(agent, state, msg) {
                 const matchValue_1 = state.Worker;
                 if (matchValue_1 != null) {
                     const worker = value_8(matchValue_1);
-                    return singleton_2.Bind(awaitPromise(worker.terminate()), (_arg) => singleton_2.Return([noWorker, append(failAll(state.Pending, "the voice was released before it answered"), singleton(() => {
+                    return singleton_2.Bind(fromJs(worker.terminate()), (_arg) => singleton_2.Return([noWorker, append(failAll(state.Pending, "the voice was released before it answered"), singleton(() => {
                         reply_2.reply(undefined);
                     }))]));
                 }

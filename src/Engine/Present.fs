@@ -184,7 +184,7 @@ let private pptx (title: string) (slides: Slide list) (out: string) : Async<unit
                 |> ignore
             | None -> slide?addImage (createObj ([ "path" ==> s.Still ] @ fill)) |> ignore
             if s.Step.Text <> "" then slide?addNotes (s.Step.Text) |> ignore
-    let saved: Async<obj> = Render.fromJs (deck?writeFile (createObj [ "fileName" ==> out ]))
+    let saved: Async<obj> = fromJs (deck?writeFile (createObj [ "fileName" ==> out ]))
     saved |> Async.Ignore
 
 // Clips that play by themselves -------------------------------------------------------------------------------------
@@ -225,15 +225,15 @@ let private withAutoplay (seconds: float) (xml: string) : string =
 let private autoplay (file: string) (slides: Slide list) : Async<unit> =
     async {
         let zipLib: obj = requireFromHome "jszip"
-        let! (zip: obj) = Render.fromJs (zipLib?loadAsync (readBytes file))
+        let! (zip: obj) = fromJs (zipLib?loadAsync (readBytes file))
         for s in slides do
             match s.Clip with
             | Some clip ->
                 let path = $"ppt/slides/slide{s.Number}.xml"
-                let! (xml: string) = Render.fromJs (zip?file(path)?async ("string"))
+                let! (xml: string) = fromJs (zip?file(path)?async ("string"))
                 zip?file (path, withAutoplay clip.Seconds xml) |> ignore
             | None -> ()
-        let! (bytes: obj) = Render.fromJs (zip?generateAsync (createObj [ "type" ==> "nodebuffer"; "compression" ==> "DEFLATE" ]))
+        let! (bytes: obj) = fromJs (zip?generateAsync (createObj [ "type" ==> "nodebuffer"; "compression" ==> "DEFLATE" ]))
         writeBytes file bytes
     }
 
