@@ -319,29 +319,49 @@ let private SENTENCE_SPLIT = regex """(?<=[.!?\x01])\s+(?=["'“A-Z0-9\[\x00])""
 let private SHIELDED = regex """\x00(\d+)[\x00\x01]""" "g"
 let private LEADING_BREAKS = regex """^(?:\[(?:pause|think)(?:\s+[\d.]+)?\]\s*)+""" ""
 
+/// A text cut at every match of `re`: each match with the text between it and the match before, and the text after
+/// the last match. (Cut at nothing, the text is the tail.)
+let private cut (re: obj) (text: string) : (string * obj) list * string =
+    let found, pos =
+        matchAll text re
+        |> Array.toList
+        |> List.mapFold
+            (fun pos m ->
+                let i = matchIndex m
+                (text.Substring(pos, i - pos), m), i + (group0 m).Length)
+            0
+    found, text.Substring pos
+
 let sentences (say: string) : string list =
     // Split after . ! ? when a space and a capital, digit, quote or markup follows; keeps "e.g. the"
     // and "0.802" whole. {code:...} phrases are shielded first, so "{fr:Il est une heure.}" stays one
     // piece. A shielded phrase ends a sentence only when it ends in . ! ? itself (marked \x01): "is
     // {fr:moins le quart} [3:45] or..." is one sentence, "{fr:Il est midi.} Then..." is two.
-    let shielded = ResizeArray<string>()
-    let text =
-        subWith (say.Trim()) FOREIGN (fun m ->
-            shielded.Add(group0 m)
+    let found, tail = cut FOREIGN (say.Trim())
+    // the shielded phrases, in order: phrase n is replaced by a marker that holds n
+    let shielded = found |> List.map (snd >> group0) |> List.toArray
+    let marked =
+        found
+        |> List.mapi (fun n (before, m) ->
             let mark = if test ENDS_SENTENCE (group m 2).Value then "\u0001" else "\u0000"
-            "\u0000" + string (shielded.Count - 1) + mark)
+            before + "\u0000" + string n + mark)
     let restore (s: string) = subWith s SHIELDED (fun m -> shielded[int (group m 1).Value])
-    let out = ResizeArray<string>()
-    for raw in splitRe text SENTENCE_SPLIT do
-        if raw.Trim() <> "" then
-            let mutable p = (restore raw).Trim()
-            // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because...").
-            let m = exec LEADING_BREAKS p
-            if not (isNull m) && out.Count > 0 then
-                out[out.Count - 1] <- out[out.Count - 1] + " " + (group0 m).Trim()
-                p <- p.Substring((group0 m).Length).Trim()
-            if p <> "" then out.Add p
-    List.ofSeq out
+    // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because..."): the
+    // sentences so far, the latest first, take it in; what is left of the piece is a sentence of its own.
+    let add (sofar: string list) (p: string) : string list =
+        let m = exec LEADING_BREAKS p
+        match sofar with
+        | last :: before when not (isNull m) ->
+            let p = p.Substring((group0 m).Length).Trim()
+            let sofar = (last + " " + (group0 m).Trim()) :: before
+            if p <> "" then p :: sofar else sofar
+        | _ -> if p <> "" then p :: sofar else sofar
+    splitRe (String.concat "" marked + tail) SENTENCE_SPLIT
+    |> Array.toList
+    |> List.filter (fun raw -> raw.Trim() <> "")
+    |> List.map (fun raw -> (restore raw).Trim())
+    |> List.fold add []
+    |> List.rev
 
 /// The silences a sentence asks for after it: [("pause", 1.5); ("think", 4.0)].
 let breaks (s: string) : (string * float) list =
@@ -351,14 +371,9 @@ let breaks (s: string) : (string * float) list =
 
 /// A sentence as the stretches between its [rest] marks, each with the silence that follows it (0 after the last).
 let rests (s: string) : (string * float) list =
-    let out = ResizeArray<string * float>()
-    let mutable pos = 0
-    for m in matchAll s REST do
-        let i = matchIndex m
-        out.Add(s.Substring(pos, i - pos), (match group m 1 with Some secs -> float secs | None -> REST_DEFAULT))
-        pos <- i + (group0 m).Length
-    out.Add(s.Substring pos, 0.0)
-    List.ofSeq out
+    let found, tail = cut REST s
+    let silenceAfter (m: obj) = match group m 1 with Some secs -> float secs | None -> REST_DEFAULT
+    (found |> List.map (fun (before, m) -> before, silenceAfter m)) @ [ tail, 0.0 ]
 
 let shown (s: string) : string =
     subWith (subWith (subEmpty (subEmpty s REST) BREAK) PRONOUNCE (fun m -> (group m 1).Value)) FOREIGN (fun m -> (group m 2).Value)
@@ -379,31 +394,28 @@ let heard (s: string) : string =
 // (Python's \w is Unicode-aware: [\p{L}\p{N}_] here.)
 let private LETTER_A = regex """(?<![\p{L}\p{N}_'’])A(?![\p{L}\p{N}_'’])""" "gu"
 let private SENTENCE_OPEN = regex """(?:^|[.!?:;]\s+|["“(]\s*)$""" ""
-let private NEXT_LETTER = regex """\s+[A-Z](?:'s|s)?(?![A-Za-z])""" "y"
+let private NEXT_LETTER = regex """^\s+[A-Z](?:'s|s)?(?![A-Za-z])""" ""
 
 /// The text as sent to an English voice: letter "A" spelled so that it is said as a letter.
 let voiced (text: string) : string =
     subWith text LETTER_A (fun m ->
         let start: int = unbox m[m.Length - 2]
         let opening = test SENTENCE_OPEN (text.Substring(0, start))
-        NEXT_LETTER?lastIndex <- start + 1
-        if not opening || test NEXT_LETTER text then "eigh" else "A")
+        // opening a sentence, it is still a letter when another single letter follows the "A"
+        if not opening || test NEXT_LETTER (text.Substring(start + 1)) then "eigh" else "A")
 
 let private WORD_CHAR = regex """[\p{L}\p{N}_]""" "u"
 
 /// (code or None, text) runs of a sentence: main-voice text and {code:...} phrases in order.
 let pieces (sentence: string) : (string option * string) list =
-    let out = ResizeArray<string option * string>()
-    let mutable pos = 0
-    for m in matchAll sentence FOREIGN do
-        let i = matchIndex m
-        if i > pos then out.Add(None, sentence.Substring(pos, i - pos))
-        out.Add(group m 1, (group m 2).Value)
-        pos <- i + (group0 m).Length
-    if pos < sentence.Length then out.Add(None, sentence.Substring pos)
+    let found, tail = cut FOREIGN sentence
+    [ for before, m in found do
+          if before <> "" then None, before
+          group m 1, (group m 2).Value
+      if tail <> "" then None, tail ]
     // Punctuation left between two phrases ("." after a brace) has nothing to say.
-    [ for code, text in out do
-          if test WORD_CHAR text then code, text.Trim() ]
+    |> List.filter (fun (_, text) -> test WORD_CHAR text)
+    |> List.map (fun (code, text) -> code, text.Trim())
 
 /// Silent clips hold each caption long enough to read: about 2.5 words a second, never under 2 s.
 let readingTime (text: string) : float =
@@ -502,44 +514,37 @@ let private preserveLine (line: string) (num: int) : string list * Mark list =
                     else Inner
                 { line = num; mark = m; position = position })
             |> Array.toList
-        let rest = ref line
-        let chunks =
-            [ for mk in marks do
-                  let split = rest.Value.Split([| mk.mark |], System.StringSplitOptions.None)
-                  yield split[0]
-                  rest.Value <- String.concat mk.mark split[1..] ]
-        chunks @ [ rest.Value ], marks
+        // each mark cuts the line once: the chunk before it, then what follows it is cut by the next mark
+        let chunks, rest =
+            marks
+            |> List.mapFold
+                (fun (rest: string) (mk: Mark) ->
+                    let split = rest.Split([| mk.mark |], System.StringSplitOptions.None)
+                    split[0], String.concat mk.mark split[1..])
+                line
+        chunks @ [ rest ], marks
 
-/// Punctuation.restore with the default separator (words joined by " ", strip=False).
+/// Punctuation.restore with the default separator (words joined by " ", strip=False). `out` holds the lines made so
+/// far, the latest first.
 let private restore (text: string list) (marks: Mark list) : string list =
-    let out = ResizeArray<string>()
-    let rec go (text: string list) (marks: Mark list) (pos: int) =
+    let rec go (out: string list) (text: string list) (marks: Mark list) (pos: int) : string list =
         match text, marks with
-        | [], [] -> ()
-        | text, [] ->
-            for l in text do
-                out.Add(if l.EndsWith " " then l else l + " ")
-        | [], marks -> out.Add(marks |> List.map (fun m -> m.mark) |> String.concat "")
+        | [], [] -> out
+        | text, [] -> (text |> List.map (fun l -> if l.EndsWith " " then l else l + " ") |> List.rev) @ out
+        | [], marks -> (marks |> List.map (fun m -> m.mark) |> String.concat "") :: out
         | t0 :: trest, m :: mrest when m.line = pos ->
             let t0 = if t0.EndsWith " " then t0.Substring(0, t0.Length - 1) else t0
             let space = if m.mark.EndsWith " " then "" else " "
             match m.position with
-            | Begin -> go ((m.mark + t0) :: trest) mrest pos
-            | End ->
-                out.Add(t0 + m.mark + space)
-                go trest mrest (pos + 1)
-            | Alone ->
-                out.Add(m.mark + space)
-                go (t0 :: trest) mrest (pos + 1)
+            | Begin -> go out ((m.mark + t0) :: trest) mrest pos
+            | End -> go ((t0 + m.mark + space) :: out) trest mrest (pos + 1)
+            | Alone -> go ((m.mark + space) :: out) (t0 :: trest) mrest (pos + 1)
             | Inner ->
                 match trest with
-                | [] -> go [ t0 + m.mark ] mrest pos
-                | t1 :: trest2 -> go ((t0 + m.mark + t1) :: trest2) mrest pos
-        | t0 :: trest, marks ->
-            out.Add t0
-            go trest marks (pos + 1)
-    go text marks 0
-    List.ofSeq out
+                | [] -> go out [ t0 + m.mark ] mrest pos
+                | t1 :: trest2 -> go out ((t0 + m.mark + t1) :: trest2) mrest pos
+        | t0 :: trest, marks -> go (t0 :: out) trest marks (pos + 1)
+    go [] text marks 0 |> List.rev
 
 type private Espeak = { worker: obj; heap: unit -> byte[]; voices: Map<string, string>; mutable current: string }
 
@@ -724,39 +729,54 @@ let private voiceFile (name: string) : string =
     let entry: string = req?resolve("kokoro-js")
     join [ dirname entry; ".."; "voices"; name + ".bin" ]
 
-/// Kokoro._split_phonemes: batches of at most MAX_PHONEMES, split at punctuation.
+/// List.fold where each step returns a promise: the steps run one after another, each on the state the one before made.
+let rec private foldP (step: 's -> 'a -> JS.Promise<'s>) (state: 's) (items: 'a list) : JS.Promise<'s> =
+    promise {
+        match items with
+        | [] -> return state
+        | x :: rest ->
+            let! next = step state x
+            return! foldP step next rest
+    }
+
+/// Kokoro._split_phonemes: batches of at most MAX_PHONEMES, split at punctuation. The fold's state is the batches
+/// made so far (the latest first) and the one being filled.
 let private splitPhonemes (phonemes: string) : string list =
-    let batches = ResizeArray<string>()
-    let mutable current = ""
-    for raw in splitRe phonemes (regex "([.,!?;])" "") do
-        let part = raw.Trim()
-        if part <> "" then
-            if (codePoints current).Length + (codePoints part).Length + 1 >= MAX_PHONEMES then
-                batches.Add(current.Trim())
-                current <- part
-            elif ".,!?;".Contains part then
-                current <- current + part
-            else
-                if current <> "" then current <- current + " "
-                current <- current + part
-    if current <> "" then batches.Add(current.Trim())
-    List.ofSeq batches
+    let batches, current =
+        splitRe phonemes (regex "([.,!?;])" "")
+        |> Array.map (fun raw -> raw.Trim())
+        |> Array.filter (fun part -> part <> "")
+        |> Array.fold
+            (fun (batches, current) part ->
+                if (codePoints current).Length + (codePoints part).Length + 1 >= MAX_PHONEMES then
+                    current.Trim() :: batches, part
+                elif ".,!?;".Contains part then
+                    batches, current + part
+                else
+                    batches, (if current <> "" then current + " " else current) + part)
+            ([], "")
+    List.rev (if current <> "" then current.Trim() :: batches else batches)
 
 /// Kokoro.create(phonemes, is_phonemes=True): each batch voiced, its silent edges trimmed, the batches joined.
 let private create (phonemes: string) (voiceName: string) (speed: float) : JS.Promise<float32[]> =
     promise {
         if not (speed >= 0.5 && speed <= 2.0) then failwith "Speed should be between 0.5 and 2.0"
         if not (exists (voiceFile voiceName)) then failwith $"Voice {voiceName} not found in available voices"
-        let parts = ResizeArray<float32[]>()
-        for batch in splitPhonemes phonemes do
-            let ids =
-                codePoints batch
-                |> Array.truncate MAX_PHONEMES
-                |> Array.choose VOCAB.TryFind
-            let! audio = generate (Array.concat [ [| 0 |]; ids; [| 0 |] ]) voiceName speed
-            // Trim leading and trailing silence for a more natural sound concatenation
-            parts.Add(Wav.trim audio)
-        return Wav.concat (List.ofSeq parts)
+        let! parts =
+            splitPhonemes phonemes
+            |> foldP
+                (fun parts batch ->
+                    promise {
+                        let ids =
+                            codePoints batch
+                            |> Array.truncate MAX_PHONEMES
+                            |> Array.choose VOCAB.TryFind
+                        let! audio = generate (Array.concat [ [| 0 |]; ids; [| 0 |] ]) voiceName speed
+                        // Trim leading and trailing silence for a more natural sound concatenation
+                        return Wav.trim audio :: parts
+                    })
+                []
+        return Wav.concat (List.rev parts)
     }
 
 /// Voices a short phrase end to end (setup's check that the voice works).
@@ -790,6 +810,23 @@ type private Scene =
       sentences: Sentence list
       /// chapter, toasts, breaks and recap, when present, in that order
       extras: (string * Py.Json) list }
+
+/// The soundtrack as far as it is laid down: its pieces (the latest first), its length in samples, and the phrases
+/// voiced in another language (the latest first), which become phonemes.txt.
+type private Track = { audio: Audio list; pos: int; report: string list }
+
+let private samplesOf (piece: Audio) : int =
+    match piece with
+    | Silence n -> n
+    | Speech s -> s.Length
+
+/// The track with `piece` laid after what is there.
+let private lay (piece: Audio) (t: Track) : Track = { t with audio = piece :: t.audio; pos = t.pos + samplesOf piece }
+
+let private silence (seconds: float) (t: Track) : Track = lay (Silence(Py.roundInt (seconds * float Wav.SR))) t
+
+/// The time of the track's end, in a scene that starts on frame `frame`.
+let private now (frame: int) (t: Track) : float = timeAt frame t.pos
 
 let private num x = Py.Float x
 
@@ -826,14 +863,12 @@ let private getFloat (o: obj) (key: string) (fallback: float) : float =
 
 /// The soundtrack's samples: the speech pieces with their silences between.
 let private soundtrack (audio: Audio list) : float32[] =
-    let out: float32[] = Array.zeroCreate (audio |> List.sumBy (function Silence n -> n | Speech s -> s.Length))
-    let mutable at = 0
-    for a in audio do
-        match a with
-        | Silence n -> at <- at + n
-        | Speech s ->
-            out?set(s, at) |> ignore
-            at <- at + s.Length
+    let placed, total = audio |> List.mapFold (fun at piece -> (at, piece), at + samplesOf piece) 0
+    let out: float32[] = Array.zeroCreate total
+    for at, piece in placed do
+        match piece with
+        | Silence _ -> ()
+        | Speech s -> out?set(s, at) |> ignore
     out
 
 [<Emit("Object.assign({}, $0, { thumbnail: $1 })")>]
@@ -897,23 +932,25 @@ let run (ws: string) : JS.Promise<unit> =
             | None ->
                 fail ("{" + code + ":...} needs \"voices\": {\"" + code + "\": {\"voice\": ..., \"lang\": ...}} in script.json")
 
-    let report = ResizeArray<string>()
-
-    let synth (code: string option) (text: string) (where: string) : JS.Promise<float32[]> =
+    /// The samples of a piece of speech, and the line it adds to phonemes.txt when it is in another language.
+    let synth (code: string option) (text: string) (where: string) : JS.Promise<float32[] * string option> =
         promise {
             let v, l = specFor code
             let phonemes =
                 pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy |> Option.map (fun p -> string p)
             let text = if phonemes.IsNone && l.ToLower().StartsWith "en" then voiced text else text
-            match code with
-            | Some c ->
-                let! ph =
-                    match phonemes with
-                    | Some p -> Promise.lift p
-                    | None -> phonemize text l
-                let source = if phonemes.IsSome then "pinned" else "auto"
-                report.Add $"{where}\t{c}\t{text}\t{ph}\t{source}"
-            | None -> ()
+            let! line =
+                match code with
+                | Some c ->
+                    promise {
+                        let! ph =
+                            match phonemes with
+                            | Some p -> Promise.lift p
+                            | None -> phonemize text l
+                        let source = if phonemes.IsSome then "pinned" else "auto"
+                        return Some $"{where}\t{c}\t{text}\t{ph}\t{source}"
+                    }
+                | None -> Promise.lift None
             // The key names the engine too, so pieces the Python engine (kokoro-onnx, fp16) cached are not mixed in.
             let key =
                 (sha1Hex (toJson [| box "kokoro-js 1.2.1 fp32"; box v; box l; box speed; box (defaultArg phonemes text) |]))
@@ -927,81 +964,84 @@ let run (ws: string) : JS.Promise<unit> =
                 let! samples = create ph v speed
                 Wav.write (path + ".part") samples
                 rename (path + ".part") path
-            return Wav.read path
+            return Wav.read path, line
         }
 
-    let audio = ResizeArray<Audio>()
-    let pos = ref 0 // the samples so far
-    let frame = ref 0 // the frame the current scene starts on
-    let silence (seconds: float) =
-        let n = Py.roundInt (seconds * float Wav.SR)
-        audio.Add(Silence n)
-        pos.Value <- pos.Value + n
-    let now () = timeAt frame.Value pos.Value
-
-    promise {
-        let scenes = ResizeArray<Scene>()
-        let seen = System.Collections.Generic.HashSet<string>()
-        let sceneObjs: obj[] = script?scenes
-        let markedScenes: obj[] = marked?scenes
-        for si in 0 .. sceneObjs.Length - 1 do
-            let sc = sceneObjs[si]
+    /// One scene's turn: the track and the scenes timed so far (the latest first) in, the same with this scene out.
+    /// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
+    /// with silence up to a whole frame.
+    let scene (markedScenes: obj[]) (track: Track, finished: Scene list) (si: int, sc: obj) : JS.Promise<Track * Scene list> =
+        promise {
             let id: obj = sc?id
-            if not (seen.Add(toJson id)) then fail $"duplicate scene id {Py.repr id}"
-            let startFrame = frame.Value
-            silence (getFloat sc "lead" 0.4)
-            let lines = ResizeArray<Sentence>()
-            let sceneBreaks = ResizeArray<Break>()
+            if finished |> List.exists (fun f -> toJson f.id = toJson id) then fail $"duplicate scene id {Py.repr id}"
+            let startFrame = track.pos / FRAME // every scene ends on a whole frame, and the next starts there
+            let track = silence (getFloat sc "lead" 0.4) track
             // Terms the glossary knows (engine/glossary.json, <repo>/.codebase-video/glossary.json) are said its way:
             // "JSON" becomes [JSON](jason) here, so the caption keeps the term and the voice gets the word.
             let say =
                 get sc "say" |> Option.filter (isNull >> not) |> Option.map unbox<string> |> Option.defaultValue ""
                 |> Glossary.apply glossary
-            for i, s in List.indexed (sentences say) do
-                if i > 0 then silence GAP
-                let sentenceStart = now ()
-                let parts = ResizeArray<Part>()
-                let after = breaks s
-                let s = (subEmpty s BREAK).Trim()
-                // Each stretch between two [rest] marks is voiced on its own, with the rest's silence after it.
-                let voicedPieces =
-                    [ for stretch, rest in rests s do
-                          let ps = pieces stretch
-                          for n, (code, text) in List.indexed ps -> code, text, (if n = ps.Length - 1 then rest else 0.0) ]
-                let mutable gap = 0.0
-                for k, (code, text, rest) in List.indexed voicedPieces do
-                    if k > 0 then silence (max gap PART_GAP)
-                    gap <- rest
-                    let partStart = now ()
-                    if voiceName.IsSome then
-                        let! samples = synth code (spoken text) $"{Py.str id}[{i}]"
-                        audio.Add(Speech samples)
-                        pos.Value <- pos.Value + samples.Length
-                    else
-                        silence (readingTime (shown text))
-                    parts.Add
+
+            // One part of a sentence, voiced (or held for reading, in a silent clip) after the silence that its
+            // neighbours ask for: the larger of the previous part's rest and the gap between voices.
+            let voicePart (i: int) (track: Track, parts: Part list, gap: float) (k: int, (code: string option, text: string, rest: float)) =
+                promise {
+                    let track = if k > 0 then silence (max gap PART_GAP) track else track
+                    let partStart = now startFrame track
+                    let! track =
+                        if voiceName.IsSome then
+                            promise {
+                                let! samples, line = synth code (spoken text) $"{Py.str id}[{i}]"
+                                let track = match line with Some l -> { track with report = l :: track.report } | None -> track
+                                return lay (Speech samples) track
+                            }
+                        else
+                            Promise.lift (silence (readingTime (shown text)) track)
+                    let part =
                         { Part.text = shown text
                           spoken = heard text
                           lang = (match code with Some c -> Py.Str c | None -> Py.ofJs lang)
                           start = partStart
-                          finish = now () }
-                lines.Add
-                    { Sentence.text = shown s
-                      spoken = heard s
-                      start = sentenceStart
-                      finish = now ()
-                      parts = List.ofSeq parts }
-                for kind, secs in after do
-                    let breakStart = now ()
-                    silence secs
-                    sceneBreaks.Add { kind = kind; sentence = i; start = breakStart; finish = now () }
-            silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.Count > 0 then 0.9 else 0.0))
+                          finish = now startFrame track }
+                    return track, part :: parts, rest
+                }
+
+            // One sentence: its parts, then the silences it asks for ([pause], [think]) after it.
+            let sentence (track: Track, lines: Sentence list, sceneBreaks: Break list) (i: int, s: string) =
+                promise {
+                    let track = if i > 0 then silence GAP track else track
+                    let sentenceStart = now startFrame track
+                    let after = breaks s
+                    let s = (subEmpty s BREAK).Trim()
+                    // Each stretch between two [rest] marks is voiced on its own, with the rest's silence after it.
+                    let voicedPieces =
+                        [ for stretch, rest in rests s do
+                              let ps = pieces stretch
+                              for n, (code, text) in List.indexed ps -> code, text, (if n = ps.Length - 1 then rest else 0.0) ]
+                    let! track, parts, _ = foldP (voicePart i) (track, [], 0.0) (List.indexed voicedPieces)
+                    let line =
+                        { Sentence.text = shown s
+                          spoken = heard s
+                          start = sentenceStart
+                          finish = now startFrame track
+                          parts = List.rev parts }
+                    let silences, track =
+                        after
+                        |> List.mapFold
+                            (fun track (kind, secs) ->
+                                let breakStart = now startFrame track
+                                let track = silence secs track
+                                ({ kind = kind; sentence = i; start = breakStart; finish = now startFrame track }: Break), track)
+                            track
+                    return track, line :: lines, List.rev silences @ sceneBreaks
+                }
+
+            let! track, lines, sceneBreaks = foldP sentence (track, [], []) (List.indexed (sentences say))
+            let track = silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)) track
             // End on a whole frame (and never on the frame the scene started on).
-            let over = pos.Value % FRAME
-            if over <> 0 || pos.Value = startFrame * FRAME then
-                audio.Add(Silence(FRAME - over))
-                pos.Value <- pos.Value + FRAME - over
-            frame.Value <- pos.Value / FRAME
+            let over = track.pos % FRAME
+            let track = if over <> 0 || track.pos = startFrame * FRAME then lay (Silence(FRAME - over)) track else track
+            let endFrame = track.pos / FRAME
             let msc = markedScenes[si]
             let passthrough key =
                 match get sc key with
@@ -1009,25 +1049,32 @@ let run (ws: string) : JS.Promise<unit> =
                 | _ -> []
             let breakJson (b: Break) =
                 Py.Obj [ "kind", Py.Str b.kind; "sentence", Py.Int(float b.sentence); "start", num b.start; "end", num b.finish ]
-            scenes.Add
+            let timed =
                 { id = id
                   idJson = Py.ofJs msc?id
                   start = float startFrame / float FPS
-                  finish = float frame.Value / float FPS
-                  sentences = List.ofSeq lines
+                  finish = float endFrame / float FPS
+                  sentences = List.rev lines
                   extras =
                     passthrough "chapter" // a long video's chapter title, on its "-why" bridge scene
                     @ passthrough "toasts" // pop-up badges ("kind", "at" phrase), drawn by the frame
-                    @ (if sceneBreaks.Count > 0 then [ "breaks", Py.List [ for b in sceneBreaks -> breakJson b ] ] else []) // [pause]/[think] silences; the frame counts down a think
+                    @ (if sceneBreaks.IsEmpty then [] else [ "breaks", Py.List [ for b in List.rev sceneBreaks -> breakJson b ] ]) // [pause]/[think] silences; the frame counts down a think
                     @ passthrough "recap" // a chapter's closing "So far" lines
                     @ passthrough "path" // the parts of the shared map a chapter's flow touches, on its bridge scene
                     @ passthrough "inside" } // the part of the shared map this scene goes inside
+            return track, timed :: finished
+        }
+
+    promise {
+        let sceneObjs: obj[] = script?scenes
+        let markedScenes: obj[] = marked?scenes
+        let! track, finished = foldP (scene markedScenes) ({ audio = []; pos = 0; report = [] }, []) [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
 
         do! release ()
-        let duration = float frame.Value / float FPS
-        Wav.write (join [ build; "narration.wav" ]) (soundtrack (List.ofSeq audio))
+        let duration = float (track.pos / FRAME) / float FPS
+        Wav.write (join [ build; "narration.wav" ]) (soundtrack (List.rev track.audio))
 
-        let scenes = List.ofSeq scenes
+        let scenes = List.rev finished
         let posterId: obj =
             match get script "poster" with
             | Some p when Py.truthy p -> p
@@ -1086,8 +1133,8 @@ let run (ws: string) : JS.Promise<unit> =
         writeText
             (join [ build; "phonemes.txt" ])
             ("where\tvoice\tphrase\tphonemes\tsource\n"
-             + String.concat "\n" report
-             + (if report.Count > 0 then "\n" else ""))
+             + String.concat "\n" (List.rev track.report)
+             + (if track.report.IsEmpty then "" else "\n"))
 
         let words = scenes |> List.sumBy (fun s -> s.sentences |> List.sumBy (fun c -> Py.wordCount c.text))
         printfn "%s" $"{name}: {Py.toFixed duration 1}s, {scenes.Length} scenes, {words} words, poster at {Py.toFixed poster 1}s"
@@ -1095,6 +1142,6 @@ let run (ws: string) : JS.Promise<unit> =
             printfn
                 "%s"
                 $"  {(Py.str s.id).PadRight 14} {(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}  ({s.sentences.Length} sentences)"
-        if report.Count > 0 then
-            printfn "%s" $"  {report.Count} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+        if not track.report.IsEmpty then
+            printfn "%s" $"  {track.report.Length} phrase(s) in another voice - check build/phonemes.txt against the lesson"
     }
