@@ -10,6 +10,7 @@ module Setup
 
 open Fable.Core
 open Fable.Core.JsInterop
+open FsToolkit.ErrorHandling
 open Node
 
 /// The packages setup installs into <tool home>/node, with their versions.
@@ -60,47 +61,59 @@ let private runIn (dir: string) (cmd: string) (args: string list) : int =
         )
     if isNull r?error then (r?status: int) else 127
 
-let private failWith (message: string) : 'a =
-    eprint message
-    exit 2
-
-let run () : JS.Promise<int> =
+/// Checks the system tools and installs the packages as `run` is called, before the Async starts; a check that fails
+/// ends setup with the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns
+/// an exit code. (An exception in the checks, e.g. a tool home that cannot be made, is thrown from `run` itself.)
+let run () : Async<int> =
     mkdirp toolHome
     let missing = [ "node"; "npm"; "ffmpeg" ] |> List.filter (hasCommand >> not)
-    if not missing.IsEmpty then
-        eprint ("missing system tools: " + String.concat " " missing)
-        eprint "  macOS:  brew install node ffmpeg"
-        failWith "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg"
-    let _, encoders, _ = runCapture "ffmpeg" [ "-hide_banner"; "-encoders" ]
-    for codec in [ "libx264"; "libvpx-vp9"; "libopus" ] do
-        if not (encoders.Contains codec) then failWith $"ffmpeg lacks the {codec} encoder"
-    let chrome =
-        match chromeCandidates () |> List.tryFind (fun c -> c <> "" && executable c) with
-        | Some c -> c
-        | None -> failWith "no Chrome or Chromium found: install one, or set CHROME to its executable"
+    let prepared: Result<string, string list> =
+        result {
+            do!
+                missing
+                |> Result.requireEmpty
+                    [ "missing system tools: " + String.concat " " missing
+                      "  macOS:  brew install node ffmpeg"
+                      "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg" ]
+            let _, encoders, _ = runCapture "ffmpeg" [ "-hide_banner"; "-encoders" ]
+            do!
+                match [ "libx264"; "libvpx-vp9"; "libopus" ] |> List.tryFind (fun codec -> not (encoders.Contains codec)) with
+                | Some codec -> Error [ $"ffmpeg lacks the {codec} encoder" ]
+                | None -> Ok()
+            let! chrome =
+                chromeCandidates ()
+                |> List.tryFind (fun c -> c <> "" && executable c)
+                |> Result.requireSome [ "no Chrome or Chromium found: install one, or set CHROME to its executable" ]
 
-    let nodeDir = join [ toolHome; "node" ]
-    mkdirp nodeDir
-    let manifest = join [ nodeDir; "package.json" ]
-    let wanted = packageJson ()
-    let stale = not (exists manifest) || readText manifest <> wanted
-    let names = dependencies |> List.map fst
-    if stale || names |> List.exists (Narrate.packageInstalled >> not) then
-        printfn "%s" ("installing " + String.concat ", " names)
-        writeText manifest wanted
-        if runIn nodeDir "npm" [ "install"; "--silent"; "--no-audit"; "--no-fund" ] <> 0 then
-            failWith $"npm install failed in {nodeDir}"
+            let nodeDir = join [ toolHome; "node" ]
+            mkdirp nodeDir
+            let manifest = join [ nodeDir; "package.json" ]
+            let wanted = packageJson ()
+            let stale = not (exists manifest) || readText manifest <> wanted
+            let names = dependencies |> List.map fst
+            if stale || names |> List.exists (Narrate.packageInstalled >> not) then
+                printfn "%s" ("installing " + String.concat ", " names)
+                writeText manifest wanted
+                do!
+                    if runIn nodeDir "npm" [ "install"; "--silent"; "--no-audit"; "--no-fund" ] <> 0 then
+                        Error [ $"npm install failed in {nodeDir}" ]
+                    else Ok()
+            return chrome
+        }
+    match prepared with
+    | Error lines ->
+        lines |> List.iter eprint
+        async.Return 2
+    | Ok chrome ->
+        async {
+            // The model, fetched once so the first narrate does not stall; the voices (af_heart and the others) ship
+            // inside kokoro-js. Voicing a word checks the whole chain: eSpeak NG, the model and the voice.
+            if not (exists (Narrate.modelFile ())) then
+                printfn "%s" $"downloading the Kokoro model (about 330 MB) into {Narrate.modelDir ()}"
+                do! Narrate.selfTest ()
+            printfn "%s" $"ready: voice, renderer and encoder are set up in {toolHome} (browser: {chrome})"
+            return 0
+        }
 
-    promise {
-        // The model, fetched once so the first narrate does not stall; the voices (af_heart and the others) ship
-        // inside kokoro-js. Voicing a word checks the whole chain: eSpeak NG, the model and the voice.
-        if not (exists (Narrate.modelFile ())) then
-            printfn "%s" $"downloading the Kokoro model (about 330 MB) into {Narrate.modelDir ()}"
-            do! Narrate.selfTest ()
-        printfn "%s" $"ready: voice, renderer and encoder are set up in {toolHome} (browser: {chrome})"
-        return 0
-    }
-
-/// Exits with a hint to run setup when the tool home is not ready.
-let requireReady () : unit =
-    Narrate.requirePackages core
+/// The setup hint when the tool home is not ready (every step but `present` needs these packages).
+let requireReady () : Result<unit, string> = Narrate.requirePackages core

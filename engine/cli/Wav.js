@@ -3,7 +3,7 @@ import { getSubArray, tryFindIndexBack, tryFindIndex, map, max as max_1, initial
 import { min, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { comparePrimitives, disposeSafe, getEnumerator, Exception } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { writeBytes, readBytes } from "./Node.js";
-import { sumBy } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { mapFold, sumBy } from "./fable_modules/fable-library-js.5.19.0/List.js";
 
 /**
  * Round half to even: C's lrint in the default rounding mode, and Python's round().
@@ -63,43 +63,54 @@ export function decode(buf) {
     if (((total < 12) ? true : (ascii(0) !== "RIFF")) ? true : (ascii(8) !== "WAVE")) {
         throw new Exception("not a WAV file");
     }
-    let off = 12;
-    let pcm16 = false;
-    let result = undefined;
-    while ((result == null) && ((off + 8) <= total)) {
-        const id = ascii(off);
-        const size = (buf.readUInt32LE(off + 4)) | 0;
-        switch (id) {
-            case "fmt ": {
-                const format = (buf.readUInt16LE(off + 8)) | 0;
-                const channels = (buf.readUInt16LE(off + 10)) | 0;
-                const bits = (buf.readUInt16LE(off + 22)) | 0;
-                pcm16 = (((format === 1) && (channels === 1)) && (bits === 16));
-                break;
+    const walk = (off_mut, pcm16_mut) => {
+        walk:
+        while (true) {
+            const off = off_mut, pcm16 = pcm16_mut;
+            if ((off + 8) > total) {
+                return undefined;
             }
-            case "data": {
-                if (!pcm16) {
-                    throw new Exception("only 16-bit PCM mono WAV files are supported");
+            else {
+                const id = ascii(off);
+                const size = (buf.readUInt32LE(off + 4)) | 0;
+                const next = (((off + 8) + size) + (size % 2)) | 0;
+                switch (id) {
+                    case "fmt ": {
+                        const format = (buf.readUInt16LE(off + 8)) | 0;
+                        const channels = (buf.readUInt16LE(off + 10)) | 0;
+                        const bits = (buf.readUInt16LE(off + 22)) | 0;
+                        off_mut = next;
+                        pcm16_mut = (((format === 1) && (channels === 1)) && (bits === 16));
+                        continue walk;
+                    }
+                    case "data": {
+                        if (!pcm16) {
+                            throw new Exception("only 16-bit PCM mono WAV files are supported");
+                        }
+                        const n = ~~(min(size, (total - off) - 8) / 2) | 0;
+                        const pcm = new Int16Array(buf.buffer.slice(buf.byteOffset + (off + 8), buf.byteOffset + (off + 8) + n * 2));
+                        const out = new Float32Array(n);
+                        for (let i = 0; i <= (n - 1); i++) {
+                            setItem(out, i, item(i, pcm) / 32768);
+                        }
+                        return out;
+                    }
+                    default: {
+                        off_mut = next;
+                        pcm16_mut = pcm16;
+                        continue walk;
+                    }
                 }
-                const n = ~~(min(size, (total - off) - 8) / 2) | 0;
-                const pcm = new Int16Array(buf.buffer.slice(buf.byteOffset + (off + 8), buf.byteOffset + (off + 8) + n * 2));
-                const out = new Float32Array(n);
-                for (let i = 0; i <= (n - 1); i++) {
-                    setItem(out, i, item(i, pcm) / 32768);
-                }
-                result = out;
-                break;
             }
-            default:
-                undefined;
+            break;
         }
-        off = ((((off + 8) + size) + (size % 2)) | 0);
-    }
-    if (result == null) {
+    };
+    const matchValue = walk(12, false);
+    if (matchValue == null) {
         throw new Exception("WAV file has no data chunk");
     }
     else {
-        return result;
+        return matchValue;
     }
 }
 
@@ -119,13 +130,11 @@ export function concat(pieces) {
         GetZero: () => 0,
         Add: (x, y) => ((x + y) | 0),
     }));
-    let at = 0;
-    const enumerator = getEnumerator(pieces);
+    const enumerator = getEnumerator(mapFold((at, p_1) => [[at, p_1], (at + p_1.length) | 0], 0, pieces)[0]);
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const p_1 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            out.set(p_1, at);
-            at = ((at + p_1.length) | 0);
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            out.set(forLoopVar[1], forLoopVar[0]);
         }
     }
     finally {

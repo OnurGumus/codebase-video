@@ -1,16 +1,18 @@
 
 import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { class_type, record_type, array_type, float64_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { Py_flush, Py_fail, Py_print, Py_repr, Py_jsonNum, Py_fmtF, Py_isStr, Py_cmpStr, Py_sortWith, Py_numStr, Py_reprStr, Py_fixedW, Py_take, Py_round, Py_list, Py_get, Py_truthy, Py_str } from "./Check.js";
-import { toJson, join, readJson } from "./Node.js";
-import { tail, head, sortBy, isEmpty, contains as contains_1, ofSeq, tryFind as tryFind_1, exists, filter, map, sort, indexed, singleton as singleton_1, length, toArray, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { stringHash, disposeSafe, getEnumerator, comparePrimitives, defaultOf, equals } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { filter as filter_1, length as length_1, map as map_1, singleton, collect, delay, toArray as toArray_1 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { fold, min, map as map_2, contains, tryLast, tryFind, setItem, item, iterateIndexed } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { addToSet } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
-import { min as min_1, parse, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
+import { class_type, bool_type, obj_type, record_type, array_type, float64_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { Py_flush, Py_fail, Py_print, Py_repr, Py_jsonNum, Py_fmtF, Py_isStr, Py_numStr, Py_cmpStr, Py_sortWith, Py_reprStr, Py_fixedW, Py_take, Py_round, Py_list, Py_get, Py_truthy, Py_str } from "./Check.js";
+import { sortBy, contains as contains_1, tryFind as tryFind_1, exists, filter, collect as collect_1, fold, last as last_1, map, sort, indexed, singleton as singleton_1, length, toArray, ofArray, empty, reverse, cons, head, tail, isEmpty } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { concat, join as join_1, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { fold as fold_1, min, map as map_1, item, tryLast, tryFind, scan, contains } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { disposeSafe, getEnumerator, comparePrimitives, defaultOf, equals, stringHash } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { toJson, join, readJson } from "./Node.js";
+import { empty as empty_1, toList, singleton, collect, delay, toArray as toArray_1 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { List_distinctBy, List_groupBy } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
+import { min as min_1, parse, max } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
+import { ofList, empty as empty_2, add, tryFind as tryFind_2 } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 
 function PAUSE(_arg) {
     switch (_arg) {
@@ -82,6 +84,141 @@ function col(it) {
     return Py_round(num(it, "x") / 30);
 }
 
+function stretches(held, start, frames) {
+    const go = (current_mut, finished_mut, fs_mut) => {
+        go:
+        while (true) {
+            const current = current_mut, finished = finished_mut, fs = fs_mut;
+            if (!isEmpty(fs)) {
+                const rest = tail(fs);
+                const f = head(fs);
+                const matchValue = held(f);
+                let matchResult;
+                if (matchValue) {
+                    if (current == null) {
+                        matchResult = 0;
+                    }
+                    else {
+                        matchResult = 2;
+                    }
+                }
+                else if (current != null) {
+                    matchResult = 1;
+                }
+                else {
+                    matchResult = 2;
+                }
+                switch (matchResult) {
+                    case 0: {
+                        current_mut = [t(f), start(f)];
+                        finished_mut = finished;
+                        fs_mut = rest;
+                        continue go;
+                    }
+                    case 1: {
+                        current_mut = undefined;
+                        finished_mut = cons([current[0], current[1], t(f)], finished);
+                        fs_mut = rest;
+                        continue go;
+                    }
+                    default: {
+                        current_mut = current;
+                        finished_mut = finished;
+                        fs_mut = rest;
+                        continue go;
+                    }
+                }
+            }
+            else {
+                return reverse(finished);
+            }
+            break;
+        }
+    };
+    return go(undefined, empty(), ofArray(frames));
+}
+
+class Overlap extends Record {
+    constructor(A, B, W, WFloat, H, HFloat) {
+        super();
+        this.A = A;
+        this.B = B;
+        this.W = W;
+        this.WFloat = WFloat;
+        this.H = H;
+        this.HFloat = HFloat;
+    }
+}
+
+function Overlap_$reflection() {
+    return record_type("ScanReport.Overlap", [], Overlap, () => [["A", obj_type], ["B", obj_type], ["W", float64_type], ["WFloat", bool_type], ["H", float64_type], ["HFloat", bool_type]]);
+}
+
+function overlapOf(A, B) {
+    let patternInput_3, T_1, S_1;
+    const A_1 = A;
+    const B_1 = B;
+    const shape = (it) => {
+        if (has(it, "svg")) {
+            return true;
+        }
+        else {
+            return has(it, "box");
+        }
+    };
+    const shapes = [shape(A_1), shape(B_1)];
+    if (shapes[0] && shapes[1]) {
+        return undefined;
+    }
+    else {
+        const matchValue = split(A_1.path, ["/"], undefined, 0);
+        const matchValue_1 = split(B_1.path, ["/"], undefined, 0);
+        if (contains(Py_str(A_1.id), matchValue_1, {
+            Equals: (x, y) => (x === y),
+            GetHashCode: (x) => (stringHash(x) | 0),
+        }) ? true : contains(Py_str(B_1.id), matchValue, {
+            Equals: (x_1, y_1) => (x_1 === y_1),
+            GetHashCode: (x_1) => (stringHash(x_1) | 0),
+        })) {
+            return undefined;
+        }
+        else {
+            const matchValue_2 = num(A_1, "r");
+            const matchValue_3 = num(B_1, "r");
+            const matchValue_4 = num(A_1, "x");
+            const xB = num(B_1, "x");
+            const xA = matchValue_4;
+            const rB = matchValue_3;
+            const rA = matchValue_2;
+            const r = (rB < rA) ? rB : rA;
+            const x_2 = (xB > xA) ? xB : xA;
+            const w = r - x_2;
+            const matchValue_6 = num(A_1, "b");
+            const matchValue_7 = num(B_1, "b");
+            const matchValue_8 = num(A_1, "y");
+            const yB = num(B_1, "y");
+            const yA = matchValue_8;
+            const bB = matchValue_7;
+            const bA = matchValue_6;
+            const bb = (bB < bA) ? bB : bA;
+            const y_2 = (yB > yA) ? yB : yA;
+            const h = bb - y_2;
+            const isF = (v) => !(Number.isInteger(v));
+            if ((w > 4) && (h > 6)) {
+                if ((shapes[0] ? true : shapes[1]) && ((patternInput_3 = (shapes[0] ? [B_1, A_1] : [A_1, B_1]), (T_1 = patternInput_3[0], (S_1 = patternInput_3[1], (((num(T_1, "x") >= (num(S_1, "x") - 2)) && (num(T_1, "r") <= (num(S_1, "r") + 2))) && (num(T_1, "y") >= (num(S_1, "y") - 2))) && (num(T_1, "b") <= (num(S_1, "b") + 2))))))) {
+                    return undefined;
+                }
+                else {
+                    return new Overlap(A_1, B_1, w, isF(r) ? true : isF(x_2), h, isF(bb) ? true : isF(y_2));
+                }
+            }
+            else {
+                return undefined;
+            }
+        }
+    }
+}
+
 class Report {
     constructor(clip) {
         let matchValue;
@@ -97,49 +234,46 @@ class Report {
                 const sp = Py_get(u, "spoken");
                 text = (Py_truthy(sp) ? sp : Py_get(u, "text"));
                 const cps = Array.from(text);
-                const weights = new Int32Array(cps.length + 1);
-                iterateIndexed((k, c) => {
-                    setItem(weights, k + 1, ((item(k, weights) + 1) + PAUSE(c)) | 0);
-                }, cps);
-                return singleton(new Unit(s_1.id, matchValue_1[0], num(u, "start"), num(u, "end"), cps, weights));
+                return singleton(new Unit(s_1.id, matchValue_1[0], num(u, "start"), num(u, "end"), cps, scan((w, c) => (((w + 1) + PAUSE(c)) | 0), 0, cps, Int32Array)));
             }, (length(parts) > 1) ? parts : singleton_1(se));
         }, indexed(Py_list(s_1, "sentences"))), Py_list(timing, "scenes"))));
         this.sceneStarts = sort(map((s_2) => num(s_2, "start"), Py_list(timing, "scenes")), {
             Compare: (x, y) => (comparePrimitives(x, y) | 0),
         });
-        this.intervals = (new Map());
-        this.info = (new Map());
-        const arr = this.frames;
-        for (let idx = 0; idx <= (arr.length - 1); idx++) {
-            const f = item(idx, arr);
-            const seenNow = new Set([]);
-            const enumerator = getEnumerator(items(f));
-            try {
-                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                    const it = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    if (!((((op(it) < 0.15) ? true : has(it, "svg")) ? true : has(it, "box")) ? true : has(it, "pk"))) {
-                        const k_1 = toJson([Py_take(60, txt(it)), col(it), layer(it)]);
-                        if (addToSet(k_1, seenNow)) {
-                            this.info.set(k_1, it);
-                            if (!this.intervals.has(k_1)) {
-                                this.intervals.set(k_1, []);
-                            }
-                            const iv = this.intervals.get(k_1);
-                            if ((iv.length > 0) && (Math.abs(item(1, item(iv.length - 1, iv)) - (t(f) - this.step)) < 1E-06)) {
-                                item(iv.length - 1, iv)[1] = t(f);
-                            }
-                            else {
-                                void (iv.push(new Float64Array([t(f), t(f)])));
-                            }
-                        }
+        this.entries = map((tupledArg_2) => {
+            const hits = tupledArg_2[1];
+            return [tupledArg_2[0], last_1(hits)[2], reverse(fold((ivs, tupledArg_3) => {
+                const time = tupledArg_3[1];
+                let matchResult, a_1, b_1, rest_1;
+                if (!isEmpty(ivs)) {
+                    if (Math.abs(head(ivs)[1] - (time - this.step)) < 1E-06) {
+                        matchResult = 0;
+                        a_1 = head(ivs)[0];
+                        b_1 = head(ivs)[1];
+                        rest_1 = tail(ivs);
+                    }
+                    else {
+                        matchResult = 1;
                     }
                 }
-            }
-            finally {
-                disposeSafe(enumerator);
-            }
-        }
-        this.f72 = ((x_1) => Py_fixedW(7, 2, x_1));
+                else {
+                    matchResult = 1;
+                }
+                switch (matchResult) {
+                    case 0:
+                        return cons([a_1, time], rest_1);
+                    default:
+                        return cons([time, time], ivs);
+                }
+            }, empty(), hits))];
+        }, List_groupBy((tupledArg_1) => tupledArg_1[0], collect_1((f) => map((tupledArg) => [tupledArg[0], t(f), tupledArg[1]], List_distinctBy((tuple) => tuple[0], map((it_1) => [toJson([Py_take(60, txt(it_1)), col(it_1), layer(it_1)]), it_1], filter((it) => !((((op(it) < 0.15) ? true : has(it, "svg")) ? true : has(it, "box")) ? true : has(it, "pk")), items(f))), {
+            Equals: (x_1, y_1) => (x_1 === y_1),
+            GetHashCode: (x_1) => (stringHash(x_1) | 0),
+        })), ofArray(this.frames)), {
+            Equals: (x_2, y_2) => (x_2 === y_2),
+            GetHashCode: (x_2) => (stringHash(x_2) | 0),
+        }));
+        this.f72 = ((x_3) => Py_fixedW(7, 2, x_3));
     }
 }
 
@@ -164,7 +298,6 @@ function Report__get_Errors(_) {
 }
 
 function Report__said_5E38073B(_, time) {
-    let b;
     const matchValue = tryFind((u) => {
         if (u.Start <= time) {
             return time <= u.End;
@@ -187,11 +320,22 @@ function Report__said_5E38073B(_, time) {
         const u_1 = matchValue;
         const total = item(u_1.Text.length, u_1.Weights) | 0;
         const target = ((time - u_1.Start) / max(u_1.End - u_1.Start, 1E-06)) * ((total === 0) ? 1 : total);
-        let k = 0;
-        while ((k < u_1.Text.length) && (item(k, u_1.Weights) < target)) {
-            k = ((k + 1) | 0);
-        }
-        return `${u_1.Sid}#${u_1.Index} …${Report__slice(_, u_1.Text, max(0, k - 25), k)}|${(b = ((k + 30) | 0), Report__slice(_, u_1.Text, k, b))}…`;
+        const reach = (k_mut) => {
+            reach:
+            while (true) {
+                const k = k_mut;
+                if ((k < u_1.Text.length) && (item(k, u_1.Weights) < target)) {
+                    k_mut = (k + 1);
+                    continue reach;
+                }
+                else {
+                    return k | 0;
+                }
+                break;
+            }
+        };
+        const k_1 = reach(0) | 0;
+        return `${u_1.Sid}#${u_1.Index} …${Report__slice(_, u_1.Text, max(0, k_1 - 25), k_1)}|${Report__slice(_, u_1.Text, k_1, k_1 + 30)}…`;
     }
 }
 
@@ -208,19 +352,18 @@ function Report__nearSceneChange(_, a, b) {
 
 function Report__short(r) {
     Report__line_Z721C83C5(r, "== text on screen under 3 s");
-    const enumerator = getEnumerator(r.intervals.entries());
+    const enumerator = getEnumerator(r.entries);
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
             const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const it = r.info.get(forLoopVar[0]);
+            const it = forLoopVar[1];
             if (isModule(it)) {
-                let enumerator_1 = getEnumerator(forLoopVar[1]);
+                const enumerator_1 = getEnumerator(forLoopVar[2]);
                 try {
                     while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                        const ab = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                        const matchValue = item(0, ab);
-                        const b = item(1, ab);
-                        const a = matchValue;
+                        const forLoopVar_1 = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                        const b = forLoopVar_1[1];
+                        const a = forLoopVar_1[0];
                         if (((b - a) + r.step) < 3) {
                             const cut = Report__nearSceneChange(r, b, b + 0.5) ? " (cut by a scene change)" : "";
                             Report__line_Z721C83C5(r, `${r.f72(a)}-${r.f72(b)} (${Py_fixedW(4, 1, (b - a) + r.step)}s)${cut} ${Py_reprStr(Py_take(60, txt(it)))}
@@ -241,19 +384,13 @@ function Report__short(r) {
 
 function Report__overlap(_) {
     Report__line_Z721C83C5(_, "== overlaps (text over text, text over part of a drawing, text straddling a box border)");
-    const found = new Map();
-    const order = [];
-    const shape = (it) => {
-        if (has(it, "svg")) {
-            return true;
-        }
-        else {
-            return has(it, "box");
-        }
-    };
-    const arr = _.frames;
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const f = item(idx, arr);
+    const byNum = parse;
+    const enumerator = getEnumerator(Py_sortWith((tupledArg_2, tupledArg_3) => (defaultArg(tryFind_1((y_1) => (0 !== y_1), ofArray([comparePrimitives(tupledArg_2[0], tupledArg_3[0]), comparePrimitives(tupledArg_2[1], tupledArg_3[1]), Py_cmpStr(tupledArg_2[2], tupledArg_3[2]), Py_cmpStr(tupledArg_2[3], tupledArg_3[3]), comparePrimitives(byNum(tupledArg_2[4]), byNum(tupledArg_3[4])), comparePrimitives(byNum(tupledArg_2[5]), byNum(tupledArg_3[5]))])), 0) | 0), map((tupledArg_1) => {
+        const group = tupledArg_1[1];
+        const patternInput = head(group);
+        const o_1 = patternInput[2];
+        return [patternInput[1], last_1(group)[1], Py_take(45, txt(o_1.A)), Py_take(45, txt(o_1.B)), Py_numStr(o_1.W, o_1.WFloat), Py_numStr(o_1.H, o_1.HFloat)];
+    }, List_groupBy((tupledArg) => tupledArg[0], collect_1((f) => {
         const its = toArray(filter((i) => {
             if ((op(i) >= 0.5) && isModule(i)) {
                 return !has(i, "pk");
@@ -262,64 +399,20 @@ function Report__overlap(_) {
                 return false;
             }
         }, items(f)));
-        for (let i_1 = 0; i_1 <= (its.length - 1); i_1++) {
-            for (let j = i_1 + 1; j <= (its.length - 1); j++) {
-                let patternInput_4, T_1, S_1;
-                const matchValue = item(i_1, its);
-                const B = item(j, its);
-                const A = matchValue;
-                const shapes = [shape(A), shape(B)];
-                if (!(shapes[0] && shapes[1])) {
-                    const matchValue_2 = split(A.path, ["/"], undefined, 0);
-                    const matchValue_3 = split(B.path, ["/"], undefined, 0);
-                    if (!(contains(Py_str(A.id), matchValue_3, {
-                        Equals: (x, y) => (x === y),
-                        GetHashCode: (x) => (stringHash(x) | 0),
-                    }) ? true : contains(Py_str(B.id), matchValue_2, {
-                        Equals: (x_1, y_1) => (x_1 === y_1),
-                        GetHashCode: (x_1) => (stringHash(x_1) | 0),
-                    }))) {
-                        const matchValue_4 = num(A, "r");
-                        const matchValue_5 = num(B, "r");
-                        const matchValue_6 = num(A, "x");
-                        const xB = num(B, "x");
-                        const xA = matchValue_6;
-                        const rB = matchValue_5;
-                        const rA = matchValue_4;
-                        const r = (rB < rA) ? rB : rA;
-                        const x_2 = (xB > xA) ? xB : xA;
-                        const w = r - x_2;
-                        const matchValue_8 = num(A, "b");
-                        const matchValue_9 = num(B, "b");
-                        const matchValue_10 = num(A, "y");
-                        const yB = num(B, "y");
-                        const yA = matchValue_10;
-                        const bB = matchValue_9;
-                        const bA = matchValue_8;
-                        const bb = (bB < bA) ? bB : bA;
-                        const y_2 = (yB > yA) ? yB : yA;
-                        const h = bb - y_2;
-                        const isF = (v) => !(Number.isInteger(v));
-                        if ((w > 4) && (h > 6)) {
-                            if (!((shapes[0] ? true : shapes[1]) && ((patternInput_4 = (shapes[0] ? [B, A] : [A, B]), (T_1 = patternInput_4[0], (S_1 = patternInput_4[1], (((num(T_1, "x") >= (num(S_1, "x") - 2)) && (num(T_1, "r") <= (num(S_1, "r") + 2))) && (num(T_1, "y") >= (num(S_1, "y") - 2))) && (num(T_1, "b") <= (num(S_1, "b") + 2)))))))) {
-                                const key = toJson([A.id, B.id]);
-                                if (found.has(key)) {
-                                    const patternInput_5 = found.get(key);
-                                    found.set(key, [patternInput_5[0], t(f), patternInput_5[2], patternInput_5[3], patternInput_5[4], patternInput_5[5]]);
-                                }
-                                else {
-                                    void (order.push(key));
-                                    found.set(key, [t(f), t(f), Py_take(45, txt(A)), Py_take(45, txt(B)), Py_numStr(w, isF(r) ? true : isF(x_2)), Py_numStr(h, isF(bb) ? true : isF(y_2))]);
-                                }
-                            }
-                        }
-                    }
-                }
+        return toList(delay(() => collect((i_1) => collect((j) => {
+            const matchValue = overlapOf(item(i_1, its), item(j, its));
+            if (matchValue == null) {
+                return empty_1();
             }
-        }
-    }
-    const byNum = parse;
-    const enumerator = getEnumerator(Py_sortWith((tupledArg, tupledArg_1) => (defaultArg(tryFind_1((y_3) => (0 !== y_3), ofArray([comparePrimitives(tupledArg[0], tupledArg_1[0]), comparePrimitives(tupledArg[1], tupledArg_1[1]), Py_cmpStr(tupledArg[2], tupledArg_1[2]), Py_cmpStr(tupledArg[3], tupledArg_1[3]), comparePrimitives(byNum(tupledArg[4]), byNum(tupledArg_1[4])), comparePrimitives(byNum(tupledArg[5]), byNum(tupledArg_1[5]))])), 0) | 0), ofSeq(map_1((key_1) => found.get(key_1), order))));
+            else {
+                const o = matchValue;
+                return singleton([toJson([o.A.id, o.B.id]), t(f), o]);
+            }
+        }, rangeDouble(i_1 + 1, 1, its.length - 1)), rangeDouble(0, 1, its.length - 1))));
+    }, ofArray(_.frames)), {
+        Equals: (x, y) => (x === y),
+        GetHashCode: (x) => (stringHash(x) | 0),
+    }))));
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
             const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
@@ -333,73 +426,54 @@ function Report__overlap(_) {
 
 function Report__empty(r) {
     Report__line_Z721C83C5(r, "== empty stage for 2 s or more");
-    let run_1 = undefined;
-    const arr = r.frames;
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        let r0;
-        const f = item(idx, arr);
-        if (isEmpty(filter((i) => {
-            if (op(i) >= 0.5) {
-                if (isModule(i)) {
-                    return true;
-                }
-                else if (contains_1(Py_str(layer(i)), ofArray(["card", "titleCard", "toasts"]), {
-                    Equals: (x, y) => (x === y),
-                    GetHashCode: (x) => (stringHash(x) | 0),
-                })) {
-                    return Py_isStr(layer(i));
-                }
-                else {
-                    return false;
-                }
+    const enumerator = getEnumerator(stretches((f_1) => isEmpty(filter((i) => {
+        if (op(i) >= 0.5) {
+            if (isModule(i)) {
+                return true;
+            }
+            else if (contains_1(Py_str(layer(i)), ofArray(["card", "titleCard", "toasts"]), {
+                Equals: (x, y) => (x === y),
+                GetHashCode: (x) => (stringHash(x) | 0),
+            })) {
+                return Py_isStr(layer(i));
             }
             else {
                 return false;
             }
-        }, items(f)))) {
-            run_1 = ((run_1 == null) ? t(f) : run_1);
         }
         else {
-            let matchResult, r0_1;
-            if (run_1 != null) {
-                if ((r0 = run_1, (t(f) - r0) >= 2)) {
-                    matchResult = 0;
-                    r0_1 = run_1;
-                }
-                else {
-                    matchResult = 1;
-                }
-            }
-            else {
-                matchResult = 1;
-            }
-            switch (matchResult) {
-                case 0: {
-                    Report__line_Z721C83C5(r, `${r.f72(r0_1)}-${r.f72(t(f))} (${Py_fmtF(1, t(f) - r0_1)}s) ${Report__said_5E38073B(r, r0_1)}`);
-                    break;
-                }
-            }
-            run_1 = undefined;
+            return false;
         }
+    }, items(f_1))), (value) => {
+    }, r.frames));
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const t1 = forLoopVar[2];
+            const r0 = forLoopVar[0];
+            if ((t1 - r0) >= 2) {
+                Report__line_Z721C83C5(r, `${r.f72(r0)}-${r.f72(t1)} (${Py_fmtF(1, t1 - r0)}s) ${Report__said_5E38073B(r, r0)}`);
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
     }
 }
 
 function Report__headonly(r) {
     Report__line_Z721C83C5(r, "== heading only for 4 s or more");
-    let run_1 = undefined;
-    const arr = r.frames;
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        let r0;
-        const f = item(idx, arr);
-        const mods = filter((i) => {
-            if (op(i) >= 0.5) {
-                return isModule(i);
-            }
-            else {
-                return false;
-            }
-        }, items(f));
-        const content = filter((i_1) => (num(i_1, "y") >= 215), mods);
+    const mods = (f) => filter((i) => {
+        if (op(i) >= 0.5) {
+            return isModule(i);
+        }
+        else {
+            return false;
+        }
+    }, items(f));
+    const enumerator = getEnumerator(stretches((f_1) => {
+        const mods_1 = mods(f_1);
+        const content = filter((i_1) => (num(i_1, "y") >= 215), mods_1);
         const cards = filter((i_2) => {
             if ((op(i_2) >= 0.5) && Py_isStr(layer(i_2))) {
                 return contains_1(Py_str(layer(i_2)), ofArray(["card", "titleCard"]), {
@@ -410,158 +484,188 @@ function Report__headonly(r) {
             else {
                 return false;
             }
-        }, items(f));
-        if ((!isEmpty(mods) && isEmpty(content)) && isEmpty(cards)) {
-            if (run_1 == null) {
-                run_1 = [t(f), map((i_3) => Py_take(40, txt(i_3)), mods)];
-            }
+        }, items(f_1));
+        if (!isEmpty(mods_1) && isEmpty(content)) {
+            return isEmpty(cards);
         }
         else {
-            let matchResult, r0_1, texts_1;
-            if (run_1 != null) {
-                if ((run_1[1], (r0 = run_1[0], (t(f) - r0) >= 4))) {
-                    matchResult = 0;
-                    r0_1 = run_1[0];
-                    texts_1 = run_1[1];
-                }
-                else {
-                    matchResult = 1;
-                }
-            }
-            else {
-                matchResult = 1;
-            }
-            switch (matchResult) {
-                case 0: {
-                    const shown = ("[" + join_1(", ", map(Py_reprStr, texts_1))) + "]";
-                    Report__line_Z721C83C5(r, `${r.f72(r0_1)}-${r.f72(t(f))} (${Py_fmtF(1, t(f) - r0_1)}s) ${shown}  ${Report__said_5E38073B(r, r0_1)}`);
-                    break;
-                }
-            }
-            run_1 = undefined;
+            return false;
         }
+    }, (f_2) => map((i_3) => Py_take(40, txt(i_3)), mods(f_2)), r.frames));
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const t1 = forLoopVar[2];
+            const r0 = forLoopVar[0];
+            if ((t1 - r0) >= 4) {
+                const shown = ("[" + join_1(", ", map(Py_reprStr, forLoopVar[1]))) + "]";
+                Report__line_Z721C83C5(r, `${r.f72(r0)}-${r.f72(t1)} (${Py_fmtF(1, t1 - r0)}s) ${shown}  ${Report__said_5E38073B(r, r0)}`);
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
     }
 }
 
 function Report__bounds(_) {
     Report__line_Z721C83C5(_, "== outside x 60-1860 / y 240-1000 (headings sit higher by design)");
-    const bad = new Map();
-    const names = new Map();
-    const arr = _.frames;
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const f = item(idx, arr);
-        const enumerator = getEnumerator(items(f));
-        try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const it = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                if (!(((op(it) < 0.5) ? true : !isModule(it)) ? true : (num(it, "y") < 200))) {
-                    if (((num(it, "x") < 58) ? true : (num(it, "r") > 1862)) ? true : (num(it, "b") > 1002)) {
-                        const name = Py_take(50, txt(it));
-                        const k = toJson([it.id, name]);
-                        if (!bad.has(k)) {
-                            bad.set(k, []);
-                            names.set(k, name);
-                        }
-                        void (bad.get(k).push([t(f), it]));
-                    }
-                }
+    const enumerator = getEnumerator(List_groupBy((tupledArg) => tupledArg[0], collect_1((f) => map((it_1) => {
+        const name = Py_take(50, txt(it_1));
+        return [toJson([it_1.id, name]), name, t(f), it_1];
+    }, filter((it) => {
+        if (!(((op(it) < 0.5) ? true : !isModule(it)) ? true : (num(it, "y") < 200))) {
+            if ((num(it, "x") < 58) ? true : (num(it, "r") > 1862)) {
+                return true;
+            }
+            else {
+                return num(it, "b") > 1002;
             }
         }
-        finally {
-            disposeSafe(enumerator);
+        else {
+            return false;
         }
-    }
-    const enumerator_1 = getEnumerator(bad.entries());
+    }, items(f))), ofArray(_.frames)), {
+        Equals: (x, y) => (x === y),
+        GetHashCode: (x) => (stringHash(x) | 0),
+    }));
     try {
-        while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            const forLoopVar = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const v = forLoopVar[1];
-            const patternInput = item(0, v);
-            const patternInput_1 = item(v.length - 1, v);
-            const n = (k_2) => Py_jsonNum(num(patternInput[1], k_2));
-            Report__line_Z721C83C5(_, `${_.f72(patternInput[0])}-${_.f72(patternInput_1[0])} ${Py_reprStr(names.get(forLoopVar[0]))} x${n("x")} y${n("y")} r${n("r")} b${n("b")}`);
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const group = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]()[1];
+            const patternInput = head(group);
+            const patternInput_1 = last_1(group);
+            const n = (k_1) => Py_jsonNum(num(patternInput[3], k_1));
+            Report__line_Z721C83C5(_, `${_.f72(patternInput[2])}-${_.f72(patternInput_1[2])} ${Py_reprStr(patternInput[1])} x${n("x")} y${n("y")} r${n("r")} b${n("b")}`);
         }
     }
     finally {
-        disposeSafe(enumerator_1);
+        disposeSafe(enumerator);
     }
 }
 
 function Report__blink(r) {
     Report__line_Z721C83C5(r, "== blinks: an element dipping below 95% and back within 1 s (or jumping position)");
-    const series = new Map();
-    const names = new Map();
-    const arr = r.frames;
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const f = item(idx, arr);
-        const enumerator = getEnumerator(items(f));
-        try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const it = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                if ((isModule(it) && !has(it, "pk")) && !has(it, "box")) {
-                    const name = Py_take(60, txt(it));
-                    const k = toJson([name, col(it)]);
-                    if (!series.has(k)) {
-                        series.set(k, new Map());
-                        names.set(k, name);
-                    }
-                    const s_1 = series.get(k);
-                    if (!s_1.has(t(f)) ? true : (op(it) > s_1.get(t(f))[0])) {
-                        s_1.set(t(f), [op(it), it.y]);
-                    }
-                }
-            }
+    const hits = collect_1((f) => map((it_1) => {
+        const name = Py_take(60, txt(it_1));
+        return [toJson([name, col(it_1)]), name, t(f), [op(it_1), it_1.y]];
+    }, filter((it) => {
+        if (isModule(it) && !has(it, "pk")) {
+            return !has(it, "box");
         }
-        finally {
-            disposeSafe(enumerator);
+        else {
+            return false;
         }
-    }
-    const ts = map_2(t, r.frames, Float64Array);
+    }, items(f))), ofArray(r.frames));
+    const ts = map_1(t, r.frames, Float64Array);
     const n = ts.length | 0;
-    const enumerator_1 = getEnumerator(series.entries());
+    const advance = (cond_mut, i_mut) => {
+        advance:
+        while (true) {
+            const cond = cond_mut, i = i_mut;
+            if ((i < n) && cond(i)) {
+                cond_mut = cond;
+                i_mut = (i + 1);
+                continue advance;
+            }
+            else {
+                return i | 0;
+            }
+            break;
+        }
+    };
+    const enumerator = getEnumerator(List_groupBy((tupledArg) => tupledArg[0], hits, {
+        Equals: (x, y) => (x === y),
+        GetHashCode: (x) => (stringHash(x) | 0),
+    }));
     try {
-        while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-            const forLoopVar = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const s_2 = forLoopVar[1];
-            const vals = map_2((time) => {
-                if (s_2.has(time)) {
-                    return s_2.get(time);
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const group = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]()[1];
+            const patternInput = head(group);
+            const series = fold((m, tupledArg_1) => {
+                const time = tupledArg_1[2];
+                const _arg_5 = tupledArg_1[3];
+                const o = _arg_5[0];
+                const matchValue = tryFind_2(time, m);
+                let matchResult, prev_1;
+                if (matchValue != null) {
+                    if (!(o > matchValue[0])) {
+                        matchResult = 0;
+                        prev_1 = matchValue[0];
+                    }
+                    else {
+                        matchResult = 1;
+                    }
                 }
                 else {
+                    matchResult = 1;
+                }
+                switch (matchResult) {
+                    case 0:
+                        return m;
+                    default:
+                        return add(time, [o, _arg_5[1]], m);
+                }
+            }, empty_2({
+                Compare: (x_1, y_2) => (comparePrimitives(x_1, y_2) | 0),
+            }), group);
+            const vals = map_1((time_1) => {
+                const matchValue_1 = tryFind_2(time_1, series);
+                if (matchValue_1 == null) {
                     return [0, defaultOf()];
                 }
-            }, ts);
-            let i = 0;
-            while (i < n) {
-                if (item(i, vals)[0] >= 0.95) {
-                    let j = i + 1;
-                    while ((j < n) && (item(j, vals)[0] >= 0.95)) {
-                        j = ((j + 1) | 0);
-                    }
-                    let k2 = j;
-                    while (((k2 < n) && (item(k2, vals)[0] < 0.95)) && ((item(k2, ts) - item(j, ts)) <= 1)) {
-                        k2 = ((k2 + 1) | 0);
-                    }
-                    if (((((j < n) && (k2 < n)) && (item(k2, vals)[0] >= 0.95)) && ((item(k2, ts) - item(j, ts)) <= 1)) && !Report__nearSceneChange(r, item(j, ts), item(k2, ts))) {
-                        const low = min(map_2((tuple) => tuple[0], vals.slice(j, (k2 - 1) + 1), Float64Array), {
-                            Compare: (x, y) => (comparePrimitives(x, y) | 0),
-                        });
-                        const matchValue = item(j - 1, vals)[1];
-                        const y1 = item(k2, vals)[1];
-                        const y0 = matchValue;
-                        const moved = ((y0 == null) ? true : (y1 == null)) ? !((y0 == null) && (y1 == null)) : (y0 !== y1);
-                        Report__line_Z721C83C5(r, `${r.f72(item(j, ts))}-${r.f72(item(k2, ts))} min ${Py_fmtF(2, low)}${moved ? " moved" : ""}  ${Py_reprStr(names.get(forLoopVar[0]))}`);
-                    }
-                    i = (j | 0);
-                }
                 else {
-                    i = ((i + 1) | 0);
+                    return matchValue_1;
                 }
+            }, ts);
+            const walk = (i_1_mut, found_mut) => {
+                walk:
+                while (true) {
+                    const i_1 = i_1_mut, found = found_mut;
+                    if (i_1 >= n) {
+                        return reverse(found);
+                    }
+                    else if (item(i_1, vals)[0] >= 0.95) {
+                        const j = advance((x_2) => (item(x_2, vals)[0] >= 0.95), i_1 + 1) | 0;
+                        const k2 = advance((x_3) => ((item(x_3, vals)[0] < 0.95) && ((item(x_3, ts) - item(j, ts)) <= 1)), j) | 0;
+                        if (((((j < n) && (k2 < n)) && (item(k2, vals)[0] >= 0.95)) && ((item(k2, ts) - item(j, ts)) <= 1)) && !Report__nearSceneChange(r, item(j, ts), item(k2, ts))) {
+                            const low = min(map_1((tuple) => tuple[0], vals.slice(j, (k2 - 1) + 1), Float64Array), {
+                                Compare: (x_4, y_3) => (comparePrimitives(x_4, y_3) | 0),
+                            });
+                            const matchValue_2 = item(j - 1, vals)[1];
+                            const y1 = item(k2, vals)[1];
+                            const y0 = matchValue_2;
+                            const moved = ((y0 == null) ? true : (y1 == null)) ? !((y0 == null) && (y1 == null)) : (y0 !== y1);
+                            i_1_mut = j;
+                            found_mut = cons(`${r.f72(item(j, ts))}-${r.f72(item(k2, ts))} min ${Py_fmtF(2, low)}${moved ? " moved" : ""}  ${Py_reprStr(patternInput[1])}`, found);
+                            continue walk;
+                        }
+                        else {
+                            i_1_mut = j;
+                            found_mut = found;
+                            continue walk;
+                        }
+                    }
+                    else {
+                        i_1_mut = (i_1 + 1);
+                        found_mut = found;
+                        continue walk;
+                    }
+                    break;
+                }
+            };
+            const enumerator_1 = getEnumerator(walk(0, empty()));
+            try {
+                while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
+                    Report__line_Z721C83C5(r, enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]());
+                }
+            }
+            finally {
+                disposeSafe(enumerator_1);
             }
         }
     }
     finally {
-        disposeSafe(enumerator_1);
+        disposeSafe(enumerator);
     }
 }
 
@@ -570,7 +674,7 @@ function Report__ending(_) {
     if (_.frames.length >= 4) {
         const last = item(_.frames.length - 1, _.frames);
         const target = t(last) - 1;
-        const before = fold((best, f) => {
+        const before = fold_1((best, f) => {
             if (Math.abs(t(f) - target) < Math.abs(t(best) - target)) {
                 return f;
             }
@@ -578,68 +682,59 @@ function Report__ending(_) {
                 return best;
             }
         }, item(0, _.frames), _.frames);
-        const opacities = (f_1) => {
-            const m = new Map();
-            const names = new Map();
-            const enumerator = getEnumerator(items(f_1));
-            try {
-                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                    const i = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    if (isModule(i) && !has(i, "pk")) {
-                        const name = Py_take(60, txt(i));
-                        const k = toJson([name, col(i)]);
-                        m.set(k, op(i));
-                        names.set(k, name);
-                    }
-                }
-            }
-            finally {
-                disposeSafe(enumerator);
-            }
-            return [m, names];
-        };
-        const now = opacities(last)[0];
-        const patternInput_1 = opacities(before);
-        const holding = length_1(filter_1((tupledArg) => (tupledArg[1] >= 0.9), now.entries())) | 0;
-        const nowGet = (k_1) => {
-            if (now.has(k_1)) {
-                return now.get(k_1);
+        const opacities = (f_1) => map((tupledArg_1) => {
+            const patternInput = last_1(tupledArg_1[1]);
+            return [tupledArg_1[0], patternInput[1], patternInput[2]];
+        }, List_groupBy((tupledArg) => tupledArg[0], map((i_1) => {
+            const name = Py_take(60, txt(i_1));
+            return [toJson([name, col(i_1)]), name, op(i_1)];
+        }, filter((i) => {
+            if (isModule(i)) {
+                return !has(i, "pk");
             }
             else {
-                return 0;
+                return false;
             }
-        };
-        const enumerator_1 = getEnumerator(patternInput_1[0].entries());
+        }, items(f_1))), {
+            Equals: (x, y) => (x === y),
+            GetHashCode: (x) => (stringHash(x) | 0),
+        }));
+        const now = opacities(last);
+        const holding = length(filter((tupledArg_2) => (tupledArg_2[2] >= 0.9), now)) | 0;
+        const nowOp = ofList(map((tupledArg_3) => [tupledArg_3[0], tupledArg_3[2]], now), {
+            Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+        });
+        const nowGet = (k_3) => defaultArg(tryFind_2(k_3, nowOp), 0);
+        const enumerator = getEnumerator(opacities(before));
         try {
-            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const k_2 = forLoopVar[0];
-                if (((forLoopVar[1] >= 0.95) && (nowGet(k_2) < 0.6)) && (holding > 0)) {
-                    Report__line_Z721C83C5(_, `  ${Py_reprStr(patternInput_1[1].get(k_2))} fades to ${Py_fmtF(2, nowGet(k_2))} by ${Py_fmtF(2, t(last))} while ${holding} other item(s) hold`);
+            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const k_4 = forLoopVar[0];
+                if (((forLoopVar[2] >= 0.95) && (nowGet(k_4) < 0.6)) && (holding > 0)) {
+                    Report__line_Z721C83C5(_, `  ${Py_reprStr(forLoopVar[1])} fades to ${Py_fmtF(2, nowGet(k_4))} by ${Py_fmtF(2, t(last))} while ${holding} other item(s) hold`);
                 }
             }
         }
         finally {
-            disposeSafe(enumerator_1);
+            disposeSafe(enumerator);
         }
     }
 }
 
 function Report__timeline(r) {
-    const enumerator = getEnumerator(sortBy((tupledArg) => item(0, item(0, tupledArg[1])), ofSeq(r.intervals.entries()), {
+    const enumerator = getEnumerator(sortBy((tupledArg) => head(tupledArg[2])[0], r.entries, {
         Compare: (x, y) => (comparePrimitives(x, y) | 0),
     }));
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
             const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const it = r.info.get(forLoopVar[0]);
-            let enumerator_1 = getEnumerator(forLoopVar[1]);
+            const it = forLoopVar[1];
+            const enumerator_1 = getEnumerator(forLoopVar[2]);
             try {
                 while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                    const ab = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                    const matchValue = item(0, ab);
-                    const b = item(1, ab);
-                    const a = matchValue;
+                    const forLoopVar_1 = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                    const b = forLoopVar_1[1];
+                    const a = forLoopVar_1[0];
                     Report__line_Z721C83C5(r, `${r.f72(a)}-${r.f72(b)} (${Py_fixedW(5, 1, (b - a) + r.step)}s) [${Py_str(layer(it))}] ${Py_reprStr(Py_take(70, txt(it)))}
           on: ${Report__said_5E38073B(r, a)}`);
                 }
@@ -655,7 +750,7 @@ function Report__timeline(r) {
 }
 
 function Report__at_5E38073B(r, time) {
-    const f_1 = fold((best, f) => {
+    const f_1 = fold_1((best, f) => {
         if (Math.abs(t(f) - time) < Math.abs(t(best) - time)) {
             return f;
         }

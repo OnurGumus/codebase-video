@@ -1,26 +1,24 @@
 
-import { toArray, ofSeq as ofSeq_1, chunkBySize, iterateIndexed, indexed, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, singleton, isEmpty, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { requireFromHome, childProcess, remove, readDir, eprint, run as run_1, writeBytes, extname, fsp, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
-import { FSharpRef, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { list_type, int32_type, float64_type, class_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, deliver, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
+import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { disposeSafe, getEnumerator, int32ToString, Exception, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { PromiseBuilder__While_2044D34, PromiseBuilder__For_1565554B, PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
-import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
+import { parallel, fromContinuations } from "./fable_modules/fable-library-js.5.19.0/Async.js";
+import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { map as map_1, empty, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { empty as empty_1, singleton as singleton_2, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 
 export function toFixed(digits, x) {
     return x.toFixed(digits);
-}
-
-export function awaitJs(p) {
-    return p;
 }
 
 function stdoutWrite(s) {
@@ -92,43 +90,45 @@ export function Server_$reflection() {
 export function startServer(ws, flavour) {
     const clip = resolve(ws);
     const types = equals(flavour, ServeFor.ForRender) ? renderTypes : scanTypes;
-    const server = http.createServer((delegateArg, delegateArg_1) => {
-        const res = delegateArg_1;
-        const reqUrl = delegateArg.url;
-        if (equals(flavour, ServeFor.ForRender) && (reqUrl === "/favicon.ico")) {
-            (res.writeHead(204)).end();
-        }
-        else {
-            const url = decodeURIComponent(new URL(reqUrl, 'http://x').pathname);
-            const patternInput = url.startsWith("/engine/") ? [engineDir, substring(url, "/engine/".length)] : [clip, substring(url, 1)];
-            const baseDir = patternInput[0];
-            const file = resolve(join(ofArray([baseDir, patternInput[1]])));
-            if (!file.startsWith(baseDir + sep_3)) {
-                (res.writeHead(403)).end();
-            }
-            else if (equals(flavour, ServeFor.ForScan) && file.endsWith(".wav")) {
-                (res.writeHead(404)).end();
+    return singleton.Delay(() => {
+        const server = http.createServer((delegateArg, delegateArg_1) => {
+            const res = delegateArg_1;
+            const reqUrl = delegateArg.url;
+            if (equals(flavour, ServeFor.ForRender) && (reqUrl === "/favicon.ico")) {
+                (res.writeHead(204)).end();
             }
             else {
-                awaitJs(fsp.readFile(file)).then((body) => {
-                    const contentType = defaultArg(tryFind_1(extname(file), types), "application/octet-stream");
-                    const headers = equals(flavour, ServeFor.ForRender) ? {
-                        "content-type": contentType,
-                        "cache-control": "no-store",
-                    } : {
-                        "content-type": contentType,
-                    };
-                    (res.writeHead(200, headers)).end(body);
-                }, (_arg) => {
+                const url = decodeURIComponent(new URL(reqUrl, 'http://x').pathname);
+                const patternInput = url.startsWith("/engine/") ? [engineDir, substring(url, "/engine/".length)] : [clip, substring(url, 1)];
+                const baseDir = patternInput[0];
+                const file = resolve(join(ofArray([baseDir, patternInput[1]])));
+                if (!file.startsWith(baseDir + sep_3)) {
+                    (res.writeHead(403)).end();
+                }
+                else if (equals(flavour, ServeFor.ForScan) && file.endsWith(".wav")) {
                     (res.writeHead(404)).end();
-                });
+                }
+                else {
+                    awaitJs(fsp.readFile(file)).then((body) => {
+                        const contentType = defaultArg(tryFind_1(extname(file), types), "application/octet-stream");
+                        const headers = equals(flavour, ServeFor.ForRender) ? {
+                            "content-type": contentType,
+                            "cache-control": "no-store",
+                        } : {
+                            "content-type": contentType,
+                        };
+                        (res.writeHead(200, headers)).end(body);
+                    }, (_arg) => {
+                        (res.writeHead(404)).end();
+                    });
+                }
             }
-        }
-    });
-    return new Promise((ok, _arg_1) => {
-        server.listen(0, "127.0.0.1", (() => {
-            ok(new Server(`http://127.0.0.1:${(server.address()).port}/clip.html`, () => {
-                server.close();
+        });
+        return singleton.ReturnFrom(fromContinuations((tupledArg) => {
+            server.listen(0, "127.0.0.1", (() => {
+                tupledArg[0](new Server(`http://127.0.0.1:${(server.address()).port}/clip.html`, () => {
+                    server.close();
+                }));
             }));
         }));
     });
@@ -140,11 +140,40 @@ const labelled = "(t, label) => {\n        window.render(t);\n        let tag = 
 
 const imagesLoaded = "() => Promise.all(Array.from(document.images, (img) =>\n        (img.complete ? Promise.resolve() : new Promise((ok) => {\n          img.addEventListener(\"load\", ok, { once: true });\n          img.addEventListener(\"error\", ok, { once: true });\n        })).then(() => img.decode().catch(() => {})))).then(() => true)";
 
+class PageMsg extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["PageError", "IsFailed"];
+    }
+    static PageError = new PageMsg(0, []);
+}
+
+function PageMsg_$reflection() {
+    return union_type("Render.PageMsg", [], PageMsg, () => [[], [["Item", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [bool_type])]]]);
+}
+
 class Session {
     constructor(browser, url) {
         this.browser = browser;
         this.url = url;
-        this.failed = false;
+        this.errors = start_1((inbox) => {
+            const loop = (failed) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg) => {
+                if (_arg.tag === 1) {
+                    deliver(singleton_1(() => {
+                        _arg.fields[0].reply(failed);
+                    }));
+                    return singleton.ReturnFrom(loop(failed));
+                }
+                else {
+                    return singleton.ReturnFrom(loop(true));
+                }
+            }));
+            return loop(false);
+        });
     }
 }
 
@@ -156,54 +185,55 @@ function Session_$ctor_Z6861C5C0(browser, url) {
     return new Session(browser, url);
 }
 
-function Session__get_Failed(_) {
-    return _.failed;
+function Session__IsFailed(_) {
+    return singleton.Delay(() => singleton.ReturnFrom(postAndAsyncReply(_.errors, (Item) => (new PageMsg(/* IsFailed */ 1, [Item])))));
 }
 
 function Session__OpenPage(_) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (awaitJs(_.browser.newPage()).then((_arg) => {
+    return singleton.Delay(() => singleton.Bind(fromJs(_.browser.newPage()), (_arg) => {
         const page = _arg;
         page.on("pageerror", ((e) => {
-            _.failed = true;
+            post(_.errors, PageMsg.PageError);
             console.error("page error:", e.message);
         }));
         page.on("console", ((m) => {
             console.log("page:", (m.text()));
         }));
-        return awaitJs(page.setViewport({
+        return singleton.Bind(fromJs(page.setViewport({
             width: 1920,
             height: 1080,
             deviceScaleFactor: 1,
-        })).then(() => (awaitJs(page.goto(_.url, {
+        })), () => singleton.Bind(fromJs(page.goto(_.url, {
             waitUntil: "load",
-        })).then(() => (awaitJs(page.evaluate((0, eval)('(' + "() => window.ready" + ')'))).then(() => (awaitJs(page.evaluate((0, eval)('(' + imagesLoaded + ')'))).then(() => (Promise.resolve(page)))))))));
-    }))));
+        })), () => singleton.Bind(fromJs(page.evaluate((0, eval)('(' + "() => window.ready" + ')'))), () => singleton.Bind(fromJs(page.evaluate((0, eval)('(' + imagesLoaded + ')'))), () => singleton.Return(page)))));
+    }));
 }
 
 function frame(page, t) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (awaitJs(page.evaluate(renderAt, t)).then(() => (awaitJs(page.screenshot({
+    return singleton.Delay(() => singleton.Bind(fromJs(page.evaluate(renderAt, t)), () => singleton.ReturnFrom(fromJs(page.screenshot({
         type: "png",
         optimizeForSpeed: true,
-    })))))));
+    })))));
 }
 
 function evalIn(page, source) {
-    return awaitJs(page.evaluate((0, eval)('(' + source + ')')));
+    return fromJs(page.evaluate((0, eval)('(' + source + ')')));
+}
+
+function mapA(step, items) {
+    return singleton.Delay(() => (!isEmpty(items) ? singleton.Bind(step(head(items)), (_arg) => singleton.Bind(mapA(step, tail(items)), (_arg_1) => singleton.Return(cons(_arg, _arg_1)))) : singleton.Return(empty())));
 }
 
 function stills(ws, first, args) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
-        let pr;
-        return (isEmpty(args) ? ((pr = evalIn(first, "() => window.TIMING.poster"), pr.then(singleton))) : (Promise.resolve(map((s) => (Number(s)), args)))).then((_arg) => PromiseBuilder__For_1565554B(promise, _arg, (_arg_1) => {
-            const t = _arg_1;
-            const file = join(ofArray([ws, "build", concat("still-", toFixed(2, t), ".png")]));
-            return frame(first, t).then((_arg_2) => {
-                writeBytes(file, _arg_2);
-                console.log(file);
-                return Promise.resolve();
-            });
-        }));
-    }));
+    return singleton.Delay(() => singleton.Bind(isEmpty(args) ? singleton.Delay(() => singleton.Bind(evalIn(first, "() => window.TIMING.poster"), (_arg) => singleton.Return(singleton_1(_arg)))) : singleton.Return(map((s) => (Number(s)), args)), (_arg_1) => singleton.For(_arg_1, (_arg_2) => {
+        const t = _arg_2;
+        const file = join(ofArray([ws, "build", concat("still-", toFixed(2, t), ".png")]));
+        return singleton.Bind(frame(first, t), (_arg_3) => {
+            writeBytes(file, _arg_3);
+            console.log(file);
+            return singleton.Zero();
+        });
+    })));
 }
 
 class Beat extends Record {
@@ -245,16 +275,16 @@ function beatsOf(timing, only) {
                 const start = c.start;
                 const t = start + (0.75 * (c.end - start));
                 const text = c.text;
-                return singleton_1(new Beat(t, `${toFixed(1, t)}s  ${id}[${i}]  ${text}`));
+                return singleton_2(new Beat(t, `${toFixed(1, t)}s  ${id}[${i}]  ${text}`));
             }, rangeDouble(0, 1, sentences.length - 1));
         }
         else {
-            return empty();
+            return empty_1();
         }
     }, scenes)));
     const duration = timing.duration;
     if (isEmpty(only)) {
-        return append(sentenceBeats, singleton(new Beat(duration - 0.05, concat(toFixed(1, duration), "s  end"))));
+        return append(sentenceBeats, singleton_1(new Beat(duration - 0.05, concat(toFixed(1, duration), "s  end"))));
     }
     else {
         return sentenceBeats;
@@ -272,50 +302,41 @@ function writeSheet(out, group) {
 }
 
 function sheet(ws, first, args) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (evalIn(first, "() => window.TIMING").then((_arg) => {
+    return singleton.Delay(() => singleton.Bind(evalIn(first, "() => window.TIMING"), (_arg) => {
         const only = filter_1((a) => (a !== ""), args);
         const tag = isEmpty(only) ? "" : (join_1("-", only) + "-");
         const beats = beatsOf(_arg, only);
         if (isEmpty(beats)) {
             eprint(concat("no scenes match ", join_1(" ", only)));
-            return Promise.resolve(2);
+            return singleton.Return(2);
         }
         else {
             const build = join(ofArray([ws, "build"]));
-            return (!isEmpty(only) ? PromiseBuilder__For_1565554B(promise, readDir(build), (_arg_1) => {
-                const f = _arg_1;
+            return singleton.Combine(!isEmpty(only) ? ((iterate((f) => {
                 if (f.startsWith(concat("sheet-", tag)) ? true : f.startsWith(concat("beat-", tag))) {
                     remove(join(ofArray([build, f])));
-                    return Promise.resolve();
                 }
-                else {
-                    return Promise.resolve();
-                }
-            }) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                const files = [];
-                return PromiseBuilder__For_1565554B(promise, indexed(beats), (_arg_2) => {
-                    const b = _arg_2[1];
-                    return awaitJs(first.evaluate(((0, eval)('(' + labelled + ')')), b.T, b.Label)).then(() => {
-                        const file = join(ofArray([build, concat("beat-", tag, padLeft(int32ToString(_arg_2[0]), 2, "0"), ".png")]));
-                        return awaitJs(first.screenshot({
-                            type: "png",
-                        })).then((_arg_4) => {
-                            writeBytes(file, _arg_4);
-                            void (files.push(file));
-                            return Promise.resolve();
-                        });
+            }, readDir(build)), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Bind(mapA((tupledArg) => {
+                const b = tupledArg[1];
+                return singleton.Delay(() => singleton.Bind(fromJs(first.evaluate(((0, eval)('(' + labelled + ')')), b.T, b.Label)), () => {
+                    const file = join(ofArray([build, concat("beat-", tag, padLeft(int32ToString(tupledArg[0]), 2, "0"), ".png")]));
+                    return singleton.Bind(fromJs(first.screenshot({
+                        type: "png",
+                    })), (_arg_2) => {
+                        writeBytes(file, _arg_2);
+                        return singleton.Return(file);
                     });
-                }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                    iterateIndexed((n, group) => {
-                        const out = join(ofArray([build, `sheet-${tag}${n + 1}.png`]));
-                        writeSheet(out, group);
-                        console.log(out);
-                    }, chunkBySize(6, ofSeq_1(files)));
-                    return Promise.resolve(0);
                 }));
-            }));
+            }, indexed(beats)), (_arg_3) => {
+                iterateIndexed((n, group) => {
+                    const out = join(ofArray([build, `sheet-${tag}${n + 1}.png`]));
+                    writeSheet(out, group);
+                    console.log(out);
+                }, chunkBySize(6, _arg_3));
+                return singleton.Return(0);
+            })));
         }
-    }))));
+    }));
 }
 
 function frameTime(fps, i) {
@@ -340,58 +361,239 @@ export function Range$_$reflection() {
     return record_type("Render.Range", [], Range$, () => [["Label", string_type], ["First", int32_type], ["End", int32_type], ["Output", list_type(string_type)], ["Done", lambda_type(unit_type, unit_type)]]);
 }
 
-function renderRange(session, workers, fps, r) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
-        let pr;
+class WriterMsg extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Take", "Frame", "Finish"];
+    }
+}
+
+function WriterMsg_$reflection() {
+    return union_type("Render.WriterMsg", [], WriterMsg, () => [[["Item", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [option_type(int32_type)])]], [["index", int32_type], ["png", obj_type], ["Item3", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])]], [["Item", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [union_type("Microsoft.FSharp.Core.FSharpResult`2", [bool_type, class_type("System.Exception")], FSharpResult$2, () => [[["ResultValue", bool_type]], [["ErrorValue", class_type("System.Exception")]]])])]]]);
+}
+
+class Writer extends Record {
+    constructor(NextToGive, Next, Written, Waiting, Failed) {
+        super();
+        this.NextToGive = (NextToGive | 0);
+        this.Next = (Next | 0);
+        this.Written = (Written | 0);
+        this.Waiting = Waiting;
+        this.Failed = Failed;
+    }
+}
+
+function Writer_$reflection() {
+    return record_type("Render.Writer", [], Writer, () => [["NextToGive", int32_type], ["Next", int32_type], ["Written", int32_type], ["Waiting", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [int32_type, tuple_type(obj_type, option_type(class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])))])], ["Failed", option_type(class_type("System.Exception"))]]);
+}
+
+function $007CExited$007C_$007C(ff) {
+    if (!Operators_IsNull(ff.exitCode)) {
+        return ff.exitCode;
+    }
+    else if (!Operators_IsNull(ff.signalCode)) {
+        return 1;
+    }
+    else {
+        return undefined;
+    }
+}
+
+function writeFrame(ff, png) {
+    return fromContinuations((tupledArg) => {
+        const ok = tupledArg[0];
+        if ($007CExited$007C_$007C(ff) != null) {
+            ok(false);
+        }
+        else if (ff.stdin.write(png)) {
+            ok(true);
+        }
+        else {
+            const stdin = ff.stdin;
+            const settle = (_arg_2) => {
+                stdin.removeListener("drain", settle);
+                ff.removeListener("close", settle);
+                ok(true);
+            };
+            stdin.once("drain", settle);
+            ff.once("close", settle);
+        }
+    });
+}
+
+function exitOf(ff) {
+    return fromContinuations((tupledArg) => {
+        const ok = tupledArg[0];
+        const activePatternResult = $007CExited$007C_$007C(ff);
+        if (activePatternResult != null) {
+            const code = activePatternResult | 0;
+            ok(code);
+        }
+        else {
+            ff.once("close", ((code_1) => {
+                ok(Operators_IsNull(code_1) ? 1 : code_1);
+            }));
+        }
+    });
+}
+
+function nextInOrder(state_mut, taken_mut) {
+    nextInOrder:
+    while (true) {
+        const state = state_mut, taken = taken_mut;
+        const matchValue = FSharpMap__TryFind(state.Waiting, state.Next);
+        if (matchValue == null) {
+            return [state, reverse(taken)];
+        }
+        else {
+            const png = matchValue[0];
+            const owed = matchValue[1];
+            state_mut = (new Writer(state.NextToGive, (state.Next + 1) | 0, state.Written, FSharpMap__Remove(state.Waiting, state.Next), state.Failed));
+            taken_mut = cons([state.Next, png, owed], taken);
+            continue nextInOrder;
+        }
+        break;
+    }
+}
+
+function startWriter(ff, pages, fps, r) {
+    const window$ = (pages * 8) | 0;
+    const seconds = (frames) => toFixed(0, frames / fps);
+    const writeAll = (written, frames_1) => singleton.Delay(() => {
+        let i;
+        return !isEmpty(frames_1) ? singleton.Bind((i = (head(frames_1)[0] | 0), singleton.Delay(() => singleton.Bind(writeFrame(ff, head(frames_1)[1]), (_arg) => singleton.Combine((((i - r.First) % ~~fps) === 0) ? ((stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `)), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return(_arg)))))), (_arg_1) => singleton.ReturnFrom(writeAll(_arg_1 ? ((written + 1) | 0) : written, tail(frames_1)))) : singleton.Return(written);
+    });
+    return start_1((inbox) => {
+        const loop = (state_2) => singleton.Delay(() => singleton.Bind(receive(inbox), (_arg_6) => {
+            const msg_2 = _arg_6;
+            return singleton.Bind(singleton.Delay(() => singleton.TryWith(singleton.Delay(() => {
+                let state, msg;
+                return singleton.ReturnFrom((state = state_2, (msg = msg_2, singleton.Delay(() => {
+                    const matchValue = state.Failed;
+                    switch (msg.tag) {
+                        case 1:
+                            if (matchValue == null) {
+                                const atOnce = (msg.fields[0] - state.Next) <= window$;
+                                const patternInput = nextInOrder(new Writer(state.NextToGive, state.Next, state.Written, FSharpMap__Add(state.Waiting, msg.fields[0], [msg.fields[1], atOnce ? undefined : msg.fields[2]]), state.Failed), empty());
+                                const next = patternInput[0];
+                                const frames_2 = patternInput[1];
+                                return singleton.Bind(writeAll(next.Written, frames_2), (_arg_2) => {
+                                    const owed_1 = map((r_1) => (() => {
+                                        r_1.reply(undefined);
+                                    }), choose((tupledArg) => tupledArg[2], frames_2));
+                                    return singleton.Return([new Writer(next.NextToGive, next.Next, _arg_2, next.Waiting, next.Failed), append(atOnce ? singleton_1(() => {
+                                        msg.fields[2].reply(undefined);
+                                    }) : empty(), owed_1)]);
+                                });
+                            }
+                            else {
+                                return singleton.Return([state, singleton_1(() => {
+                                    msg.fields[2].reply(undefined);
+                                })]);
+                            }
+                        case 2:
+                            if (matchValue == null) {
+                                ff.stdin.end();
+                                return singleton.Bind(exitOf(ff), (_arg_5) => {
+                                    const code = _arg_5 | 0;
+                                    return singleton.Combine((code !== 0) ? ((eprint(concat("\nffmpeg failed on ", r.Label)), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return([state, singleton_1(() => {
+                                        msg.fields[0].reply(new FSharpResult$2(/* Ok */ 0, [(code === 0) && (state.Written === r.End)]));
+                                    })])));
+                                });
+                            }
+                            else {
+                                const e = matchValue;
+                                return singleton.Return([state, singleton_1(() => {
+                                    msg.fields[0].reply(new FSharpResult$2(/* Error */ 1, [e]));
+                                })]);
+                            }
+                        default:
+                            if (matchValue == null) {
+                                if ($007CExited$007C_$007C(ff) != null) {
+                                    return singleton.Return([state, singleton_1(() => {
+                                        msg.fields[0].reply(undefined);
+                                    })]);
+                                }
+                                else if (state.NextToGive < r.End) {
+                                    const given = state.NextToGive | 0;
+                                    return singleton.Return([new Writer((given + 1) | 0, state.Next, state.Written, state.Waiting, state.Failed), singleton_1(() => {
+                                        msg.fields[0].reply(given);
+                                    })]);
+                                }
+                                else {
+                                    return singleton.Return([state, singleton_1(() => {
+                                        msg.fields[0].reply(undefined);
+                                    })]);
+                                }
+                            }
+                            else {
+                                return singleton.Return([state, singleton_1(() => {
+                                    msg.fields[0].reply(undefined);
+                                })]);
+                            }
+                    }
+                }))));
+            }), (_arg_7) => {
+                let state_1, msg_1, e_1, own, waiting;
+                return singleton.Return((state_1 = state_2, (msg_1 = msg_2, (e_1 = _arg_7, (own = ((msg_1.tag === 1) ? (() => {
+                    msg_1.fields[2].reply(undefined);
+                }) : ((msg_1.tag === 2) ? (() => {
+                    msg_1.fields[0].reply(new FSharpResult$2(/* Error */ 1, [e_1]));
+                }) : (() => {
+                    msg_1.fields[0].reply(undefined);
+                }))), (waiting = toList(delay(() => collect((matchValue_2) => {
+                    const matchValue_3 = matchValue_2[1][1];
+                    if (matchValue_3 == null) {
+                        return empty_1();
+                    }
+                    else {
+                        const reply_9 = matchValue_3;
+                        return singleton_2(() => {
+                            reply_9.reply(undefined);
+                        });
+                    }
+                }, state_1.Waiting))), [new Writer(state_1.NextToGive, state_1.Next, state_1.Written, empty_2({
+                    Compare: (x, y) => (comparePrimitives(x, y) | 0),
+                }), e_1), cons(own, waiting)]))))));
+            })), (_arg_8) => {
+                deliver(_arg_8[1]);
+                return singleton.ReturnFrom(loop(_arg_8[0]));
+            });
+        }));
+        return loop(new Writer(r.First, r.First, r.First, empty_2({
+            Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+        }), undefined));
+    });
+}
+
+function renderRange(session, pages, fps, r) {
+    return singleton.Delay(() => {
         const ff = childProcess.spawn("ffmpeg", toArray(append(ofArray(["-hide_banner", "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", fps.toString(), "-i", "-"]), r.Output)), {
             stdio: ["pipe", "inherit", "inherit"],
         });
-        const exited = new FSharpRef(undefined);
-        const closed = new Promise((ok, _arg) => {
-            ff.on("close", ((code) => {
-                exited.contents = (Operators_IsNull(code) ? 1 : code);
-                ok();
-            }));
-        });
-        ff.stdin.on("error", ((_arg_1) => {
+        ff.stdin.on("error", ((_arg) => {
         }));
-        const ready = new Map();
-        const next = new FSharpRef(r.First);
-        const written = new FSharpRef(r.First);
-        const seconds = (frames) => toFixed(0, frames / fps);
-        const flush = () => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => PromiseBuilder__While_2044D34(promise, () => (ready.has(written.contents) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise, () => {
-            const buf = ready.get(written.contents);
-            ready.delete(written.contents);
-            written.contents = ((written.contents + 1) | 0);
-            return !(ff.stdin.write(buf)) ? ((Promise.race([new Promise((ok_1, _arg_2) => {
-                ff.stdin.once("drain", (() => {
-                    ok_1();
-                }));
-            }), closed])).then(() => (Promise.resolve(undefined)))) : (Promise.resolve());
-        }))));
-        return ((pr = map_1((page) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => PromiseBuilder__While_2044D34(promise, () => (((next.contents < r.End) && !Session__get_Failed(session)) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise, () => {
-            const i = next.contents | 0;
-            next.contents = ((i + 1) | 0);
-            return frame(page, frameTime(fps, i)).then((_arg_4) => {
-                ready.set(i, _arg_4);
-                return PromiseBuilder__While_2044D34(promise, () => (((i - written.contents) > (workers.length * 8)) && (exited.contents == null)), PromiseBuilder__Delay_62FBFDE1(promise, () => ((new Promise(resolve => setTimeout(resolve, 5))).then(() => (Promise.resolve(undefined)))))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (flush().then(() => {
-                    if (((i - r.First) % ~~fps) === 0) {
-                        stdoutWrite("\r" + (`${r.Label}  ${seconds(i - r.First)}s / ${seconds(r.End - r.First)}s  `));
-                        return Promise.resolve();
-                    }
-                    else {
-                        return Promise.resolve();
-                    }
-                }))));
-            });
-        })))), workers), Promise.all(pr))).then((_arg_7) => (flush().then(() => {
-            ff.stdin.end();
-            return closed.then(() => {
-                const ok_2 = (!Session__get_Failed(session) && equals(exited.contents, 0)) && (written.contents === r.End);
-                return (ok_2 ? ((r.Done(), Promise.resolve())) : (!equals(exited.contents, 0) ? ((eprint(concat("\nffmpeg failed on ", r.Label)), Promise.resolve())) : (Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve(ok_2))));
-            });
-        })));
-    }));
+        const writer = startWriter(ff, length(pages), fps, r);
+        const draw = (page) => singleton.Delay(() => singleton.Bind(Session__IsFailed(session), (_arg_1) => (!_arg_1 ? singleton.Bind(postAndAsyncReply(writer, (Item) => (new WriterMsg(/* Take */ 0, [Item]))), (_arg_2) => {
+            if (_arg_2 == null) {
+                return singleton.Zero();
+            }
+            else {
+                const i = _arg_2 | 0;
+                return singleton.Bind(frame(page, frameTime(fps, i)), (_arg_3) => singleton.Bind(postAndAsyncReply(writer, (reply) => (new WriterMsg(/* Frame */ 1, [i, _arg_3, reply]))), () => singleton.ReturnFrom(draw(page))));
+            }
+        }) : singleton.Zero())));
+        return singleton.Bind(parallel(map(draw, pages)), (_arg_5) => singleton.Bind(postAndAsyncReply(writer, (Item_1) => (new WriterMsg(/* Finish */ 2, [Item_1]))), (_arg_6) => ((_arg_6.tag === 0) ? singleton.Bind(Session__IsFailed(session), (_arg_7) => {
+            const ok = !_arg_7 && _arg_6.fields[0];
+            return singleton.Combine(ok ? ((r.Done(), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => singleton.Return(ok)));
+        }) : singleton.Return((() => {
+            throw _arg_6.fields[0];
+        })()))));
+    });
 }
 
 function clearUnfilteredSheets(ws) {
@@ -414,110 +616,99 @@ function clearUnfilteredSheets(ws) {
 }
 
 function forever() {
-    return new Promise((_arg, _arg_1) => {
+    return fromContinuations((_arg) => {
     });
 }
 
 function withChrome(clip, job) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (startServer(clip, ServeFor.ForRender).then((_arg) => {
+    return singleton.Delay(() => singleton.Bind(startServer(clip, ServeFor.ForRender), (_arg) => {
         const server = _arg;
         const matchValue = findChrome();
         if (matchValue != null) {
             const chrome = matchValue;
             const puppeteer = requireFromHome("puppeteer-core");
-            return awaitJs(puppeteer.launch({
+            return singleton.Bind(fromJs(puppeteer.launch({
                 executablePath: chrome,
                 headless: true,
                 args: ["--font-render-hinting=none", "--force-color-profile=srgb", "--autoplay-policy=no-user-gesture-required"],
-            })).then((_arg_1) => {
+            })), (_arg_1) => {
                 const browser = _arg_1;
                 const session = Session_$ctor_Z6861C5C0(browser, server.Url);
-                return Session__OpenPage(session).then((_arg_2) => (job(session, _arg_2).then((_arg_3) => {
+                return singleton.Bind(Session__OpenPage(session), (_arg_2) => singleton.Bind(job(session, _arg_2), (_arg_3) => {
                     const code = _arg_3 | 0;
-                    return awaitJs(browser.close()).then(() => {
+                    return singleton.Bind(fromJs(browser.close()), () => {
                         server.Close();
-                        return Promise.resolve((code !== 0) ? code : (Session__get_Failed(session) ? 1 : 0));
+                        return singleton.Bind(Session__IsFailed(session), (_arg_5) => singleton.Return((code !== 0) ? code : (_arg_5 ? 1 : 0)));
                     });
-                })));
+                }));
             });
         }
         else {
             eprint("no Chrome found: set CHROME to the browser\'s executable");
             server.Close();
-            return Promise.resolve(2);
+            return singleton.Return(2);
         }
-    }))));
+    }));
 }
 
 /**
  * mode: stills | sheet | serve; returns an exit code.
  */
 export function run(ws, mode, args) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+    return singleton.Delay(() => {
         const clip = resolve(ws);
-        return (((mode === "sheet") && isEmpty(args)) ? ((clearUnfilteredSheets(clip), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => ((mode === "serve") ? (startServer(clip, ServeFor.ForRender).then((_arg) => {
+        return singleton.Combine(((mode === "sheet") && isEmpty(args)) ? ((clearUnfilteredSheets(clip), singleton.Zero())) : singleton.Zero(), singleton.Delay(() => ((mode === "serve") ? singleton.Bind(startServer(clip, ServeFor.ForRender), (_arg) => {
             console.log(concat(_arg.Url, "?preview   (click the page to start; ?t=12.5 freezes one moment)"));
             console.log("Ctrl+C to stop.");
-            return forever();
-        })) : (withChrome(clip, (_arg_1, first) => {
-            if (mode === "stills") {
-                const pr = stills(clip, first, args);
-                return pr.then(() => 0);
-            }
-            else {
-                return sheet(clip, first, args);
-            }
-        })))));
-    }));
+            return singleton.ReturnFrom(forever());
+        }) : singleton.ReturnFrom(withChrome(clip, (_arg_1, first) => ((mode === "stills") ? singleton.Delay(() => singleton.Bind(stills(clip, first, args), () => singleton.Return(0))) : sheet(clip, first, args)))))));
+    });
 }
 
 /**
  * Draws the frame at each time and writes it as a JPEG to its file (the `present` step's slides); returns an exit code.
  */
 export function shots(ws, wanted_1) {
-    return withChrome(resolve(ws), (_arg, first) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (PromiseBuilder__For_1565554B(promise, wanted_1, (_arg_1) => (awaitJs(first.evaluate(renderAt, _arg_1[0])).then(() => (awaitJs(first.screenshot({
+    return withChrome(resolve(ws), (_arg, first) => singleton.Delay(() => singleton.Combine(singleton.For(wanted_1, (_arg_1) => singleton.Bind(fromJs(first.evaluate(renderAt, _arg_1[0])), () => singleton.Bind(fromJs(first.screenshot({
         type: "jpeg",
         quality: 90,
-    })).then((_arg_3) => {
+    })), (_arg_3) => {
         writeBytes(_arg_1[1], _arg_3);
-        return Promise.resolve();
-    }))))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve(0))))))));
+        return singleton.Zero();
+    }))), singleton.Delay(() => singleton.Return(0)))));
+}
+
+function openPages(session, count, pages) {
+    return singleton.Delay(() => ((length(pages) < count) ? singleton.Bind(Session__OpenPage(session), (_arg) => singleton.ReturnFrom(openPages(session, count, append(pages, singleton_1(_arg))))) : singleton.Return(pages)));
+}
+
+function renderAll(session, pages, fps, jobs, frames) {
+    return singleton.Delay(() => {
+        if (!isEmpty(jobs)) {
+            const job = head(jobs);
+            return singleton.Bind(renderRange(session, pages, fps, job), (_arg) => (_arg ? singleton.ReturnFrom(renderAll(session, pages, fps, tail(jobs), ((frames + job.End) - job.First) | 0)) : singleton.Return([frames, false])));
+        }
+        else {
+            return singleton.Return([frames, true]);
+        }
+    });
 }
 
 /**
  * Renders the runs one after another, in one Chrome. Stops at the first that fails; returns an exit code.
  */
 export function ranges(ws, fps, jobs) {
-    return withChrome(resolve(ws), (session, first) => PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
+    return withChrome(resolve(ws), (session, first) => singleton.Delay(() => {
         let option_1, s;
         const workerCount = defaultArg((option_1 = env("WORKERS"), (option_1 != null) ? ((s = option_1, Number(s))) : undefined), 4);
-        const workers = [first];
-        return PromiseBuilder__While_2044D34(promise, () => (workers.length < workerCount), PromiseBuilder__Delay_62FBFDE1(promise, () => (Session__OpenPage(session).then((_arg) => {
-            void (workers.push(_arg));
-            return Promise.resolve();
-        })))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+        return singleton.Bind(openPages(session, workerCount, singleton_1(first)), (_arg) => {
             const start = Date.now();
-            const ok = new FSharpRef(true);
-            const frames = new FSharpRef(0);
-            return PromiseBuilder__For_1565554B(promise, jobs, (_arg_1) => {
-                const job = _arg_1;
-                return ok.contents ? (renderRange(session, workers, fps, job).then((_arg_2) => {
-                    const finished = _arg_2;
-                    ok.contents = finished;
-                    if (finished) {
-                        frames.contents = (((frames.contents + job.End) - job.First) | 0);
-                        return Promise.resolve();
-                    }
-                    else {
-                        return Promise.resolve();
-                    }
-                })) : (Promise.resolve());
-            }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
+            return singleton.Bind(renderAll(session, _arg, fps, jobs, 0), (_arg_1) => {
                 console.log(`
-rendered ${frames.contents} frames in ${toFixed(1, (Date.now() - start) / 1000)}s`);
-                return Promise.resolve(ok.contents ? 0 : 1);
-            }));
-        }));
-    })));
+rendered ${_arg_1[0]} frames in ${toFixed(1, (Date.now() - start) / 1000)}s`);
+                return singleton.Return(_arg_1[1] ? 0 : 1);
+            });
+        });
+    }));
 }
 

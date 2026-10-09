@@ -28,8 +28,6 @@ let toFixed (digits: int) (x: float) : string = (box x)?toFixed (digits)
 [<Emit("(0, eval)('(' + $0 + ')')")>]
 let browserFn (source: string) : obj = jsNative
 
-let awaitJs (p: obj) : JS.Promise<'T> = unbox p
-
 let private stdoutWrite (s: string) : unit = proc?stdout?write (s) |> ignore
 
 /// console.log / console.error with two arguments, printed with a space between (a ParamArray would spread a string).
@@ -94,7 +92,7 @@ let private requestPath (reqUrl: string) : string = jsNative
 type Server = { Url: string; Close: unit -> unit }
 
 /// Serves the clip directory as the root and the engine directory as /engine/, on a free localhost port.
-let startServer (ws: string) (flavour: ServeFor) : JS.Promise<Server> =
+let startServer (ws: string) (flavour: ServeFor) : Async<Server> =
     let clip = resolve ws
     let types = if flavour = ForRender then renderTypes else scanTypes
 
@@ -129,12 +127,15 @@ let startServer (ws: string) (flavour: ServeFor) : JS.Promise<Server> =
                     )
                 |> ignore
 
-    let server = http?createServer (System.Action<obj, obj>(respond))
-    Promise.create (fun ok _ ->
-        server?listen (0, "127.0.0.1", (fun () ->
-            ok { Url = $"""http://127.0.0.1:{server?address()?port}/clip.html"""
-                 Close = fun () -> server?close () |> ignore }))
-        |> ignore)
+    async {
+        let server = http?createServer (System.Action<obj, obj>(respond))
+        return!
+            Async.FromContinuations(fun (ok, _, _) ->
+                server?listen (0, "127.0.0.1", (fun () ->
+                    ok { Url = $"""http://127.0.0.1:{server?address()?port}/clip.html"""
+                         Close = fun () -> server?close () |> ignore }))
+                |> ignore)
+    }
 
 // Pages --------------------------------------------------------------------------------------------------------
 
@@ -160,45 +161,78 @@ let private imagesLoaded =
           img.addEventListener("error", ok, { once: true });
         })).then(() => img.decode().catch(() => {})))).then(() => true)"""
 
-/// One headless Chrome with the clip open in as many pages as asked. A page error marks the whole run failed.
-type private Session(browser: obj, url: string) =
-    let mutable failed = false
-    member _.Failed = failed
+/// What the pages tell the session: one of them reported an error; and the question whether any has.
+type private PageMsg =
+    | PageError
+    | IsFailed of AsyncReplyChannel<bool>
 
-    member _.OpenPage() : JS.Promise<obj> =
-        promise {
-            let! (page: obj) = awaitJs (browser?newPage ())
+/// One headless Chrome with the clip open in as many pages as asked. A page error marks the whole run failed: each
+/// page's `pageerror` handler tells a small agent, which holds whether one was seen.
+type private Session(browser: obj, url: string) =
+    let errors =
+        MailboxProcessor<PageMsg>.Start(fun inbox ->
+            let rec loop (failed: bool) : Async<unit> =
+                async {
+                    match! inbox.Receive() with
+                    | PageError -> return! loop true
+                    | IsFailed reply ->
+                        deliver [ fun () -> reply.Reply failed ]
+                        return! loop failed
+                }
+            loop false)
+
+    /// True once any page of the session has reported an error.
+    member _.IsFailed() : Async<bool> = async { return! errors.PostAndAsyncReply IsFailed }
+
+    member _.OpenPage() : Async<obj> =
+        async {
+            let! (page: obj) = fromJs (browser?newPage ())
             page?on ("pageerror", (fun (e: obj) ->
-                failed <- true
+                errors.Post PageError
                 error2 "page error:" e?message))
             |> ignore
             page?on ("console", (fun (m: obj) -> log2 "page:" (m?text ())))
             |> ignore
-            do! awaitJs (page?setViewport (createObj [ "width" ==> 1920; "height" ==> 1080; "deviceScaleFactor" ==> 1 ]))
-            do! awaitJs (page?goto (url, createObj [ "waitUntil" ==> "load" ]))
-            do! awaitJs (page?evaluate (browserFn "() => window.ready"))
+            do! fromJs (page?setViewport (createObj [ "width" ==> 1920; "height" ==> 1080; "deviceScaleFactor" ==> 1 ]))
+            do! fromJs (page?goto (url, createObj [ "waitUntil" ==> "load" ]))
+            do! fromJs (page?evaluate (browserFn "() => window.ready"))
             // window.ready waits for the fonts, not for pictures a module put on the page. A run of frames may start
             // at any scene, so the first frame drawn can be one that shows them.
-            do! awaitJs (page?evaluate (browserFn imagesLoaded))
+            do! fromJs (page?evaluate (browserFn imagesLoaded))
             return page
         }
 
-let private frame (page: obj) (t: float) : JS.Promise<obj> =
-    promise {
-        do! awaitJs (page?evaluate (renderAt, t))
-        return! awaitJs (page?screenshot (createObj [ "type" ==> "png"; "optimizeForSpeed" ==> true ]))
+let private frame (page: obj) (t: float) : Async<obj> =
+    async {
+        do! fromJs (page?evaluate (renderAt, t))
+        return! fromJs (page?screenshot (createObj [ "type" ==> "png"; "optimizeForSpeed" ==> true ]))
     }
 
-let private evalIn (page: obj) (source: string) : JS.Promise<'T> = awaitJs (page?evaluate (browserFn source))
+let private evalIn (page: obj) (source: string) : Async<'T> = fromJs (page?evaluate (browserFn source))
+
+/// The steps one after another, each awaited before the next starts; their results in order.
+let rec private mapA (step: 'a -> Async<'b>) (items: 'a list) : Async<'b list> =
+    async {
+        match items with
+        | [] -> return []
+        | x :: rest ->
+            let! y = step x
+            let! ys = mapA step rest
+            return y :: ys
+    }
 
 // Modes --------------------------------------------------------------------------------------------------------
 
-let private stills (ws: string) (first: obj) (args: string list) : JS.Promise<unit> =
-    promise {
+let private stills (ws: string) (first: obj) (args: string list) : Async<unit> =
+    async {
         let! times =
             match args with
-            | [] -> evalIn first "() => window.TIMING.poster" |> Promise.map List.singleton
-            | _ -> Promise.lift (args |> List.map jsNumber)
+            | [] ->
+                async {
+                    let! (poster: float) = evalIn first "() => window.TIMING.poster"
+                    return [ poster ]
+                }
+            | _ -> async.Return(args |> List.map jsNumber)
         for t in times do
             let file = join [ ws; "build"; $"still-{toFixed 2 t}.png" ]
             let! png = frame first t
@@ -245,8 +279,8 @@ let private writeSheet (out: string) (group: string list) =
     if code <> 0 then failwith $"ffmpeg {code}"
 
 /// Returns 2 when no scene matches the keys.
-let private sheet (ws: string) (first: obj) (args: string list) : JS.Promise<int> =
-    promise {
+let private sheet (ws: string) (first: obj) (args: string list) : Async<int> =
+    async {
         // One still late in each sentence (after its transitions), labelled, six to a sheet.
         let! (timing: obj) = evalIn first "() => window.TIMING"
         let only = args |> List.filter (fun a -> a <> "")
@@ -259,17 +293,21 @@ let private sheet (ws: string) (first: obj) (args: string list) : JS.Promise<int
             let build = join [ ws; "build" ]
             if not only.IsEmpty then
                 // Clear this filter's old sheets only; everyone else's stay.
-                for f in readDir build do
-                    if f.StartsWith $"sheet-{tag}" || f.StartsWith $"beat-{tag}" then remove (join [ build; f ])
-            let files = ResizeArray<string>()
-            for k, b in List.indexed beats do
-                do! awaitJs (first?evaluate (browserFn labelled, b.T, b.Label))
-                let file = join [ build; $"""beat-{tag}{(string k).PadLeft(2, '0')}.png""" ]
-                let! png = awaitJs (first?screenshot (createObj [ "type" ==> "png" ]))
-                writeBytes file png
-                files.Add file
+                readDir build
+                |> List.iter (fun f ->
+                    if f.StartsWith $"sheet-{tag}" || f.StartsWith $"beat-{tag}" then remove (join [ build; f ]))
+            let! files =
+                beats
+                |> List.indexed
+                |> mapA (fun (k, b) ->
+                    async {
+                        do! fromJs (first?evaluate (browserFn labelled, b.T, b.Label))
+                        let file = join [ build; $"""beat-{tag}{(string k).PadLeft(2, '0')}.png""" ]
+                        let! png = fromJs (first?screenshot (createObj [ "type" ==> "png" ]))
+                        writeBytes file png
+                        return file
+                    })
             files
-            |> List.ofSeq
             |> List.chunkBySize 6
             |> List.iteri (fun n group ->
                 let out = join [ build; $"sheet-{tag}{n + 1}.png" ]
@@ -294,60 +332,191 @@ type Range =
       /// called when ffmpeg has written its files and exited with 0
       Done: unit -> unit }
 
-/// Renders one run. Pages render frames in parallel; a reorder buffer hands them to ffmpeg in order.
-/// False when a page failed or ffmpeg did.
-let private renderRange (session: Session) (workers: ResizeArray<obj>) (fps: float) (r: Range) : JS.Promise<bool> =
-    promise {
+// The frame writer -------------------------------------------------------------------------------------------
+
+/// What the pages say to the writer, the one holder of ffmpeg's stdin for a run.
+type private WriterMsg =
+    /// the next frame to draw: None at the run's end, or once ffmpeg has exited or the writer has failed
+    | Take of AsyncReplyChannel<int option>
+    /// a drawn frame (a PNG); answered once it is written, or at once when it is within the window
+    | Frame of index: int * png: obj * AsyncReplyChannel<unit>
+    /// every page has stopped: closes stdin and waits for ffmpeg to exit; true when ffmpeg exited with 0 and every
+    /// frame of the run went into the pipe (Written reached End), false otherwise, or what made the writer fail
+    | Finish of AsyncReplyChannel<Result<bool, exn>>
+
+/// The writer's state: the next frame to hand out, the next to write, how many frames went into the pipe, and the
+/// frames drawn ahead of the next to write, each with the answer it is still owed (None: it was answered when it
+/// came, being within the window). Waiting is only looked up by the next index.
+type private Writer =
+    { NextToGive: int
+      Next: int
+      /// First plus the frames that went into the pipe: one that came after ffmpeg had exited was not written, and
+      /// does not count
+      Written: int
+      Waiting: Map<int, obj * AsyncReplyChannel<unit> option>
+      /// what went wrong in the writer: from then on nothing is written and every message is answered at once
+      Failed: exn option }
+
+/// ffmpeg once it has exited, with its exit status (1 when a signal ended it).
+let private (|Exited|_|) (ff: obj) : int option =
+    if not (isNull ff?exitCode) then Some(unbox ff?exitCode)
+    elif not (isNull ff?signalCode) then Some 1
+    else None
+
+/// Writes a frame into ffmpeg's stdin, unless ffmpeg has exited; whether it wrote it. After a write that fills the
+/// pipe, completes when it takes more ("drain") or ffmpeg goes ("close"), whichever comes first. The write and the
+/// listening are one step: an Async step can be put off to a later turn of the event loop (Fable's trampoline does
+/// that every 2000 steps), and a drain that came in between would never be heard.
+let private writeFrame (ff: obj) (png: obj) : Async<bool> =
+    Async.FromContinuations(fun (ok, _, _) ->
+        match ff with
+        | Exited _ -> ok false
+        | _ ->
+            if ff?stdin?write (png) then
+                ok true
+            else
+                let stdin: obj = ff?stdin
+                // The first of the two events takes both handlers away, so `ok` runs once.
+                let rec settle (_: obj) : unit =
+                    stdin?removeListener ("drain", settle) |> ignore
+                    ff?removeListener ("close", settle) |> ignore
+                    ok true
+                stdin?once ("drain", settle) |> ignore
+                ff?once ("close", settle) |> ignore)
+
+/// ffmpeg's exit status (1 when a signal ended it), once it has exited. (Node sets exitCode before the close event,
+/// so the check and the listener cannot miss it, whenever this step runs.)
+let private exitOf (ff: obj) : Async<int> =
+    Async.FromContinuations(fun (ok, _, _) ->
+        match ff with
+        | Exited code -> ok code
+        | _ -> ff?once ("close", (fun (code: obj) -> ok (if isNull code then 1 else unbox code))) |> ignore)
+
+/// The frames that are next in order, taken out of the waiting ones (each with the answer it is owed), and the state
+/// without them.
+let rec private nextInOrder (state: Writer) (taken: (int * obj * AsyncReplyChannel<unit> option) list) =
+    match state.Waiting.TryFind state.Next with
+    | Some(png, owed) ->
+        let rest = { state with Next = (state.Next + 1) ||| 0; Waiting = state.Waiting.Remove state.Next }
+        nextInOrder rest ((state.Next, png, owed) :: taken)
+    | None -> state, List.rev taken
+
+/// The writer of one run: the one holder of ffmpeg's stdin. It hands out the frame indices, writes each frame as soon
+/// as the ones before it are written, waiting for room in the pipe after a write that filled it, and prints the
+/// progress line on whole seconds. A page whose frame is more than `pages * 8` ahead of the next to write waits for
+/// its answer until that frame is written, which bounds the frames held.
+let private startWriter (ff: obj) (pages: int) (fps: float) (r: Range) : MailboxProcessor<WriterMsg> =
+    let window = pages * 8
+    let seconds (frames: int) = toFixed 0 (float frames / fps)
+    /// Frame i into the pipe, then the progress line; whether the frame went in.
+    let write (i: int) (png: obj) : Async<bool> =
+        async {
+            let! wrote = writeFrame ff png
+            if (i - r.First) % int fps = 0 then
+                stdoutWrite ("\r" + $"{r.Label}  {seconds (i - r.First)}s / {seconds (r.End - r.First)}s  ")
+            return wrote
+        }
+    /// The frames into the pipe in order; `written` counts on by each one that went in.
+    let rec writeAll (written: int) (frames: (int * obj * AsyncReplyChannel<unit> option) list) : Async<int> =
+        async {
+            match frames with
+            | [] -> return written
+            | (i, png, _) :: rest ->
+                let! wrote = write i png
+                return! writeAll (if wrote then (written + 1) ||| 0 else written) rest
+        }
+    /// One message: the state it leaves and the answers it owes, given once the state is settled.
+    let handle (state: Writer) (msg: WriterMsg) : Async<Writer * Answers> =
+        async {
+            match msg, state.Failed with
+            | Take reply, Some _ -> return state, [ fun () -> reply.Reply None ]
+            | Frame(_, _, reply), Some _ -> return state, [ fun () -> reply.Reply() ]
+            | Finish reply, Some e -> return state, [ fun () -> reply.Reply(Error e) ]
+            | Take reply, None ->
+                match ff with
+                | Exited _ -> return state, [ fun () -> reply.Reply None ]
+                | _ when state.NextToGive < r.End ->
+                    let given = state.NextToGive
+                    return { state with NextToGive = (given + 1) ||| 0 }, [ fun () -> reply.Reply(Some given) ]
+                | _ -> return state, [ fun () -> reply.Reply None ]
+            | Frame(i, png, reply), None ->
+                let atOnce = i - state.Next <= window
+                let held = { state with Waiting = state.Waiting.Add(i, (png, (if atOnce then None else Some reply))) }
+                let next, frames = nextInOrder held []
+                let! written = writeAll next.Written frames
+                let owed = frames |> List.choose (fun (_, _, owed) -> owed) |> List.map (fun r -> fun () -> r.Reply())
+                return { next with Written = written }, (if atOnce then [ fun () -> reply.Reply() ] else []) @ owed
+            | Finish reply, None ->
+                ff?stdin?``end`` () |> ignore
+                let! code = exitOf ff
+                if code <> 0 then eprint $"\nffmpeg failed on {r.Label}"
+                return state, [ fun () -> reply.Reply(Ok(code = 0 && state.Written = r.End)) ]
+        }
+    /// The writer after `e`, whatever `handle` threw (a write, say; nothing there is expected to): nothing more is
+    /// written, the message's caller and every page still waiting are answered (the one place Waiting is walked, and
+    /// nothing is printed), and later messages are answered at once. So the agent never stops and no page waits for
+    /// ever; Finish gives `e` back, and renderRange raises it (the command fails with it).
+    let failed (state: Writer) (msg: WriterMsg) (e: exn) : Writer * Answers =
+        let own =
+            match msg with
+            | Take reply -> fun () -> reply.Reply None
+            | Frame(_, _, reply) -> fun () -> reply.Reply()
+            | Finish reply -> fun () -> reply.Reply(Error e)
+        let waiting =
+            [ for KeyValue(_, (_, owed)) in state.Waiting do
+                  match owed with
+                  | Some reply -> fun () -> reply.Reply()
+                  | None -> () ]
+        { state with Waiting = Map.empty; Failed = Some e }, own :: waiting
+    MailboxProcessor.Start(fun inbox ->
+        let rec loop (state: Writer) : Async<unit> =
+            async {
+                let! msg = inbox.Receive()
+                let! next, answers =
+                    async {
+                        try
+                            return! handle state msg
+                        with e ->
+                            return failed state msg e
+                    }
+                deliver answers
+                return! loop next
+            }
+        loop { NextToGive = r.First; Next = r.First; Written = r.First; Waiting = Map.empty; Failed = None })
+
+/// Renders one run: the pages draw frames in parallel, each taking the next index from the writer, which pipes them
+/// to ffmpeg in order. False when a page failed or ffmpeg did.
+let private renderRange (session: Session) (pages: obj list) (fps: float) (r: Range) : Async<bool> =
+    async {
         let ff =
             childProcess?spawn (
                 "ffmpeg",
                 List.toArray ([ "-hide_banner"; "-loglevel"; "error"; "-y"; "-f"; "image2pipe"; "-framerate"; string fps; "-i"; "-" ] @ r.Output),
                 createObj [ "stdio" ==> [| "pipe"; "inherit"; "inherit" |] ]
             )
-        let exited: int option ref = ref None
-        let closed: JS.Promise<unit> =
-            Promise.create (fun ok _ ->
-                ff?on ("close", (fun (code: obj) ->
-                    exited.Value <- Some(if isNull code then 1 else unbox code)
-                    ok ()))
-                |> ignore)
         // ffmpeg going away early shows as its exit code, not as an unhandled EPIPE.
         ff?stdin?on ("error", (fun (_: obj) -> ())) |> ignore
-        let ready = JS.Constructors.Map.Create<int, obj>()
-        let next = ref r.First
-        let written = ref r.First
-        let seconds (frames: int) = toFixed 0 (float frames / fps)
-        let flush () =
-            promise {
-                while ready.has written.Value && exited.Value.IsNone do
-                    let buf = ready.get written.Value
-                    ready.delete written.Value |> ignore
-                    written.Value <- written.Value + 1
-                    if not (ff?stdin?write (buf)) then
-                        do! Promise.race [ Promise.create (fun ok _ -> ff?stdin?once ("drain", (fun () -> ok ())) |> ignore); closed ]
+        let writer = startWriter ff pages.Length fps r
+        /// One page: takes the next frame, draws it and hands it to the writer, until there is none or a page failed.
+        let rec draw (page: obj) : Async<unit> =
+            async {
+                let! failed = session.IsFailed()
+                if not failed then
+                    match! writer.PostAndAsyncReply Take with
+                    | Some i ->
+                        let! png = frame page (frameTime fps i)
+                        do! writer.PostAndAsyncReply(fun reply -> Frame(i, png, reply))
+                        return! draw page
+                    | None -> ()
             }
-        let work (page: obj) =
-            promise {
-                while next.Value < r.End && not session.Failed && exited.Value.IsNone do
-                    let i = next.Value
-                    next.Value <- i + 1
-                    let! png = frame page (frameTime fps i)
-                    ready.set (i, png) |> ignore
-                    // Keep the reorder buffer bounded: a fast worker waits for the writer to catch up.
-                    while i - written.Value > workers.Count * 8 && exited.Value.IsNone do
-                        do! Promise.sleep 5
-                    do! flush ()
-                    if (i - r.First) % int fps = 0 then
-                        stdoutWrite ("\r" + $"{r.Label}  {seconds (i - r.First)}s / {seconds (r.End - r.First)}s  ")
-            }
-        let! _ = workers |> Seq.map work |> Promise.all
-        do! flush ()
-        ff?stdin?``end`` () |> ignore
-        do! closed
-        let ok = not session.Failed && exited.Value = Some 0 && written.Value = r.End
-        if ok then r.Done()
-        elif exited.Value <> Some 0 then eprint $"\nffmpeg failed on {r.Label}"
-        return ok
+        let! _ = pages |> List.map draw |> Async.Parallel
+        match! writer.PostAndAsyncReply Finish with
+        | Error e -> return raise e
+        | Ok complete ->
+            let! failed = session.IsFailed()
+            let ok = not failed && complete
+            if ok then r.Done()
+            return ok
     }
 
 // Entry --------------------------------------------------------------------------------------------------------
@@ -360,13 +529,13 @@ let private clearUnfilteredSheets (ws: string) =
             let rest = f.Substring(f.IndexOf '-' + 1)
             if rest.Length > 0 && System.Char.IsDigit rest.[0] then remove (join [ build; f ])
 
-/// Never resolves: serve runs until Ctrl+C.
-let private forever () : JS.Promise<int> = Promise.create (fun _ _ -> ())
+/// Never completes: serve runs until Ctrl+C.
+let private forever () : Async<int> = Async.FromContinuations(fun _ -> ())
 
 /// Opens headless Chrome on the clip and runs `job` with the session and its first page; returns an exit code
 /// (1 when a page reported an error).
-let private withChrome (clip: string) (job: Session -> obj -> JS.Promise<int>) : JS.Promise<int> =
-    promise {
+let private withChrome (clip: string) (job: Session -> obj -> Async<int>) : Async<int> =
+    async {
         let! server = startServer clip ForRender
         match findChrome () with
         | None ->
@@ -376,7 +545,7 @@ let private withChrome (clip: string) (job: Session -> obj -> JS.Promise<int>) :
         | Some chrome ->
             let puppeteer = requireFromHome "puppeteer-core"
             let! (browser: obj) =
-                awaitJs (
+                fromJs (
                     puppeteer?launch (
                         createObj
                             [ "executablePath" ==> chrome
@@ -390,14 +559,15 @@ let private withChrome (clip: string) (job: Session -> obj -> JS.Promise<int>) :
             let session = Session(browser, server.Url)
             let! first = session.OpenPage()
             let! code = job session first
-            do! awaitJs (browser?close ())
+            do! fromJs (browser?close ())
             server.Close()
-            return (if code <> 0 then code elif session.Failed then 1 else 0)
+            let! failed = session.IsFailed()
+            return (if code <> 0 then code elif failed then 1 else 0)
     }
 
 /// mode: stills | sheet | serve; returns an exit code.
-let run (ws: string) (mode: string) (args: string list) : JS.Promise<int> =
-    promise {
+let run (ws: string) (mode: string) (args: string list) : Async<int> =
+    async {
         let clip = resolve ws
         if mode = "sheet" && args.IsEmpty then clearUnfilteredSheets clip
         if mode = "serve" then
@@ -409,38 +579,56 @@ let run (ws: string) (mode: string) (args: string list) : JS.Promise<int> =
             return!
                 withChrome clip (fun _ first ->
                     match mode with
-                    | "stills" -> stills clip first args |> Promise.map (fun () -> 0)
+                    | "stills" ->
+                        async {
+                            do! stills clip first args
+                            return 0
+                        }
                     | _ -> sheet clip first args)
     }
 
 /// Draws the frame at each time and writes it as a JPEG to its file (the `present` step's slides); returns an exit code.
-let shots (ws: string) (wanted: (float * string) list) : JS.Promise<int> =
+let shots (ws: string) (wanted: (float * string) list) : Async<int> =
     withChrome (resolve ws) (fun _ first ->
-        promise {
+        async {
             for t, file in wanted do
-                do! awaitJs (first?evaluate (renderAt, t))
-                let! jpg = awaitJs (first?screenshot (createObj [ "type" ==> "jpeg"; "quality" ==> 90 ]))
+                do! fromJs (first?evaluate (renderAt, t))
+                let! jpg = fromJs (first?screenshot (createObj [ "type" ==> "jpeg"; "quality" ==> 90 ]))
                 writeBytes file jpg
             return 0
         })
 
+/// The pages to render on: the first, and more opened one after another until there are as many as asked.
+let rec private openPages (session: Session) (count: float) (pages: obj list) : Async<obj list> =
+    async {
+        if float pages.Length < count then
+            let! page = session.OpenPage()
+            return! openPages session count (pages @ [ page ])
+        else
+            return pages
+    }
+
+/// Renders the runs one after another and stops at the first that fails: the frames of the runs that finished, and
+/// whether every run did.
+let rec private renderAll (session: Session) (pages: obj list) (fps: float) (jobs: Range list) (frames: int) : Async<int * bool> =
+    async {
+        match jobs with
+        | [] -> return frames, true
+        | job :: rest ->
+            let! finished = renderRange session pages fps job
+            // the count wraps at 32 bits like every int sum (`||| 0`: Fable drops `| 0` on a call argument)
+            if finished then return! renderAll session pages fps rest ((frames + job.End - job.First) ||| 0)
+            else return frames, false
+    }
+
 /// Renders the runs one after another, in one Chrome. Stops at the first that fails; returns an exit code.
-let ranges (ws: string) (fps: float) (jobs: Range list) : JS.Promise<int> =
+let ranges (ws: string) (fps: float) (jobs: Range list) : Async<int> =
     withChrome (resolve ws) (fun session first ->
-        promise {
+        async {
             let workerCount = env "WORKERS" |> Option.map jsNumber |> Option.defaultValue 4.0
-            let workers = ResizeArray [ first ]
-            while float workers.Count < workerCount do
-                let! page = session.OpenPage()
-                workers.Add page
+            let! pages = openPages session workerCount [ first ]
             let start = JS.Constructors.Date.now ()
-            let ok = ref true
-            let frames = ref 0
-            for job in jobs do
-                if ok.Value then
-                    let! finished = renderRange session workers fps job
-                    ok.Value <- finished
-                    if finished then frames.Value <- frames.Value + job.End - job.First
-            JS.console.log $"\nrendered {frames.Value} frames in {toFixed 1 ((JS.Constructors.Date.now () - start) / 1000.0)}s"
-            return (if ok.Value then 0 else 1)
+            let! frames, ok = renderAll session pages fps jobs 0
+            JS.console.log $"\nrendered {frames} frames in {toFixed 1 ((JS.Constructors.Date.now () - start) / 1000.0)}s"
+            return (if ok then 0 else 1)
         })

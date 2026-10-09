@@ -156,80 +156,83 @@ let private fitShort (ws: string) (mp4: string) : int =
                     eprint $"the mp4 is still over {MAX_MB} MB: shorten the video, or host it elsewhere"
                 0
 
-let run (ws: string) (args: string list) : JS.Promise<int> =
-    let full = args |> List.contains "--full"
-    let lossless = args |> List.contains "--lossless"
-    match args |> List.filter (fun a -> a <> "--full" && a <> "--lossless") with
-    | unknown :: _ ->
-        eprint $"video: unknown option {unknown} (options: --full, --lossless)"
-        Promise.lift 2
-    | [] ->
-    match Render.findChrome () with
-    | None ->
-        eprint "no Chrome found: set CHROME to the browser's executable"
-        Promise.lift 2
-    | Some chrome ->
-        let fps = Narrate.FPS
-        let name, poster = timingOf ws
-        let exts = if lossless then [ "mkv" ] else [ "mp4"; "webm" ]
-        let encoder = String.concat " " (if lossless then ffv1 else x264 @ vp9)
-        let segments = Segments.plan ws fps "1920x1080@1" (browserId chrome) encoder
-        let dir = join [ ws; "build"; (if lossless then "segments-lossless" else "segments") ]
-        mkdirp dir
-        let file (key: string) (ext: string) = join [ dir; $"{key}.{ext}" ]
-        let cached (s: Segments.Segment) = not full && exts |> List.forall (fun ext -> exists (file s.Key ext))
-        let missing = segments |> List.filter (cached >> not)
-        if not (Segments.wholeFrames ws fps) then
-            JS.console.log "timing.json is from an older engine (scenes do not end on whole frames): run narrate again, and later narration fixes will render only what they change"
-        let jobs =
-            [ for n, s in List.indexed missing ->
-                  // Written under a temporary name and renamed when complete: an interrupted run leaves nothing
-                  // that looks like a finished segment.
-                  let temp ext = file s.Key ("tmp." + ext)
-                  { Render.Range.Label = $"[{n + 1}/{missing.Length}] {s.Id}"
-                    Render.Range.First = s.First
-                    Render.Range.End = s.End
-                    Render.Range.Output =
-                      if lossless then ffv1 @ [ temp "mkv" ]
-                      else [ "-map"; "0:v" ] @ x264 @ [ temp "mp4"; "-map"; "0:v" ] @ vp9 @ [ temp "webm" ]
-                    Render.Range.Done =
-                      fun () ->
-                          for ext in exts do
-                              rename (temp ext) (file s.Key ext)
-                          writeText (file s.Key "json") s.Input } ]
-        (if jobs.IsEmpty then Promise.lift 0 else Render.ranges ws (float fps) jobs)
-        |> Promise.map (fun code ->
-            if code <> 0 then code
-            else
-                let out ext = join [ ws; "out"; $"{name}.{ext}" ]
-                let joined ext = [ "-f"; "concat"; "-safe"; "0"; "-i"; concatList dir ext fps segments ]
-                // Speech normalised to -16 LUFS, the usual level for spoken web video, so clips match each other.
-                let audio =
-                    [ "-i"; join [ ws; "build"; "narration.wav" ]; "-map"; "0:v"; "-map"; "1:a"
-                      "-af"; "loudnorm=I=-16:TP=-1.5:LRA=11"; "-ar"; "48000"; "-c:v"; "copy" ]
-                let assemble =
-                    if lossless then
-                        [ ffmpeg (joined "mkv" @ [ "-c"; "copy"; join [ ws; "build"; "frames.mkv" ] ]) ]
-                    else
-                        [ ffmpeg (joined "mp4" @ audio @ [ "-c:a"; "aac"; "-b:a"; $"{AAC_KBPS}k"; "-ac"; "1"; "-movflags"; "+faststart"; "-shortest"; out "mp4" ])
-                          (fun () -> fitShort ws (out "mp4"))
-                          ffmpeg (joined "webm" @ audio @ [ "-c:a"; "libopus"; "-b:a"; "48k"; "-ac"; "1"; "-shortest"; out "webm" ])
-                          ffmpeg [ "-ss"; poster; "-i"; out "mp4"; "-frames:v"; "1"; "-q:v"; "3"; out "jpg" ]
-                          fun () ->
-                              copyFile (join [ ws; "build"; "captions.vtt" ]) (out "vtt")
-                              0
-                          fun () -> chaptersFor ws name ]
-                let tidy () =
-                    // Segments no scene uses any more (and anything an interrupted run left) go, so the cache
-                    // holds one video's worth.
-                    let keep = segments |> List.map (fun s -> s.Key) |> Set.ofList
-                    for f in readDir dir do
-                        if not (f.StartsWith "list-") && not (keep.Contains(f.Split('.').[0])) then remove (join [ dir; f ])
-                    JS.console.log $"segments: {segments.Length - missing.Length} reused, {missing.Length} rendered"
-                    0
-                sequence (
-                    assemble
-                    @ [ tidy ]
-                    @ (if lossless then [ fun () -> run' "ls" [ "-la"; join [ ws; "build"; "frames.mkv" ] ] ]
-                       else [ fun () -> list (join [ ws; "out" ]) name ])
-                ))
+let run (ws: string) (args: string list) : Async<int> =
+    async {
+        let full = args |> List.contains "--full"
+        let lossless = args |> List.contains "--lossless"
+        match args |> List.filter (fun a -> a <> "--full" && a <> "--lossless") with
+        | unknown :: _ ->
+            eprint $"video: unknown option {unknown} (options: --full, --lossless)"
+            return 2
+        | [] ->
+            match Render.findChrome () with
+            | None ->
+                eprint "no Chrome found: set CHROME to the browser's executable"
+                return 2
+            | Some chrome ->
+                let fps = Narrate.FPS
+                let name, poster = timingOf ws
+                let exts = if lossless then [ "mkv" ] else [ "mp4"; "webm" ]
+                let encoder = String.concat " " (if lossless then ffv1 else x264 @ vp9)
+                let segments = Segments.plan ws fps "1920x1080@1" (browserId chrome) encoder
+                let dir = join [ ws; "build"; (if lossless then "segments-lossless" else "segments") ]
+                mkdirp dir
+                let file (key: string) (ext: string) = join [ dir; $"{key}.{ext}" ]
+                let cached (s: Segments.Segment) = not full && exts |> List.forall (fun ext -> exists (file s.Key ext))
+                let missing = segments |> List.filter (cached >> not)
+                if not (Segments.wholeFrames ws fps) then
+                    JS.console.log "timing.json is from an older engine (scenes do not end on whole frames): run narrate again, and later narration fixes will render only what they change"
+                let jobs =
+                    [ for n, s in List.indexed missing ->
+                          // Written under a temporary name and renamed when complete: an interrupted run leaves nothing
+                          // that looks like a finished segment.
+                          let temp ext = file s.Key ("tmp." + ext)
+                          { Render.Range.Label = $"[{n + 1}/{missing.Length}] {s.Id}"
+                            Render.Range.First = s.First
+                            Render.Range.End = s.End
+                            Render.Range.Output =
+                              if lossless then ffv1 @ [ temp "mkv" ]
+                              else [ "-map"; "0:v" ] @ x264 @ [ temp "mp4"; "-map"; "0:v" ] @ vp9 @ [ temp "webm" ]
+                            Render.Range.Done =
+                              fun () ->
+                                  for ext in exts do
+                                      rename (temp ext) (file s.Key ext)
+                                  writeText (file s.Key "json") s.Input } ]
+                let! code = if jobs.IsEmpty then async.Return 0 else Render.ranges ws (float fps) jobs
+                if code <> 0 then
+                    return code
+                else
+                    let out ext = join [ ws; "out"; $"{name}.{ext}" ]
+                    let joined ext = [ "-f"; "concat"; "-safe"; "0"; "-i"; concatList dir ext fps segments ]
+                    // Speech normalised to -16 LUFS, the usual level for spoken web video, so clips match each other.
+                    let audio =
+                        [ "-i"; join [ ws; "build"; "narration.wav" ]; "-map"; "0:v"; "-map"; "1:a"
+                          "-af"; "loudnorm=I=-16:TP=-1.5:LRA=11"; "-ar"; "48000"; "-c:v"; "copy" ]
+                    let assemble =
+                        if lossless then
+                            [ ffmpeg (joined "mkv" @ [ "-c"; "copy"; join [ ws; "build"; "frames.mkv" ] ]) ]
+                        else
+                            [ ffmpeg (joined "mp4" @ audio @ [ "-c:a"; "aac"; "-b:a"; $"{AAC_KBPS}k"; "-ac"; "1"; "-movflags"; "+faststart"; "-shortest"; out "mp4" ])
+                              (fun () -> fitShort ws (out "mp4"))
+                              ffmpeg (joined "webm" @ audio @ [ "-c:a"; "libopus"; "-b:a"; "48k"; "-ac"; "1"; "-shortest"; out "webm" ])
+                              ffmpeg [ "-ss"; poster; "-i"; out "mp4"; "-frames:v"; "1"; "-q:v"; "3"; out "jpg" ]
+                              fun () ->
+                                  copyFile (join [ ws; "build"; "captions.vtt" ]) (out "vtt")
+                                  0
+                              fun () -> chaptersFor ws name ]
+                    let tidy () =
+                        // Segments no scene uses any more (and anything an interrupted run left) go, so the cache
+                        // holds one video's worth.
+                        let keep = segments |> List.map (fun s -> s.Key) |> Set.ofList
+                        for f in readDir dir do
+                            if not (f.StartsWith "list-") && not (keep.Contains(f.Split('.').[0])) then remove (join [ dir; f ])
+                        JS.console.log $"segments: {segments.Length - missing.Length} reused, {missing.Length} rendered"
+                        0
+                    return
+                        sequence (
+                            assemble
+                            @ [ tidy ]
+                            @ (if lossless then [ fun () -> run' "ls" [ "-la"; join [ ws; "build"; "frames.mkv" ] ] ]
+                               else [ fun () -> list (join [ ws; "out" ]) name ])
+                        )
+    }

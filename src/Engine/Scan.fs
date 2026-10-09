@@ -62,11 +62,32 @@ let private itemsAt =
 [<Emit("/error|failed/i.test($0) && !/Failed to load resource/.test($0)")>]
 let private isError (line: string) : bool = jsNative
 
-let run (ws: string) (args: string list) : JS.Promise<int> =
+/// What the page logs, in the order its events come: a console line or a page error; and the question for every line
+/// so far.
+type private LogMsg =
+    | Line of string
+    | Lines of AsyncReplyChannel<string list>
+
+/// The page's log: its console and pageerror events post their lines here as they come, at any moment of the scan
+/// (the loading page's 404s come before the first sample). Answers with every line so far, in order.
+let private startLog () : MailboxProcessor<LogMsg> =
+    MailboxProcessor.Start(fun inbox ->
+        // newest first
+        let rec loop (lines: string list) : Async<unit> =
+            async {
+                match! inbox.Receive() with
+                | Line line -> return! loop (line :: lines)
+                | Lines reply ->
+                    deliver [ fun () -> reply.Reply(List.rev lines) ]
+                    return! loop lines
+            }
+        loop [])
+
+let run (ws: string) (args: string list) : Async<int> =
     let arg n fallback = args |> List.tryItem n |> Option.defaultValue fallback
     let t0, t1, step = jsNumber (arg 0 "0"), jsNumber (arg 1 "1e9"), jsNumber (arg 2 "0.25")
     let clip = resolve ws
-    promise {
+    async {
         let! server = startServer clip ForScan
         match findChrome () with
         | None ->
@@ -76,35 +97,41 @@ let run (ws: string) (args: string list) : JS.Promise<int> =
         | Some chrome ->
             let puppeteer = requireFromHome "puppeteer-core"
             let! (browser: obj) =
-                awaitJs (
+                fromJs (
                     puppeteer?launch (
                         createObj [ "executablePath" ==> chrome; "headless" ==> true; "args" ==> [| "--font-render-hinting=none" |] ]
                     )
                 )
-            let! (page: obj) = awaitJs (browser?newPage ())
-            let logs = ResizeArray<string>()
-            page?on ("console", (fun (m: obj) -> logs.Add(m?text ()))) |> ignore
-            page?on ("pageerror", (fun (e: obj) -> logs.Add("PAGE ERROR " + e?message))) |> ignore
-            do! awaitJs (page?setViewport (createObj [ "width" ==> 1920; "height" ==> 1080 ]))
-            do! awaitJs (page?goto (server.Url, createObj [ "waitUntil" ==> "load" ]))
-            do! awaitJs (page?evaluate (browserFn "() => window.ready"))
-            let! (d: float) = awaitJs (page?evaluate (browserFn "() => window.DURATION"))
-            let frames = ResizeArray<obj>()
+            let! (page: obj) = fromJs (browser?newPage ())
+            let log = startLog ()
+            page?on ("console", (fun (m: obj) -> log.Post(Line(m?text ())))) |> ignore
+            page?on ("pageerror", (fun (e: obj) -> log.Post(Line("PAGE ERROR " + e?message)))) |> ignore
+            do! fromJs (page?setViewport (createObj [ "width" ==> 1920; "height" ==> 1080 ]))
+            do! fromJs (page?goto (server.Url, createObj [ "waitUntil" ==> "load" ]))
+            do! fromJs (page?evaluate (browserFn "() => window.ready"))
+            let! (d: float) = fromJs (page?evaluate (browserFn "() => window.DURATION"))
             let scanAt = browserFn itemsAt
-            let t = ref t0
-            while t.Value <= min t1 d do
-                let now = t.Value
-                let! (items: obj) = awaitJs (page?evaluate (scanAt, now))
-                frames.Add(createObj [ "t" ==> jsNumber (toFixed 2 now); "items" ==> items ])
-                if frames.Count % 200 = 0 then proc?stdout?write ("\r" + $"{toFixed 0 now}s / {toFixed 0 d}s") |> ignore
-                t.Value <- now + step
+            /// The samples from time t on, every `step` seconds to the end: the frames so far (newest first) and
+            /// their count.
+            let rec sample (t: float) (frames: obj list) (count: int) : Async<obj list * int> =
+                async {
+                    if t <= min t1 d then
+                        let! (items: obj) = fromJs (page?evaluate (scanAt, t))
+                        let frames = createObj [ "t" ==> jsNumber (toFixed 2 t); "items" ==> items ] :: frames
+                        let count = (count + 1) ||| 0
+                        if count % 200 = 0 then proc?stdout?write ("\r" + $"{toFixed 0 t}s / {toFixed 0 d}s") |> ignore
+                        return! sample (t + step) frames count
+                    else
+                        return frames, count
+                }
+            let! frames, count = sample t0 [] 0
+            let! logs = log.PostAndAsyncReply Lines
             let out = join [ clip; "build"; "scan.json" ]
-            writeText out (toJson (createObj [ "step" ==> step; "logs" ==> logs; "frames" ==> frames ]))
-            let errors = logs |> Seq.filter isError |> List.ofSeq
-            JS.console.log $"\n{frames.Count} frames, {errors.Length} page errors -> {out}"
-            for l in errors do
-                JS.console.log ("  " + l)
-            do! awaitJs (browser?close ())
+            writeText out (toJson (createObj [ "step" ==> step; "logs" ==> List.toArray logs; "frames" ==> List.toArray (List.rev frames) ]))
+            let errors = logs |> List.filter isError
+            JS.console.log $"\n{count} frames, {errors.Length} page errors -> {out}"
+            errors |> List.iter (fun l -> JS.console.log ("  " + l))
+            do! fromJs (browser?close ())
             server.Close()
             return 0
     }

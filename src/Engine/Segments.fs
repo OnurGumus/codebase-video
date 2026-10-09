@@ -99,12 +99,15 @@ let rec private shifted (rel: float -> obj) (v: obj) : obj =
     if isNil v then null
     elif isArray v then box (unbox<obj[]> v |> Array.map (shifted rel))
     elif jsTypeof v = "object" then
-        let o = createObj []
-        for k in keys v do
-            let x: obj = v?(k)
-            o?(k) <- if (k = "start" || k = "end") && jsTypeof x = "number" then rel (unbox x) else shifted rel x
-        o
+        createObj
+            [ for k in keys v do
+                  let x: obj = v?(k)
+                  yield k ==> shiftedField rel k x ]
     else v
+
+/// One field of an object being shifted: a number under "start" or "end" is a time, anything else is shifted inside.
+and private shiftedField (rel: float -> obj) (k: string) (x: obj) : obj =
+    if (k = "start" || k = "end") && jsTypeof x = "number" then rel (unbox x) else shifted rel x
 
 let private prefix (id: string) = id.Split('-').[0]
 
@@ -112,15 +115,14 @@ let private prefix (id: string) = id.Split('-').[0]
 type private Chapter = { Title: obj; Path: obj; Start: float; End: float; Talk: float option }
 
 /// What the frame's module layer does with one module: on screen from Start to End, or to the last frame.
-type private Run = { Start: float; mutable End: float }
+type private Run = { Start: float; End: float }
 
 /// name -> "size sha1" for the files under a directory (or just the named files).
 let private hashFiles (dir: string) (files: string list) : obj =
-    let o = createObj []
-    for f in files do
-        let p = join [ dir; f ]
-        o?(f) <- $"{fileSize p} {sha1File p}"
-    o
+    createObj
+        [ for f in files do
+              let p = join [ dir; f ]
+              yield f ==> $"{fileSize p} {sha1File p}" ]
 
 /// Do the scenes of build/timing.json start and end on whole frames (narrated by this engine)?
 let wholeFrames (ws: string) (fps: int) : bool =
@@ -157,22 +159,32 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
 
     // The modules the frame loads (src/Kit/Frame.fs): every scene prefix except bridges, the title and recaps,
     // each on screen during the runs of its consecutive scenes.
-    let runs = System.Collections.Generic.Dictionary<string, ResizeArray<Run>>()
-    let mutable prev: string = null
-    for s in scenes do
-        let id = idOf s
-        if id.EndsWith "-why" || id = "title" || truthy s?recap then prev <- null
-        else
-            let k = prefix id
-            if not (runs.ContainsKey k) then runs[k] <- ResizeArray()
-            let sentences: obj[] = s?sentences
-            let first = if sentences.Length > 0 then (sentences[0]?start: float) else startOf s
-            if prev = k then runs[k].[runs[k].Count - 1].End <- endOf s
-            else runs[k].Add { Start = max (startOf s) (first - 0.45); End = endOf s }
-            prev <- k
+    let runList: (string * Run list) list =
+        scenes
+        |> Array.fold
+            (fun (acc: (string * Run) list, prev: string option) s ->
+                let id = idOf s
+                if id.EndsWith "-why" || id = "title" || truthy s?recap then acc, None
+                else
+                    let k = prefix id
+                    let sentences: obj[] = s?sentences
+                    let first = if sentences.Length > 0 then (sentences[0]?start: float) else startOf s
+                    match prev, acc with
+                    // the scene before was of this module too: its run goes on
+                    | Some p, (_, last) :: older when p = k -> (k, { last with End = endOf s }) :: older, prev
+                    | _ -> (k, ({ Start = max (startOf s) (first - 0.45); End = endOf s }: Run)) :: acc, Some k)
+            ([], None)
+        |> fst
+        |> List.rev
+        |> List.groupBy fst // the modules in the order first seen, each with its runs in time order
+        |> List.map (fun (k, rs) -> k, List.map snd rs)
+    let runs = Map.ofList runList // lookup only
     let moduleText (k: string) : string option =
         let f = join [ ws; k + ".js" ]
         if exists f then Some(readText f) else None
+    // Each scene's module file (<prefix>.js), by prefix; read once. Lookup only.
+    let texts: Map<string, string option> =
+        scenes |> Array.map (idOf >> prefix) |> Array.distinct |> Array.map (fun p -> p, moduleText p) |> Map.ofArray
 
     // Files next to clip.html that a page could load, other than the module files (those count per scene).
     let rootFiles =
@@ -187,37 +199,50 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
     // A module that reaches for the page itself can change what other modules' scenes look like.
     let pageModules =
         createObj
-            [ for k in runs.Keys |> Seq.sort do
-                  match moduleText k with
+            [ for k in runList |> List.map fst |> List.sort do
+                  match texts[k] with
                   | Some text when touchesPage text -> yield k ==> sha1Hex text
                   | _ -> () ]
 
-    // The workspace's folders (assets/...), hashed when first needed.
+    // The workspace's folders (assets/...).
     let folders =
         readDir ws
         |> List.filter (fun d -> isDir (join [ ws; d ]) && d <> "build" && d <> "out" && d <> "node_modules" && not (d.StartsWith "."))
         |> List.sort
-    let folderHash =
-        let cache = System.Collections.Generic.Dictionary<string, obj>()
-        fun (d: string) ->
-            if not (cache.ContainsKey d) then cache[d] <- hashFiles (join [ ws; d ]) (walk (join [ ws; d ]))
-            cache[d]
+    // Everything the page can see of a folder is behind its name: what a scene's page can read, by module prefix.
+    let sources = texts |> Map.map (fun _ text -> (defaultArg text "") + "\n" + clipHtml + "\n" + rootText)
+    // The folders that some scene's page names, hashed once each. Lookup only.
+    let folderHashes =
+        folders
+        |> List.filter (fun d -> sources |> Map.exists (fun _ src -> src.Contains d))
+        |> List.map (fun d -> d, hashFiles (join [ ws; d ]) (walk (join [ ws; d ])))
+        |> Map.ofList
 
     // Chapters (src/Kit/Frame.fs): a "-why" bridge and everything up to the next bridge or the outro.
     let chapters =
-        let groups = ResizeArray<ResizeArray<obj>>()
-        for s in scenes do
-            let id = idOf s
-            if id.EndsWith "-why" then groups.Add(ResizeArray [ s ])
-            elif groups.Count > 0 && id <> "outro" && prefix id <> "outro" then groups[groups.Count - 1].Add s
+        // A group starts at each bridge and takes the scenes after it, except the outro's (which are skipped, not a stop).
+        let groups =
+            scenes
+            |> Array.fold
+                (fun (groups: obj list list) s ->
+                    let id = idOf s
+                    if id.EndsWith "-why" then [ s ] :: groups
+                    else
+                        match groups with
+                        | g :: older when id <> "outro" && prefix id <> "outro" -> (s :: g) :: older
+                        | _ -> groups)
+                []
+            |> List.rev
+            |> List.map List.rev
         [ for g in groups ->
-              let finish = endOf g[g.Count - 1]
-              { Title = (if truthy g[0]?chapter then g[0]?chapter else g[0]?id)
-                Path = (if truthy g[0]?path then g[0]?path else null)
-                Start = startOf g[0]
+              let head = List.head g
+              let finish = endOf (List.last g)
+              { Title = (if truthy head?chapter then head?chapter else head?id)
+                Path = (if truthy head?path then head?path else null)
+                Start = startOf head
                 End = finish
                 Talk =
-                  match g |> Seq.tryFind (fun s -> not ((idOf s).EndsWith "-why")) with
+                  match g |> List.tryFind (fun s -> not ((idOf s).EndsWith "-why")) with
                   | Some content ->
                       let sentences: obj[] = content?sentences
                       if sentences.Length > 0 then Some(sentences[0]?start: float) else None
@@ -252,7 +277,7 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
           let sceneAt (i: int) = shifted rel scenes[i]
 
           let p = prefix id
-          let text = moduleText p
+          let text = texts[p]
           let whole = not long || not standardScripts || (match text with Some t -> readsTiming t | None -> false)
 
           // Neighbours: the scene before and after, every later scene that starts within a second of this one's
@@ -271,9 +296,9 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
                      if j <> k && (prefix other = p || (match text with Some t -> names t other | None -> false)) then
                          sceneAt j |]
           let moduleRuns =
-              if runs.ContainsKey p then
-                  [| for r in runs[p] -> createObj [ "start" ==> rel r.Start; "end" ==> rel r.End; "holds" ==> (r.End >= duration - 0.05) ] |]
-              else [||]
+              match runs.TryFind p with
+              | Some rs -> [| for r in rs -> createObj [ "start" ==> rel r.Start; "end" ==> rel r.End; "holds" ==> (r.End >= duration - 0.05) ] |]
+              | None -> [||]
           // A chapter that ended by the scene's first frame only shows as a full piece of the progress bar (its card and
           // label have faded out by its end); one that starts at the scene's end or later, as an empty piece.
           let chapterList =
@@ -302,16 +327,20 @@ let plan (ws: string) (fps: int) (size: string) (browser: string) (encoder: stri
               | Some t ->
                   let gone = aligned && endOf t < s0 - 3.0
                   createObj [ "end" ==> far (endOf t); "scene" ==> (if gone then null else shifted rel t) ]
-          // Everything the page can see of a folder is behind its name.
-          let sources = (defaultArg text "") + "\n" + clipHtml + "\n" + rootText
-          let assets = createObj [ for d in folders do if sources.Contains d then yield d ==> folderHash d ]
+          let assets = createObj [ for d in folders do if sources[p].Contains d then yield d ==> folderHashes[d] ]
           let wholeTiming =
               if not whole then null
               else
-                  let o = shifted rel timing
-                  o?duration <- rel duration
-                  if jsTypeof timing?poster = "number" then o?poster <- rel timing?poster
-                  o
+                  // the timing shifted, with its duration and poster as times too
+                  let fields =
+                      [ for key in keys timing do
+                            let x: obj = timing?(key)
+                            yield
+                                key ==> (match key with
+                                         | "duration" -> rel duration
+                                         | "poster" when jsTypeof x = "number" -> rel (unbox x)
+                                         | _ -> shiftedField rel key x) ]
+                  createObj (if Array.contains "duration" (keys timing) then fields else fields @ [ "duration" ==> rel duration ])
 
           let input =
               toJson (

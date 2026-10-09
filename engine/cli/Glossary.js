@@ -1,13 +1,13 @@
 
-import { Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { record_type, obj_type, class_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { ofSeq, ofArray, fold, isEmpty, sortByDescending, map } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { Union, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { union_type, record_type, obj_type, class_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { collect as collect_1, empty as empty_2, cons, reverse, ofArrayWithTail, tail, head, ofArray, fold, isEmpty, sortByDescending, map } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { FSharpMap__get_Item, FSharpMap__TryFind, empty as empty_1, add, remove, toList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { substring, split, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { empty, singleton, collect, delay, toList as toList_1 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { dirname, engineDir, join as join_1, readText, exists } from "./Node.js";
-import { addRangeInPlace, mapIndexed } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { mapIndexed } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 
@@ -103,53 +103,94 @@ function dotted(g, name) {
     }
 }
 
-function found(g, text) {
-    const out = [];
-    text.replace(g.Finder, (...m) => ((whole, name, term) => {
-        const said = (Operators_IsNull(name) ? true : ((typeof name) === "undefined")) ? FSharpMap__get_Item(g.Terms, term) : dotted(g, name);
-        if (said !== whole) {
-            void (out.push([whole, said]));
-        }
-        return whole;
-    })(m[0], m[1], m[2]));
-    return ofSeq(out);
+class Piece extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Plain", "Marked"];
+    }
 }
 
-function unmarked(say, f) {
-    let pos = 0;
-    let out = "";
-    const rx = MARKED;
-    rx.lastIndex = 0;
-    let m = rx.exec(say);
-    while (!Operators_IsNull(m)) {
-        const i = m.index | 0;
-        const len = m[0].length | 0;
-        out = ((out + f(substring(say, pos, i - pos))) + substring(say, i, len));
-        pos = ((i + len) | 0);
-        m = (rx.exec(say));
-    }
-    return out + f(substring(say, pos));
+function Piece_$reflection() {
+    return union_type("Glossary.Piece", [], Piece, () => [[["Item", string_type]], [["Item", string_type]]]);
+}
+
+function pieces(say) {
+    const walk = (pos_mut, found_mut, cut_mut) => {
+        walk:
+        while (true) {
+            const pos = pos_mut, found = found_mut, cut = cut_mut;
+            if (!isEmpty(found)) {
+                const len = head(found)[1] | 0;
+                const i = head(found)[0] | 0;
+                pos_mut = (i + len);
+                found_mut = tail(found);
+                cut_mut = ofArrayWithTail([new Piece(/* Marked */ 1, [substring(say, i, len)]), new Piece(/* Plain */ 0, [substring(say, pos, i - pos)])], cut);
+                continue walk;
+            }
+            else {
+                return reverse(cons(new Piece(/* Plain */ 0, [substring(say, pos)]), cut));
+            }
+            break;
+        }
+    };
+    return walk(0, ofArray(Array.from(say.matchAll(MARKED), m => [m.index, m[0].length])), empty_2());
+}
+
+function scan(g, text) {
+    const walk = (pos_mut, found_mut, built_mut, said_mut) => {
+        walk:
+        while (true) {
+            const pos = pos_mut, found = found_mut, built = built_mut, said = said_mut;
+            if (!isEmpty(found)) {
+                const whole = head(found)[1];
+                const name = head(found)[2];
+                const i = head(found)[0] | 0;
+                const spoken = (Operators_IsNull(name) ? true : ((typeof name) === "undefined")) ? FSharpMap__get_Item(g.Terms, head(found)[3]) : dotted(g, name);
+                const patternInput = (spoken === whole) ? [whole, said] : [`[${whole}](${spoken})`, cons([whole, spoken], said)];
+                pos_mut = (i + whole.length);
+                found_mut = tail(found);
+                built_mut = ofArrayWithTail([patternInput[0], substring(text, pos, i - pos)], built);
+                said_mut = patternInput[1];
+                continue walk;
+            }
+            else {
+                return [join("", reverse(cons(substring(text, pos), built))), reverse(said)];
+            }
+            break;
+        }
+    };
+    return walk(0, ofArray(Array.from(text.matchAll(g.Finder), m => [m.index, m[0], m[1], m[2]])), empty_2(), empty_2());
 }
 
 /**
  * A scene's "say" with every term the glossary knows written as `[term](how it is said)`.
  */
 export function apply(g, say) {
-    return unmarked(say, (text) => (text.replace(g.Finder, (...m) => ((whole, name, term) => {
-        const said = (Operators_IsNull(name) ? true : ((typeof name) === "undefined")) ? FSharpMap__get_Item(g.Terms, term) : dotted(g, name);
-        return (said === whole) ? whole : (`[${whole}](${said})`);
-    })(m[0], m[1], m[2]))));
+    return join("", map((_arg) => {
+        if (_arg.tag === 1) {
+            return _arg.fields[0];
+        }
+        else {
+            return scan(g, _arg.fields[0])[0];
+        }
+    }, pieces(say)));
 }
 
 /**
  * Every term of a "say" that the glossary will say differently from how it is written, with how.
  */
 export function uses(g, say) {
-    const out = [];
-    unmarked(say, (text) => {
-        addRangeInPlace(found(g, text), out);
-        return text;
-    });
-    return ofSeq(out);
+    return collect_1((_arg) => {
+        if (_arg.tag === 1) {
+            return empty_2();
+        }
+        else {
+            return scan(g, _arg.fields[0])[1];
+        }
+    }, pieces(say));
 }
 

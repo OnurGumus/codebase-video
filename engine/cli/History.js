@@ -2,12 +2,12 @@
 import { toString, Record, FSharpException } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { option_type, record_type, list_type, tuple_type, int32_type, bool_type, string_type, class_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { difference, toList as toList_1, ofArray as ofArray_1, ofList, empty as empty_2, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { int32ToString, disposeSafe, getEnumerator, compareArrays, createObj, stringHash, equals, defaultOf, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { int32ToString, compareArrays, createObj, stringHash, equals, defaultOf, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { tryFind as tryFind_1, truncate as truncate_1, toArray, length, sortBy, sumBy, filter, exists as exists_1, map as map_1, collect as collect_1, contains, singleton, empty, head as head_1, tail, isEmpty, append, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { eprint, dirname, toJsonIndented, writeText, mkdirp, readText, path as path_1, childProcess, readJson, exists, join as join_1, runCapture } from "./Node.js";
 import { printf, toConsole, concat, join, split, substring, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { last as last_1, reverse, tryFind, map, item, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { empty as empty_1, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { map as map_2, append as append_1, empty as empty_1, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { value as value_2, defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { List_groupBy, List_countBy, List_distinctBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
@@ -815,145 +815,36 @@ function write(ws) {
     const build = join_1(ofArray([ws, "build"]));
     mkdirp(build);
     writeText(join_1(ofArray([build, "history.json"])), toJsonIndented(json, 2) + "\n");
-    const md = [];
-    const line_1 = (s) => {
-        void (md.push(s));
-    };
     const chosen = (sinceWas === "last video") ? " The start is where the last progress video of this repository ended." : ((sinceWas === "latest tag") ? " No start was given: the range starts at the latest tag." : ((sinceWas === "30 days") ? " No start was given and the repository has no earlier tag: the range starts 30 days back." : ((sinceWas === "before first commit") ? " The start asked for is before the repository\'s first commit: the range is the whole history, the first commit included." : ((sinceWas === "whole history") ? " No start was given, there is no earlier tag, and the repository is younger than 30 days: the range is the whole history, the first commit included." : ""))));
-    line_1(concat("# History: ", sinceRef, " to ", untilRef));
-    line_1("");
-    const matchValue_10 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
-    const matchValue_11 = count(length(all), "commit");
-    line_1(`From ${sinceRef} (${shortOf(repo, sinceCommit)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_10}, ${matchValue_11}.${chosen}`);
-    const enumerator = getEnumerator(notes);
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const note = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            line_1("");
-            line_1(note);
+    const pathsLine = (title, paths) => {
+        if (isEmpty(paths)) {
+            return empty();
         }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    line_1("");
-    line_1("Every number in the video comes from this file or from history.json. Do not count anything yourself.");
-    line_1("");
-    line_1(`Totals: ${json.totals.files} files changed, ${totalAdded} lines added, ${totalRemoved} lines removed. Lines and files are sums over the range's commits; added, deleted and renamed compare its two ends.`);
-    if (!isEmpty(left)) {
-        const names = List_distinct(map_1((tupledArg_30) => tupledArg_30[0], left), {
-            Equals: (x_29, y_29) => (x_29 === y_29),
-            GetHashCode: (x_29) => (stringHash(x_29) | 0),
-        });
-        line_1("");
-        const sample = join(", ", truncate_1(5, names));
-        line_1(`Left out of every number above and below (lock files, generated files, the brief's "ignore"): ${length(names)} files, ${leftAdded} lines added, ${leftRemoved} removed, across ${json.ignored.commits} of the commits. For example: ${sample}.`);
-    }
-    if (publishedBranch == null) {
-    }
-    else if (unpublished.length > 0) {
-        const branch_3 = publishedBranch;
-        const ids = join(", ", truncate(40, unpublished));
-        const more = (unpublished.length > 40) ? ", ..." : "";
-        line_1("");
-        line_1(`Not published yet: ${count(unpublished.length, "commit")} of the range ${(unpublished.length === 1) ? "is" : "are"} not on ${branch_3}, the published branch of this repository (${ids}${more}). What only those commits did is in progress on a branch; it has not shipped.`);
-    }
-    else {
-        const branch_4 = publishedBranch;
-        line_1("");
-        line_1(concat("Every commit of the range is on ", branch_4, ", the published branch of this repository."));
-    }
-    line_1("");
-    line_1("## Tags in the range");
-    line_1("");
-    if (isEmpty(tags)) {
-        line_1("None.");
-    }
-    else {
-        const enumerator_1 = getEnumerator(tags);
-        try {
-            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                const forLoopVar = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                line_1(`- ${forLoopVar[0]} (${forLoopVar[1]}, ${forLoopVar[2]})`);
-            }
-        }
-        finally {
-            disposeSafe(enumerator_1);
-        }
-    }
-    line_1("");
-    line_1("## Areas");
-    line_1("");
-    line_1("| area | commits | files | added | deleted | renamed | lines + | lines - |");
-    line_1("|---|---|---|---|---|---|---|---|");
-    const enumerator_2 = getEnumerator(areas);
-    try {
-        while (enumerator_2["System.Collections.IEnumerator.MoveNext"]()) {
-            const a_13 = enumerator_2["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            line_1(`| ${a_13.area} | ${a_13.commits} | ${a_13.files} | ${a_13.added} | ${a_13.deleted} | ${a_13.renamed} | ${a_13.linesAdded} | ${a_13.linesRemoved} |`);
-        }
-    }
-    finally {
-        disposeSafe(enumerator_2);
-    }
-    if (people) {
-        line_1("");
-        line_1("## People (written because the focus includes \"people\")");
-        line_1("");
-        line_1("By area, who committed there and how many commits. No ranking is meant by the order.");
-        line_1("");
-        const enumerator_3 = getEnumerator(areas);
-        try {
-            while (enumerator_3["System.Collections.IEnumerator.MoveNext"]()) {
-                const a_14 = enumerator_3["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                const who = join(", ", map((p_22) => (`${p_22.name} (${p_22.commits})`), a_14.people));
-                line_1(`- ${a_14.area}: ${who}`);
-            }
-        }
-        finally {
-            disposeSafe(enumerator_3);
-        }
-    }
-    line_1("");
-    line_1("## Files");
-    line_1("");
-    line_1(concat("Most changed (by commits): ", join(", ", map_1((tupledArg_31) => (((tupledArg_31[0] + " (") + int32ToString(tupledArg_31[1])) + ")"), mostChanged)), "."));
-    const list_81 = (title, paths) => {
-        if (!isEmpty(paths)) {
-            line_1("");
+        else {
             const shown = join(", ", truncate_1(40, paths)) + ((length(paths) > 40) ? ", ..." : "");
-            line_1(`${title} (${length(paths)}): ${shown}`);
+            return ofArray(["", `${title} (${length(paths)}): ${shown}`]);
         }
     };
-    list_81("Added", map_1((tupledArg_32) => tupledArg_32[1], of$0027("added")));
-    list_81("Deleted", map_1((tupledArg_33) => tupledArg_33[1], of$0027("deleted")));
-    list_81("Renamed", map_1((tupledArg_34) => ((tupledArg_34[2] + " -> ") + tupledArg_34[1]), of$0027("renamed")));
-    line_1("");
-    line_1("## Commits, oldest first");
-    line_1("");
-    if (partial) {
-        line_1(`The range holds ${length(all)} commits. Only the ${length(listed)} that are tagged, are merges or touch more than ${WIDE} files are listed; the rest are in the counts above. Read the others with git when a theme needs them.`);
-        line_1("");
-    }
-    const enumerator_4 = getEnumerator(listed);
-    try {
-        while (enumerator_4["System.Collections.IEnumerator.MoveNext"]()) {
-            const c_12 = enumerator_4["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            line_1(`- ${c_12.Id} (${c_12.Date}${people ? concat(", ", c_12.Author) : ""}) ${saidSubject(c_12.Subject)} [${length(c_12.Files)} files]`);
-            if (saidBody(c_12.Body) !== "") {
-                const arr = split(saidBody(c_12.Body), ["\n"], undefined, 0);
-                for (let idx = 0; idx <= (arr.length - 1); idx++) {
-                    const b_6 = item(idx, arr);
-                    if (b_6.trim() !== "") {
-                        line_1(concat("    ", b_6.trimEnd()));
-                    }
-                }
-            }
-        }
-    }
-    finally {
-        disposeSafe(enumerator_4);
-    }
+    const md = toList(delay(() => append_1(singleton_1(concat("# History: ", sinceRef, " to ", untilRef)), delay(() => append_1(singleton_1(""), delay(() => {
+        const matchValue_10 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");
+        const matchValue_11 = count(length(all), "commit");
+        return append_1(singleton_1(`From ${sinceRef} (${shortOf(repo, sinceCommit)}, ${sinceDate}) to ${untilRef} (${shortOf(repo, until)}, ${untilDate}): ${matchValue_10}, ${matchValue_11}.${chosen}`), delay(() => append_1(collect((note) => append_1(singleton_1(""), delay(() => singleton_1(note))), notes), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("Every number in the video comes from this file or from history.json. Do not count anything yourself."), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1(`Totals: ${json.totals.files} files changed, ${totalAdded} lines added, ${totalRemoved} lines removed. Lines and files are sums over the range's commits; added, deleted and renamed compare its two ends.`), delay(() => {
+            let names;
+            return append_1(!isEmpty(left) ? ((names = List_distinct(map_1((tupledArg_30) => tupledArg_30[0], left), {
+                Equals: (x_29, y_29) => (x_29 === y_29),
+                GetHashCode: (x_29) => (stringHash(x_29) | 0),
+            }), append_1(singleton_1(""), delay(() => {
+                const sample = join(", ", truncate_1(5, names));
+                return singleton_1(`Left out of every number above and below (lock files, generated files, the brief's "ignore"): ${length(names)} files, ${leftAdded} lines added, ${leftRemoved} removed, across ${json.ignored.commits} of the commits. For example: ${sample}.`);
+            })))) : empty_1(), delay(() => {
+                let matchValue_12, branch_3, ids, more, branch_4;
+                return append_1((matchValue_12 = publishedBranch, (matchValue_12 == null) ? (empty_1()) : ((unpublished.length > 0) ? ((branch_3 = matchValue_12, (ids = join(", ", truncate(40, unpublished)), (more = ((unpublished.length > 40) ? ", ..." : ""), append_1(singleton_1(""), delay(() => singleton_1(`Not published yet: ${count(unpublished.length, "commit")} of the range ${(unpublished.length === 1) ? "is" : "are"} not on ${branch_3}, the published branch of this repository (${ids}${more}). What only those commits did is in progress on a branch; it has not shipped.`))))))) : ((branch_4 = matchValue_12, append_1(singleton_1(""), delay(() => singleton_1(concat("Every commit of the range is on ", branch_4, ", the published branch of this repository.")))))))), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("## Tags in the range"), delay(() => append_1(singleton_1(""), delay(() => append_1(isEmpty(tags) ? singleton_1("None.") : collect((matchValue_15) => singleton_1(`- ${matchValue_15[0]} (${matchValue_15[1]}, ${matchValue_15[2]})`), tags), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("## Areas"), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("| area | commits | files | added | deleted | renamed | lines + | lines - |"), delay(() => append_1(singleton_1("|---|---|---|---|---|---|---|---|"), delay(() => append_1(map_2((a_13) => (`| ${a_13.area} | ${a_13.commits} | ${a_13.files} | ${a_13.added} | ${a_13.deleted} | ${a_13.renamed} | ${a_13.linesAdded} | ${a_13.linesRemoved} |`), areas), delay(() => append_1(people ? append_1(singleton_1(""), delay(() => append_1(singleton_1("## People (written because the focus includes \"people\")"), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("By area, who committed there and how many commits. No ranking is meant by the order."), delay(() => append_1(singleton_1(""), delay(() => collect((a_14) => {
+                    const who = join(", ", map((p_22) => (`${p_22.name} (${p_22.commits})`), a_14.people));
+                    return singleton_1(`- ${a_14.area}: ${who}`);
+                }, areas))))))))))) : empty_1(), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("## Files"), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1(concat("Most changed (by commits): ", join(", ", map_1((tupledArg_31) => (((tupledArg_31[0] + " (") + int32ToString(tupledArg_31[1])) + ")"), mostChanged)), ".")), delay(() => append_1(pathsLine("Added", map_1((tupledArg_32) => tupledArg_32[1], of$0027("added"))), delay(() => append_1(pathsLine("Deleted", map_1((tupledArg_33) => tupledArg_33[1], of$0027("deleted"))), delay(() => append_1(pathsLine("Renamed", map_1((tupledArg_34) => ((tupledArg_34[2] + " -> ") + tupledArg_34[1]), of$0027("renamed"))), delay(() => append_1(singleton_1(""), delay(() => append_1(singleton_1("## Commits, oldest first"), delay(() => append_1(singleton_1(""), delay(() => append_1(partial ? append_1(singleton_1(`The range holds ${length(all)} commits. Only the ${length(listed)} that are tagged, are merges or touch more than ${WIDE} files are listed; the rest are in the counts above. Read the others with git when a theme needs them.`), delay(() => singleton_1(""))) : empty_1(), delay(() => collect((c_12) => append_1(singleton_1(`- ${c_12.Id} (${c_12.Date}${people ? concat(", ", c_12.Author) : ""}) ${saidSubject(c_12.Subject)} [${length(c_12.Files)} files]`), delay(() => ((saidBody(c_12.Body) !== "") ? collect((b_6) => ((b_6.trim() !== "") ? singleton_1(concat("    ", b_6.trimEnd())) : empty_1()), split(saidBody(c_12.Body), ["\n"], undefined, 0)) : empty_1()))), listed)))))))))))))))))))))))))))))))))))))))))))))));
+            }));
+        }))))))))))));
+    }))))));
     writeText(join_1(ofArray([build, "history.md"])), join("\n", md) + "\n");
     const arg_2 = count(length(all), "commit");
     const arg_3 = count(Math.round((Date.parse(untilDate + 'T00:00:00Z') - Date.parse(sinceDate + 'T00:00:00Z')) / 86400000), "day");

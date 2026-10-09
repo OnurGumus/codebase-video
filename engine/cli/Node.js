@@ -11,8 +11,9 @@ import * as node$003Amodule from "node:module";
 import { singleton as singleton_1, sort, tail, isEmpty, empty, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { singleton, map, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { defaultOf, uncurry2, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { disposeSafe, getEnumerator, defaultOf, uncurry2, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 
 export const fs = node$003Afs;
 
@@ -282,5 +283,43 @@ export function runCapture(cmd, args) {
  */
 export function hasCommand(cmd) {
     return runCapture((platform === "win32") ? "where" : "which", singleton_1(cmd))[0] === 0;
+}
+
+export function awaitJs(p) {
+    return p;
+}
+
+/**
+ * What a JS library's promise resolves to, as an Async. The promise is marked handled at once: the Async attaches
+ * its own handlers when it runs, which Fable's trampoline can put off to a later turn, and a rejection in between
+ * would otherwise end the process as an uncaught error.
+ */
+export function fromJs(p) {
+    p.catch(() => {});
+    return awaitPromise(awaitJs(p));
+}
+
+/**
+ * Gives each reply an agent owes, after the message is handled and outside any `try` around the handling: a reply
+ * runs its caller's continuation at once, up to that caller's next await, so a reply given inside the `try` could
+ * come back as the handler's own failure and be answered a second time. What escapes a reply (only a caller whose
+ * computation is already over can throw back here) is that caller's, not the agent's: it is dropped, so the agent
+ * goes on and the other replies are still given.
+ */
+export function deliver(answers) {
+    const enumerator = getEnumerator(answers);
+    try {
+        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+            const answer = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            try {
+                answer();
+            }
+            catch (matchValue) {
+            }
+        }
+    }
+    finally {
+        disposeSafe(enumerator);
+    }
 }
 

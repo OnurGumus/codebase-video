@@ -10,10 +10,10 @@ import { replace, substring, concat, join, padLeft } from "./fable_modules/fable
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { option_type, float64_type, record_type, bool_type, union_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
-import { mkdirp, remove, writeText, readJson, resolve, writeBytes, requireFromHome, readBytes, run as run_1, mtime, exists, eprint, engineDir, join as join_1 } from "./Node.js";
-import { ServeFor, startServer, shots, awaitJs, toFixed } from "./Render.js";
+import { mkdirp, remove, writeText, readJson, resolve, writeBytes, fromJs, requireFromHome, readBytes, run as run_1, mtime, exists, eprint, engineDir, join as join_1 } from "./Node.js";
+import { ServeFor, startServer, shots, toFixed } from "./Render.js";
 import { traverseResultM } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/List.fs.js";
-import { startAsPromise, fromContinuations, awaitPromise, ignore } from "./fable_modules/fable-library-js.5.19.0/Async.js";
+import { fromContinuations, ignore } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { match } from "./fable_modules/fable-library-js.5.19.0/RegExp.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
@@ -276,9 +276,9 @@ function pptx(title, slides, out) {
     finally {
         disposeSafe(enumerator);
     }
-    return ignore(awaitPromise(awaitJs(deck.writeFile({
+    return ignore(fromJs(deck.writeFile({
         fileName: out,
-    }))));
+    })));
 }
 
 function $007CVideoShape$007C_$007C(xml) {
@@ -309,7 +309,7 @@ function withAutoplay(seconds, xml) {
 function autoplay(file, slides) {
     return singleton_2.Delay(() => {
         const zipLib = requireFromHome("jszip");
-        return singleton_2.Bind(awaitPromise(awaitJs(zipLib.loadAsync(readBytes(file)))), (_arg) => {
+        return singleton_2.Bind(fromJs(zipLib.loadAsync(readBytes(file))), (_arg) => {
             const zip = _arg;
             return singleton_2.Combine(singleton_2.For(slides, (_arg_1) => {
                 const s = _arg_1;
@@ -320,15 +320,15 @@ function autoplay(file, slides) {
                 else {
                     const clip = matchValue;
                     const path = `ppt/slides/slide${s.Number}.xml`;
-                    return singleton_2.Bind(awaitPromise(awaitJs((zip.file(path)).async("string"))), (_arg_2) => {
+                    return singleton_2.Bind(fromJs((zip.file(path)).async("string")), (_arg_2) => {
                         zip.file(path, withAutoplay(clip.Seconds, _arg_2));
                         return singleton_2.Zero();
                     });
                 }
-            }), singleton_2.Delay(() => singleton_2.Bind(awaitPromise(awaitJs(zip.generateAsync({
+            }), singleton_2.Delay(() => singleton_2.Bind(fromJs(zip.generateAsync({
                 type: "nodebuffer",
                 compression: "DEFLATE",
-            }))), (_arg_3) => {
+            })), (_arg_3) => {
                 writeBytes(file, _arg_3);
                 return singleton_2.Zero();
             })));
@@ -346,7 +346,7 @@ function slideWriter() {
 }
 
 function shoot(ws, slides) {
-    const input = awaitPromise(shots(ws, toList(delay(() => map((s) => [s.Step.Hold, s.Still], slides)))));
+    const input = shots(ws, toList(delay(() => map((s) => [s.Step.Hold, s.Still], slides))));
     return singleton_2.Bind(input, (x$0027) => {
         let value;
         const _arg = x$0027 | 0;
@@ -356,7 +356,7 @@ function shoot(ws, slides) {
 }
 
 function serve(ws) {
-    return singleton_2.Delay(() => singleton_2.Bind(awaitPromise(startServer(ws, ServeFor.ForRender)), (_arg) => {
+    return singleton_2.Delay(() => singleton_2.Bind(startServer(ws, ServeFor.ForRender), (_arg) => {
         console.log(concat(_arg.Url, "?present   click-through deck: → or click next, ← back, S speaker notes, N notes on the slide, F full screen"));
         console.log("Ctrl+C to stop.");
         return singleton_2.ReturnFrom(fromContinuations((_arg_1) => {
@@ -369,7 +369,6 @@ function written(file) {
 }
 
 export function run(ws, args) {
-    let input_46;
     const ws_1 = resolve(ws);
     const timing = readJson(join_1(ofArray([ws_1, "build", "timing.json"])));
     const name = timing.name;
@@ -378,7 +377,7 @@ export function run(ws, args) {
     const out = (ext) => join_1(ofArray([ws_1, "out", `${name}.${ext}`]));
     const dir = join_1(ofArray([ws_1, "build", "present"]));
     const stills = mapIndexed((i, step) => (new Slide(i + 1, step, join_1(ofArray([dir, concat("slide-", padLeft(int32ToString(i + 1), 3, "0"), ".jpg")])), undefined)), cut(timing.duration, scenes));
-    return startAsPromise((input_46 = singleton_2.Delay(() => {
+    const input_46 = singleton_2.Delay(() => {
         let asyncResult_6;
         const value_1 = optionsOf(args);
         asyncResult_6 = singleton_2.Return(value_1);
@@ -513,11 +512,12 @@ export function run(ws, args) {
                 });
             }
         });
-    }), singleton_2.Bind(input_46, (x$0027_5) => {
+    });
+    return singleton_2.Bind(input_46, (x$0027_5) => {
         let value_32;
         const _arg_8 = x$0027_5;
         value_32 = ((_arg_8.tag === 1) ? exitCode(name, _arg_8.fields[0]) : 0);
         return singleton_2.Return(value_32);
-    })));
+    });
 }
 

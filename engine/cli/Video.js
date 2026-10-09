@@ -7,6 +7,7 @@ import { stringHash, disposeSafe, getEnumerator, comparePrimitives } from "./fab
 import { singleton as singleton_1, append as append_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { ranges, Range$, findChrome } from "./Render.js";
 import { wholeFrames, plan } from "./Segments.js";
 import { FSharpSet__Contains, ofList } from "./fable_modules/fable-library-js.5.19.0/Set.js";
@@ -233,98 +234,100 @@ function fitShort(ws, mp4) {
 }
 
 export function run(ws, args) {
-    const full = contains("--full", args, {
-        Equals: (x, y) => (x === y),
-        GetHashCode: (x) => (stringHash(x) | 0),
-    });
-    const lossless = contains("--lossless", args, {
-        Equals: (x_1, y_1) => (x_1 === y_1),
-        GetHashCode: (x_1) => (stringHash(x_1) | 0),
-    });
-    const matchValue = filter((a) => {
-        if (a !== "--full") {
-            return a !== "--lossless";
-        }
-        else {
-            return false;
-        }
-    }, args);
-    if (isEmpty(matchValue)) {
-        const matchValue_1 = findChrome();
-        if (matchValue_1 != null) {
-            const chrome = matchValue_1;
-            const patternInput = timingOf(ws);
-            const name = patternInput[0];
-            const exts = lossless ? singleton("mkv") : ofArray(["mp4", "webm"]);
-            const encoder = join_1(" ", lossless ? ffv1 : append(x264, vp9));
-            const segments = plan(ws, 30, "1920x1080@1", browserId(chrome), encoder);
-            const dir = join(ofArray([ws, "build", lossless ? "segments-lossless" : "segments"]));
-            mkdirp(dir);
-            const file = (key, ext) => join(ofArray([dir, concat(key, ".", ext)]));
-            const missing = filter((arg) => !(!full && forAll((ext_1) => exists(file(arg.Key, ext_1)), exts)), segments);
-            if (!wholeFrames(ws, 30)) {
-                console.log("timing.json is from an older engine (scenes do not end on whole frames): run narrate again, and later narration fixes will render only what they change");
+    return singleton_2.Delay(() => {
+        const full = contains("--full", args, {
+            Equals: (x, y) => (x === y),
+            GetHashCode: (x) => (stringHash(x) | 0),
+        });
+        const lossless = contains("--lossless", args, {
+            Equals: (x_1, y_1) => (x_1 === y_1),
+            GetHashCode: (x_1) => (stringHash(x_1) | 0),
+        });
+        const matchValue = filter((a) => {
+            if (a !== "--full") {
+                return a !== "--lossless";
             }
-            const jobs = toList(delay(() => collect((matchValue_2) => {
-                let temp;
-                const s_1 = matchValue_2[1];
-                return singleton_1((temp = ((ext_2) => file(s_1.Key, "tmp." + ext_2)), new Range$(`[${matchValue_2[0] + 1}/${length(missing)}] ${s_1.Id}`, s_1.First, s_1.End, lossless ? append(ffv1, singleton(temp("mkv"))) : append(ofArray(["-map", "0:v"]), append(x264, append(ofArray([temp("mp4"), "-map", "0:v"]), append(vp9, singleton(temp("webm")))))), () => {
-                    const enumerator = getEnumerator(exts);
-                    try {
-                        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                            const ext_3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            rename(temp(ext_3), file(s_1.Key, ext_3));
-                        }
-                    }
-                    finally {
-                        disposeSafe(enumerator);
-                    }
-                    writeText(file(s_1.Key, "json"), s_1.Input);
-                })));
-            }, indexed(missing))));
-            const pr = isEmpty(jobs) ? (Promise.resolve(0)) : ranges(ws, 30, jobs);
-            return pr.then((code) => {
-                let args_1, args_2, args_3, args_4;
-                if (code !== 0) {
-                    return code | 0;
-                }
-                else {
-                    const out = (ext_4) => join(ofArray([ws, "out", `${name}.${ext_4}`]));
-                    const joined = (ext_5) => ofArray(["-f", "concat", "-safe", "0", "-i", concatList(dir, ext_5, 30, segments)]);
-                    const audio = ofArray(["-i", join(ofArray([ws, "build", "narration.wav"])), "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:v", "copy"]);
-                    return sequence(append(lossless ? singleton((args_1 = append(joined("mkv"), ofArray(["-c", "copy", join(ofArray([ws, "build", "frames.mkv"]))])), () => (ffmpeg(args_1, undefined) | 0))) : ofArray([(args_2 = append(joined("mp4"), append(audio, ofArray(["-c:a", "aac", "-b:a", `${AAC_KBPS}k`, "-ac", "1", "-movflags", "+faststart", "-shortest", out("mp4")]))), () => (ffmpeg(args_2, undefined) | 0)), () => (fitShort(ws, out("mp4")) | 0), (args_3 = append(joined("webm"), append(audio, ofArray(["-c:a", "libopus", "-b:a", "48k", "-ac", "1", "-shortest", out("webm")]))), () => (ffmpeg(args_3, undefined) | 0)), (args_4 = ofArray(["-ss", patternInput[1], "-i", out("mp4"), "-frames:v", "1", "-q:v", "3", out("jpg")]), () => (ffmpeg(args_4, undefined) | 0)), () => {
-                        copyFile(join(ofArray([ws, "build", "captions.vtt"])), out("vtt"));
-                        return 0;
-                    }, () => (chaptersFor(ws, name) | 0)]), append(singleton(() => {
-                        const keep = ofList(map((s_2) => s_2.Key, segments), {
-                            Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
-                        });
-                        const enumerator_1 = getEnumerator(readDir(dir));
-                        try {
-                            while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                                const f = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                                if (!f.startsWith("list-") && !FSharpSet__Contains(keep, item(0, split(f, ["."], undefined, 0)))) {
-                                    remove(join(ofArray([dir, f])));
+            else {
+                return false;
+            }
+        }, args);
+        if (isEmpty(matchValue)) {
+            const matchValue_1 = findChrome();
+            if (matchValue_1 != null) {
+                const chrome = matchValue_1;
+                const patternInput = timingOf(ws);
+                const name = patternInput[0];
+                const exts = lossless ? singleton("mkv") : ofArray(["mp4", "webm"]);
+                const encoder = join_1(" ", lossless ? ffv1 : append(x264, vp9));
+                const segments = plan(ws, 30, "1920x1080@1", browserId(chrome), encoder);
+                const dir = join(ofArray([ws, "build", lossless ? "segments-lossless" : "segments"]));
+                mkdirp(dir);
+                const file = (key, ext) => join(ofArray([dir, concat(key, ".", ext)]));
+                const missing = filter((arg) => !(!full && forAll((ext_1) => exists(file(arg.Key, ext_1)), exts)), segments);
+                return singleton_2.Combine(!wholeFrames(ws, 30) ? ((console.log("timing.json is from an older engine (scenes do not end on whole frames): run narrate again, and later narration fixes will render only what they change"), singleton_2.Zero())) : singleton_2.Zero(), singleton_2.Delay(() => {
+                    const jobs = toList(delay(() => collect((matchValue_2) => {
+                        let temp;
+                        const s_1 = matchValue_2[1];
+                        return singleton_1((temp = ((ext_2) => file(s_1.Key, "tmp." + ext_2)), new Range$(`[${matchValue_2[0] + 1}/${length(missing)}] ${s_1.Id}`, s_1.First, s_1.End, lossless ? append(ffv1, singleton(temp("mkv"))) : append(ofArray(["-map", "0:v"]), append(x264, append(ofArray([temp("mp4"), "-map", "0:v"]), append(vp9, singleton(temp("webm")))))), () => {
+                            const enumerator = getEnumerator(exts);
+                            try {
+                                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                                    const ext_3 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                                    rename(temp(ext_3), file(s_1.Key, ext_3));
                                 }
                             }
+                            finally {
+                                disposeSafe(enumerator);
+                            }
+                            writeText(file(s_1.Key, "json"), s_1.Input);
+                        })));
+                    }, indexed(missing))));
+                    return singleton_2.Bind(isEmpty(jobs) ? singleton_2.Return(0) : ranges(ws, 30, jobs), (_arg) => {
+                        let args_1, args_2, args_3, args_4;
+                        const code = _arg | 0;
+                        if (code !== 0) {
+                            return singleton_2.Return(code);
                         }
-                        finally {
-                            disposeSafe(enumerator_1);
+                        else {
+                            const out = (ext_4) => join(ofArray([ws, "out", `${name}.${ext_4}`]));
+                            const joined = (ext_5) => ofArray(["-f", "concat", "-safe", "0", "-i", concatList(dir, ext_5, 30, segments)]);
+                            const audio = ofArray(["-i", join(ofArray([ws, "build", "narration.wav"])), "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:v", "copy"]);
+                            const assemble = lossless ? singleton((args_1 = append(joined("mkv"), ofArray(["-c", "copy", join(ofArray([ws, "build", "frames.mkv"]))])), () => (ffmpeg(args_1, undefined) | 0))) : ofArray([(args_2 = append(joined("mp4"), append(audio, ofArray(["-c:a", "aac", "-b:a", `${AAC_KBPS}k`, "-ac", "1", "-movflags", "+faststart", "-shortest", out("mp4")]))), () => (ffmpeg(args_2, undefined) | 0)), () => (fitShort(ws, out("mp4")) | 0), (args_3 = append(joined("webm"), append(audio, ofArray(["-c:a", "libopus", "-b:a", "48k", "-ac", "1", "-shortest", out("webm")]))), () => (ffmpeg(args_3, undefined) | 0)), (args_4 = ofArray(["-ss", patternInput[1], "-i", out("mp4"), "-frames:v", "1", "-q:v", "3", out("jpg")]), () => (ffmpeg(args_4, undefined) | 0)), () => {
+                                copyFile(join(ofArray([ws, "build", "captions.vtt"])), out("vtt"));
+                                return 0;
+                            }, () => (chaptersFor(ws, name) | 0)]);
+                            return singleton_2.Return(sequence(append(assemble, append(singleton(() => {
+                                const keep = ofList(map((s_2) => s_2.Key, segments), {
+                                    Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+                                });
+                                const enumerator_1 = getEnumerator(readDir(dir));
+                                try {
+                                    while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
+                                        const f = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                                        if (!f.startsWith("list-") && !FSharpSet__Contains(keep, item(0, split(f, ["."], undefined, 0)))) {
+                                            remove(join(ofArray([dir, f])));
+                                        }
+                                    }
+                                }
+                                finally {
+                                    disposeSafe(enumerator_1);
+                                }
+                                console.log(`segments: ${length(segments) - length(missing)} reused, ${length(missing)} rendered`);
+                                return 0;
+                            }), lossless ? singleton(() => (run$0027("ls", ofArray(["-la", join(ofArray([ws, "build", "frames.mkv"]))])) | 0)) : singleton(() => (list(join(ofArray([ws, "out"])), name) | 0))))));
                         }
-                        console.log(`segments: ${length(segments) - length(missing)} reused, ${length(missing)} rendered`);
-                        return 0;
-                    }), lossless ? singleton(() => (run$0027("ls", ofArray(["-la", join(ofArray([ws, "build", "frames.mkv"]))])) | 0)) : singleton(() => (list(join(ofArray([ws, "out"])), name) | 0))))) | 0;
-                }
-            });
+                    });
+                }));
+            }
+            else {
+                eprint("no Chrome found: set CHROME to the browser\'s executable");
+                return singleton_2.Return(2);
+            }
         }
         else {
-            eprint("no Chrome found: set CHROME to the browser\'s executable");
-            return Promise.resolve(2);
+            eprint(concat("video: unknown option ", head(matchValue), " (options: --full, --lossless)"));
+            return singleton_2.Return(2);
         }
-    }
-    else {
-        eprint(concat("video: unknown option ", head(matchValue), " (options: --full, --lossless)"));
-        return Promise.resolve(2);
-    }
+    });
 }
 

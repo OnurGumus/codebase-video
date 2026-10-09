@@ -30,15 +30,37 @@ let usage () =
     eprint "usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|present|scan|report|fill|fix|history [...]"
     exit 2
 
-let finish (p: JS.Promise<int>) =
-    p
-    |> Promise.map (fun code -> exit code)
-    |> Promise.catchEnd (fun e ->
-        eprint (string e)
-        exit 1)
+/// Runs a step to its end, then exits with its code; an exception is printed and exits with 1. The engine's one
+/// Async.StartAsPromise: every step below is an Async.
+let finish (step: Async<int>) : unit =
+    (Async.StartAsPromise step)
+        .``then``(fun code -> exit code)
+        .catch(fun e ->
+            eprint (string e)
+            exit 1)
+    |> ignore
 
-let ensureTiming (ws: string) : JS.Promise<unit> =
-    if exists (join [ ws; "build"; "timing.json" ]) then Promise.lift () else Narrate.run ws
+/// Narrate.run's result: the setup hint (the voice is not installed) ends the command with status 2. The narration is
+/// made by the caller, so that Narrate.run reads script.json at once (a bad one throws from `run` itself, before
+/// anything runs).
+let private narrated (narration: Async<Result<unit, string>>) : Async<unit> =
+    async {
+        match! narration with
+        | Ok() -> ()
+        | Error hint ->
+            eprint hint
+            exit 2
+    }
+
+let ensureTiming (ws: string) : Async<unit> =
+    if exists (join [ ws; "build"; "timing.json" ]) then async.Return() else narrated (Narrate.run ws)
+
+/// `first`, then the step `next` makes once `first` is done. `first` is made by the caller, before anything runs.
+let private andThen (next: unit -> Async<int>) (first: Async<unit>) : Async<int> =
+    async {
+        do! first
+        return! next ()
+    }
 
 /// Workspaces started before the kit moved to F# carry a clip.html that loads /engine/stage.js, /engine/stage-kit.js
 /// and the frame as an inline script. A long-video clip.html is the template copied verbatim, so its script block is
@@ -73,12 +95,16 @@ let main () =
         mkdirp (join [ ws; "build" ])
         mkdirp (join [ ws; "out" ])
         if step <> "narrate" && step <> "check" && step <> "new-long" && step <> "fill" && step <> "fix" && step <> "history" then
-            Setup.requireReady ()
+            match Setup.requireReady () with
+            | Ok() -> ()
+            | Error hint ->
+                eprint hint
+                exit 2
         if step <> "new-long" then upgradeClip ws
         match step with
-        | "narrate" -> finish (Narrate.run ws |> Promise.map (fun () -> 0))
-        | "check" -> finish (Promise.lift (Check.run ws rest))
-        | "stills" | "sheet" | "serve" -> finish (ensureTiming ws |> Promise.bind (fun () -> Render.run ws step rest))
+        | "narrate" -> finish (narrated (Narrate.run ws) |> andThen (fun () -> async.Return 0))
+        | "check" -> finish (async.Return(Check.run ws rest))
+        | "stills" | "sheet" | "serve" -> finish (ensureTiming ws |> andThen (fun () -> Render.run ws step rest))
         | "new-long" ->
             let dst = join [ ws; "clip.html" ]
             if exists dst then
@@ -87,15 +113,15 @@ let main () =
             copyFile (join [ engineDir; "templates"; "long"; "clip.html" ]) dst
             printfn "%s (write script.json and one <key>.js per module; see KIT.md)" dst
             exit 0
-        | "chapters" -> finish (Promise.lift (Video.chapters ws))
-        | "video" -> finish (ensureTiming ws |> Promise.bind (fun () -> Video.run ws rest))
-        | "present" -> finish (ensureTiming ws |> Promise.bind (fun () -> Present.run ws rest))
-        | "all" -> finish (Narrate.run ws |> Promise.bind (fun () -> Video.run ws rest))
-        | "scan" -> finish (ensureTiming ws |> Promise.bind (fun () -> Scan.run ws rest))
-        | "report" -> finish (Promise.lift (ScanReport.run ws rest))
-        | "fill" -> finish (Promise.lift (Fill.run ws))
-        | "history" -> finish (Promise.lift (History.run ws rest))
-        | "fix" -> finish (Promise.lift (ApplyFixes.run ws rest))
+        | "chapters" -> finish (async.Return(Video.chapters ws))
+        | "video" -> finish (ensureTiming ws |> andThen (fun () -> Video.run ws rest))
+        | "present" -> finish (ensureTiming ws |> andThen (fun () -> Present.run ws rest))
+        | "all" -> finish (narrated (Narrate.run ws) |> andThen (fun () -> Video.run ws rest))
+        | "scan" -> finish (ensureTiming ws |> andThen (fun () -> Scan.run ws rest))
+        | "report" -> finish (async.Return(ScanReport.run ws rest))
+        | "fill" -> finish (async.Return(Fill.run ws))
+        | "history" -> finish (async.Return(History.run ws rest))
+        | "fix" -> finish (async.Return(ApplyFixes.run ws rest))
         | _ -> usage ()
     | _ -> usage ()
 

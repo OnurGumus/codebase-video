@@ -1,24 +1,24 @@
 
 import { read, write, concat as concat_3, trim as trim_1, roundHalfEven } from "./Wav.js";
 import { max, isNegativeInfinity, isPositiveInfinity, parse } from "./fable_modules/fable-library-js.5.19.0/Double.js";
-import { toConsole, trim, concat, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { concat as concat_2, truncate, choose, reverse, mapIndexed, setItem, map as map_1, item, equalsWith } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { round, Lazy, Exception, disposeSafe, getEnumerator, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { toConsole, concat as concat_1, trim, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { concat as concat_2, truncate, fold as fold_1, choose, reverse as reverse_1, mapIndexed as mapIndexed_1, map as map_1, item, equalsWith } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { round, disposeSafe, getEnumerator, Lazy, Exception, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { op_UnaryNegation_Int32, parse as parse_1 } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
-import { append as append_1, empty, singleton, collect, delay, toList, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { toString, FSharpRef, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { empty as empty_1, singleton as singleton_1, collect, append as append_1, delay, toList, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { option_type, float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { last as last_1, tryFind, item as item_1, length, indexed, sort, sumBy, concat as concat_1, filter, unzip, cons, tail, head, append, empty as empty_1, singleton as singleton_1, exists as exists_1, ofSeq as ofSeq_1, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { writeText, rename, sha1Hex, toJson, mkdirp, parseJson, readText, resolve as resolve_1, readJson, dirname, requireFromHome, url, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
-import { defaultArg, some, value as value_8 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { sort, iterate, sumBy, last as last_2, tryFind, item as item_1, indexed, length, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { mkdirp, parseJson, readText, resolve, writeText, rename, toJson, sha1Hex, readJson, dirname, requireFromHome, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists, exit, eprint } from "./Node.js";
+import { defaultArg, some, value as value_4 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { toList as toList_1, FSharpSet__Contains, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { empty as empty_2, FSharpMap__ContainsKey, FSharpMap__TryFind, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
-import { PromiseBuilder__For_1565554B, PromiseBuilder__Delay_62FBFDE1, PromiseBuilder__Run_212F1D4B } from "./fable_modules/Fable.Promise.3.2.1/Promise.fs.js";
-import { promise } from "./fable_modules/Fable.Promise.3.2.1/PromiseImpl.fs.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
+import { FSharpMap__Remove, FSharpMap__Add, empty as empty_2, FSharpMap__TryFind, FSharpMap__ContainsKey, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
+import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import * as node$003Aworker_threads from "node:worker_threads";
-import { addToSet, tryGetValue } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
-import { apply, load } from "./Glossary.js";
+import { load as load_1, apply, Glossary_$reflection } from "./Glossary.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 
 /**
@@ -442,7 +442,7 @@ function group(m, i) {
 }
 
 function group0(m) {
-    return value_8(group(m, 0));
+    return value_4(group(m, 0));
 }
 
 function matchIndex(m) {
@@ -494,30 +494,58 @@ const SHIELDED = new RegExp("\\x00(\\d+)[\\x00\\x01]", "g");
 
 const LEADING_BREAKS = new RegExp("^(?:\\[(?:pause|think)(?:\\s+[\\d.]+)?\\]\\s*)+", "");
 
+function cut(re, text) {
+    const patternInput = mapFold((pos, m) => {
+        const i = matchIndex(m) | 0;
+        return [[substring(text, pos, i - pos), m], (i + group0(m).length) | 0];
+    }, 0, ofArray(Array.from(text.matchAll(re))));
+    return [patternInput[0], substring(text, patternInput[1])];
+}
+
 export function sentences(say) {
-    const shielded = [];
-    const text = say.trim().replace(FOREIGN, (...a) => ((m) => {
-        void (shielded.push(group0(m)));
-        const mark = (ENDS_SENTENCE.test(value_8(group(m, 2)))) ? "\u0001" : "\u0000";
-        return ("\u0000" + int32ToString(shielded.length - 1)) + mark;
-    })(a));
-    const out = [];
-    const arr = text.split(SENTENCE_SPLIT);
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const raw = item(idx, arr);
-        if (raw.trim() !== "") {
-            let p = (raw.replace(SHIELDED, (...a) => ((m_1) => item(parse_1(value_8(group(m_1, 1)), 511, false, 32), shielded))(a))).trim();
-            const m_2 = LEADING_BREAKS.exec(p);
-            if (!Operators_IsNull(m_2) && (out.length > 0)) {
-                setItem(out, out.length - 1, (item(out.length - 1, out) + " ") + group0(m_2).trim());
-                p = substring(p, group0(m_2).length).trim();
+    const patternInput = cut(FOREIGN, say.trim());
+    const found = patternInput[0];
+    const shielded = toArray(map_2((arg) => group0(arg[1]), found));
+    const marked = mapIndexed((n, tupledArg) => {
+        const mark = (ENDS_SENTENCE.test(value_4(group(tupledArg[1], 2)))) ? "\u0001" : "\u0000";
+        return ((tupledArg[0] + "\u0000") + int32ToString(n)) + mark;
+    }, found);
+    return reverse(fold((sofar, p) => {
+        const m_3 = LEADING_BREAKS.exec(p);
+        let matchResult, before_2, last_1;
+        if (!isEmpty(sofar)) {
+            if (!Operators_IsNull(m_3)) {
+                matchResult = 0;
+                before_2 = tail_1(sofar);
+                last_1 = head(sofar);
             }
-            if (p !== "") {
-                void (out.push(p));
+            else {
+                matchResult = 1;
             }
         }
-    }
-    return ofSeq_1(out);
+        else {
+            matchResult = 1;
+        }
+        switch (matchResult) {
+            case 0: {
+                const p_1 = substring(p, group0(m_3).length).trim();
+                const sofar_1 = cons((last_1 + " ") + group0(m_3).trim(), before_2);
+                if (p_1 !== "") {
+                    return cons(p_1, sofar_1);
+                }
+                else {
+                    return sofar_1;
+                }
+            }
+            default:
+                if (p !== "") {
+                    return cons(p, sofar);
+                }
+                else {
+                    return sofar;
+                }
+        }
+    }, empty(), map_2((raw_1) => (raw_1.replace(SHIELDED, (...a) => ((m_2) => item(parse_1(value_4(group(m_2, 1)), 511, false, 32), shielded))(a))).trim(), filter((raw) => (raw.trim() !== ""), ofArray((join("", marked) + patternInput[1]).split(SENTENCE_SPLIT))))));
 }
 
 /**
@@ -526,7 +554,7 @@ export function sentences(say) {
 export function breaks(s) {
     return toList(delay(() => map((m) => {
         let matchValue;
-        const kind = value_8(group(m, 1));
+        const kind = value_4(group(m, 1));
         return [kind, (matchValue = group(m, 2), (matchValue == null) ? breakDefault(kind) : parse(matchValue))];
     }, Array.from(s.matchAll(BREAK)))));
 }
@@ -535,27 +563,20 @@ export function breaks(s) {
  * A sentence as the stretches between its [rest] marks, each with the silence that follows it (0 after the last).
  */
 export function rests(s) {
-    const out = [];
-    let pos = 0;
-    const arr = Array.from(s.matchAll(REST));
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
+    const patternInput = cut(REST, s);
+    return append(map_2((tupledArg) => {
         let matchValue;
-        const m = item(idx, arr);
-        const i = matchIndex(m) | 0;
-        void (out.push([substring(s, pos, i - pos), (matchValue = group(m, 1), (matchValue == null) ? REST_DEFAULT : parse(matchValue))]));
-        pos = ((i + group0(m).length) | 0);
-    }
-    void (out.push([substring(s, pos), 0]));
-    return ofSeq_1(out);
+        return [tupledArg[0], (matchValue = group(tupledArg[1], 1), (matchValue == null) ? REST_DEFAULT : parse(matchValue))];
+    }, patternInput[0]), singleton([patternInput[1], 0]));
 }
 
 export function shown(s) {
-    const s_1 = (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_8(group(m, 1)))(a))).replace(FOREIGN, (...a) => ((m_1) => value_8(group(m_1, 2)))(a));
+    const s_1 = (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_4(group(m, 1)))(a))).replace(FOREIGN, (...a) => ((m_1) => value_4(group(m_1, 2)))(a));
     return s_1.trim();
 }
 
 export function spoken(s) {
-    return (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_8(group(m, 2)))(a))).trim();
+    return (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_4(group(m, 2)))(a))).trim();
 }
 
 /**
@@ -563,14 +584,14 @@ export function spoken(s) {
  * Stage (src/Kit/Stage.fs) times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
  */
 export function heard(s) {
-    return spoken(s).replace(FOREIGN, (...a) => ((m) => value_8(group(m, 2)))(a));
+    return spoken(s).replace(FOREIGN, (...a) => ((m) => value_4(group(m, 2)))(a));
 }
 
 const LETTER_A = new RegExp("(?<![\\p{L}\\p{N}_\'’])A(?![\\p{L}\\p{N}_\'’])", "gu");
 
 const SENTENCE_OPEN = new RegExp("(?:^|[.!?:;]\\s+|[\"“(]\\s*)$", "");
 
-const NEXT_LETTER = new RegExp("\\s+[A-Z](?:\'s|s)?(?![A-Za-z])", "y");
+const NEXT_LETTER = new RegExp("^\\s+[A-Z](?:\'s|s)?(?![A-Za-z])", "");
 
 /**
  * The text as sent to an English voice: letter "A" spelled so that it is said as a letter.
@@ -578,9 +599,7 @@ const NEXT_LETTER = new RegExp("\\s+[A-Z](?:\'s|s)?(?![A-Za-z])", "y");
 export function voiced(text) {
     return text.replace(LETTER_A, (...a) => ((m) => {
         const start = item(m.length - 2, m) | 0;
-        const opening = SENTENCE_OPEN.test(substring(text, 0, start));
-        NEXT_LETTER.lastIndex = (start + 1);
-        return (!opening ? true : (NEXT_LETTER.test(text))) ? "eigh" : "A";
+        return (!(SENTENCE_OPEN.test(substring(text, 0, start))) ? true : (NEXT_LETTER.test(substring(text, start + 1)))) ? "eigh" : "A";
     })(a));
 }
 
@@ -590,25 +609,13 @@ const WORD_CHAR = new RegExp("[\\p{L}\\p{N}_]", "u");
  * (code or None, text) runs of a sentence: main-voice text and {code:...} phrases in order.
  */
 export function pieces(sentence) {
-    const out = [];
-    let pos = 0;
-    const arr = Array.from(sentence.matchAll(FOREIGN));
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const m = item(idx, arr);
-        const i = matchIndex(m) | 0;
-        if (i > pos) {
-            void (out.push([undefined, substring(sentence, pos, i - pos)]));
-        }
-        void (out.push([group(m, 1), value_8(group(m, 2))]));
-        pos = ((i + group0(m).length) | 0);
-    }
-    if (pos < sentence.length) {
-        void (out.push([undefined, substring(sentence, pos)]));
-    }
-    return toList(delay(() => collect((matchValue) => {
-        const text = matchValue[1];
-        return (WORD_CHAR.test(text)) ? singleton([matchValue[0], text.trim()]) : empty();
-    }, out)));
+    const patternInput = cut(FOREIGN, sentence);
+    const tail = patternInput[1];
+    return map_2((tupledArg_1) => [tupledArg_1[0], tupledArg_1[1].trim()], filter((tupledArg) => (WORD_CHAR.test(tupledArg[1])), toList(delay(() => append_1(collect((matchValue) => {
+        const m = matchValue[1];
+        const before = matchValue[0];
+        return append_1((before !== "") ? singleton_1([undefined, before]) : empty_1(), delay(() => singleton_1([group(m, 1), value_4(group(m, 2))])));
+    }, patternInput[0]), delay(() => ((tail !== "") ? singleton_1([undefined, tail]) : empty_1())))))));
 }
 
 /**
@@ -637,19 +644,21 @@ export function setupHint() {
 }
 
 /**
- * Exits 2 with the setup hint when a package is missing from the tool home.
+ * The setup hint as the error when a package is missing from the tool home.
  */
 export function requirePackages(names) {
     if (exists_1((arg) => !packageInstalled(arg), names)) {
-        eprint(setupHint());
-        exit(2);
+        return new FSharpResult$2(/* Error */ 1, [setupHint()]);
+    }
+    else {
+        return new FSharpResult$2(/* Ok */ 0, [undefined]);
     }
 }
 
 function importFromHome(name) {
     const req = nodeModule.createRequire(join_1(ofArray([toolHome, "node", "package.json"])));
     const resolved = req.resolve(name);
-    return import((url.pathToFileURL(resolved)).href);
+    return fromJs(import((url.pathToFileURL(resolved)).href));
 }
 
 const VOCAB = ofList(ofArray([[";", 1], [":", 2], [",", 3], [".", 4], ["!", 5], ["?", 6], ["—", 9], ["…", 10], ["\"", 11], ["(", 12], [")", 13], ["“", 14], ["”", 15], [" ", 16], ["̃", 17], ["ʣ", 18], ["ʥ", 19], ["ʦ", 20], ["ʨ", 21], ["ᵝ", 22], ["ꭧ", 23], ["A", 24], ["I", 25], ["O", 31], ["Q", 33], ["S", 35], ["T", 36], ["W", 39], ["Y", 41], ["ᵊ", 42], ["a", 43], ["b", 44], ["c", 45], ["d", 46], ["e", 47], ["f", 48], ["h", 50], ["i", 51], ["j", 52], ["k", 53], ["l", 54], ["m", 55], ["n", 56], ["o", 57], ["p", 58], ["q", 59], ["r", 60], ["s", 61], ["t", 62], ["u", 63], ["v", 64], ["w", 65], ["x", 66], ["y", 67], ["z", 68], ["ɑ", 69], ["ɐ", 70], ["ɒ", 71], ["æ", 72], ["β", 75], ["ɔ", 76], ["ɕ", 77], ["ç", 78], ["ɖ", 80], ["ð", 81], ["ʤ", 82], ["ə", 83], ["ɚ", 85], ["ɛ", 86], ["ɜ", 87], ["ɟ", 90], ["ɡ", 92], ["ɥ", 99], ["ɨ", 101], ["ɪ", 102], ["ʝ", 103], ["ɯ", 110], ["ɰ", 111], ["ŋ", 112], ["ɳ", 113], ["ɲ", 114], ["ɴ", 115], ["ø", 116], ["ɸ", 118], ["θ", 119], ["œ", 120], ["ɹ", 123], ["ɾ", 125], ["ɻ", 126], ["ʁ", 128], ["ɽ", 129], ["ʂ", 130], ["ʃ", 131], ["ʈ", 132], ["ʧ", 133], ["ʊ", 135], ["ʋ", 136], ["ʌ", 138], ["ɣ", 139], ["ɤ", 140], ["χ", 142], ["ʎ", 143], ["ʒ", 147], ["ʔ", 148], ["ˈ", 156], ["ˌ", 157], ["ː", 158], ["ʰ", 162], ["ʲ", 164], ["↓", 169], ["→", 171], ["↗", 172], ["↘", 173], ["ᵻ", 177]]), {
@@ -695,31 +704,27 @@ function Mark_$reflection() {
 function preserveLine(line, num_1) {
     const matches = map_1(group0, Array.from(line.matchAll(MARKS_RE)));
     if (matches.length === 0) {
-        return [singleton_1(line), empty_1()];
+        return [singleton(line), empty()];
     }
     else if ((matches.length === 1) && (item(0, matches) === line)) {
-        return [empty_1(), singleton_1(new Mark(num_1, line, MarkPosition.Alone))];
+        return [empty(), singleton(new Mark(num_1, line, MarkPosition.Alone))];
     }
     else {
         const last = (matches.length - 1) | 0;
-        const marks = ofArray(mapIndexed((i, m_1) => (new Mark(num_1, m_1, ((i === 0) && line.startsWith(m_1)) ? MarkPosition.Begin : (((i === last) && line.endsWith(m_1)) ? MarkPosition.End : MarkPosition.Inner))), matches));
-        const rest = new FSharpRef(line);
-        return [append(toList(delay(() => collect((mk) => {
-            const split = split_1(rest.contents, [mk.mark], undefined, 0);
-            return append_1(singleton(item(0, split)), delay(() => {
-                rest.contents = join(mk.mark, split.slice(1, split.length));
-                return empty();
-            }));
-        }, marks))), singleton_1(rest.contents)), marks];
+        const marks = ofArray(mapIndexed_1((i, m_1) => (new Mark(num_1, m_1, ((i === 0) && line.startsWith(m_1)) ? MarkPosition.Begin : (((i === last) && line.endsWith(m_1)) ? MarkPosition.End : MarkPosition.Inner))), matches));
+        const patternInput = mapFold((rest, mk) => {
+            const split = split_1(rest, [mk.mark], undefined, 0);
+            return [item(0, split), join(mk.mark, split.slice(1, split.length))];
+        }, line, marks);
+        return [append(patternInput[0], singleton(patternInput[1])), marks];
     }
 }
 
 function restore(text, marks) {
-    const out = [];
-    const go = (text_1_mut, marks_1_mut, pos_mut) => {
+    const go = (out_mut, text_1_mut, marks_1_mut, pos_mut) => {
         go:
         while (true) {
-            const text_1 = text_1_mut, marks_1 = marks_1_mut, pos = pos_mut;
+            const out = out_mut, text_1 = text_1_mut, marks_1 = marks_1_mut, pos = pos_mut;
             if (!isEmpty(text_1)) {
                 if (!isEmpty(marks_1)) {
                     if (head(marks_1).line === pos) {
@@ -728,128 +733,160 @@ function restore(text, marks) {
                         const matchValue_1 = head(marks_1).position;
                         switch (matchValue_1.tag) {
                             case 2: {
-                                void (out.push((t0_2 + head(marks_1).mark) + space));
-                                text_1_mut = tail(text_1);
-                                marks_1_mut = tail(marks_1);
+                                out_mut = cons((t0_2 + head(marks_1).mark) + space, out);
+                                text_1_mut = tail_1(text_1);
+                                marks_1_mut = tail_1(marks_1);
                                 pos_mut = (pos + 1);
                                 continue go;
-                                break;
                             }
                             case 3: {
-                                void (out.push(head(marks_1).mark + space));
-                                text_1_mut = cons(t0_2, tail(text_1));
-                                marks_1_mut = tail(marks_1);
+                                out_mut = cons(head(marks_1).mark + space, out);
+                                text_1_mut = cons(t0_2, tail_1(text_1));
+                                marks_1_mut = tail_1(marks_1);
                                 pos_mut = (pos + 1);
                                 continue go;
-                                break;
                             }
-                            case 1: {
-                                if (!isEmpty(tail(text_1))) {
-                                    text_1_mut = cons((t0_2 + head(marks_1).mark) + head(tail(text_1)), tail(tail(text_1)));
-                                    marks_1_mut = tail(marks_1);
+                            case 1:
+                                if (!isEmpty(tail_1(text_1))) {
+                                    out_mut = out;
+                                    text_1_mut = cons((t0_2 + head(marks_1).mark) + head(tail_1(text_1)), tail_1(tail_1(text_1)));
+                                    marks_1_mut = tail_1(marks_1);
                                     pos_mut = pos;
                                     continue go;
                                 }
                                 else {
-                                    text_1_mut = singleton_1(t0_2 + head(marks_1).mark);
-                                    marks_1_mut = tail(marks_1);
+                                    out_mut = out;
+                                    text_1_mut = singleton(t0_2 + head(marks_1).mark);
+                                    marks_1_mut = tail_1(marks_1);
                                     pos_mut = pos;
                                     continue go;
                                 }
-                                break;
-                            }
                             default: {
-                                text_1_mut = cons(head(marks_1).mark + t0_2, tail(text_1));
-                                marks_1_mut = tail(marks_1);
+                                out_mut = out;
+                                text_1_mut = cons(head(marks_1).mark + t0_2, tail_1(text_1));
+                                marks_1_mut = tail_1(marks_1);
                                 pos_mut = pos;
                                 continue go;
                             }
                         }
                     }
                     else {
-                        void (out.push(head(text_1)));
-                        text_1_mut = tail(text_1);
+                        out_mut = cons(head(text_1), out);
+                        text_1_mut = tail_1(text_1);
                         marks_1_mut = marks_1;
                         pos_mut = (pos + 1);
                         continue go;
                     }
                 }
                 else {
-                    const enumerator = getEnumerator(text_1);
-                    try {
-                        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                            const l = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                            void (out.push(l.endsWith(" ") ? l : (l + " ")));
+                    return append(reverse(map_2((l) => {
+                        if (l.endsWith(" ")) {
+                            return l;
                         }
-                    }
-                    finally {
-                        disposeSafe(enumerator);
-                    }
+                        else {
+                            return l + " ";
+                        }
+                    }, text_1)), out);
                 }
             }
             else if (isEmpty(marks_1)) {
+                return out;
             }
             else {
-                void (out.push(join("", map_2((m_1) => m_1.mark, marks_1))));
+                return cons(join("", map_2((m_1) => m_1.mark, marks_1)), out);
             }
             break;
         }
     };
-    go(text, marks, 0);
-    return ofSeq_1(out);
+    return reverse(go(empty(), text, marks, 0));
 }
 
 class Espeak extends Record {
-    constructor(worker, heap, voices, current) {
+    constructor(worker, heap, voices) {
         super();
         this.worker = worker;
         this.heap = heap;
         this.voices = voices;
-        this.current = current;
     }
 }
 
 function Espeak_$reflection() {
-    return record_type("Narrate.Espeak", [], Espeak, () => [["worker", obj_type], ["heap", lambda_type(unit_type, array_type(uint8_type))], ["voices", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, string_type])], ["current", string_type]]);
+    return record_type("Narrate.Espeak", [], Espeak, () => [["worker", obj_type], ["heap", lambda_type(unit_type, array_type(uint8_type))], ["voices", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, string_type])]]);
 }
 
-let espeakLoaded = undefined;
+class EspeakState extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["NotLoaded", "Loaded", "LoadFailed"];
+    }
+    static NotLoaded = new EspeakState(0, []);
+}
 
-function espeak() {
-    if (espeakLoaded == null) {
-        const p_1 = PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (importFromHome("@echogarden/espeak-ng-emscripten").then((_arg) => ((_arg.default()).then((_arg_1) => {
-            const instance = _arg_1;
-            const worker = new instance.eSpeakNGWorker();
-            const voices = ofArray_1(reverse(choose((v) => {
-                const langs = v.languages;
-                if (langs.length > 0) {
-                    return [toString(item(0, langs).name), toString(v.identifier)];
-                }
-                else {
-                    return undefined;
-                }
-            }, worker.list_voices())), {
-                Compare: (x, y) => (comparePrimitives(x, y) | 0),
-            });
-            return Promise.resolve(new Espeak(worker, () => instance.HEAPU8, voices, ""));
-        }))))));
-        espeakLoaded = p_1;
-        return p_1;
+function EspeakState_$reflection() {
+    return union_type("Narrate.EspeakState", [], EspeakState, () => [[], [["Item1", Espeak_$reflection()], ["voice", string_type]], [["Item", class_type("System.Exception")]]]);
+}
+
+class EspeakMsg extends Union {
+    constructor(text, lang, Item3) {
+        super();
+        this.tag = 0;
+        this.fields = [text, lang, Item3];
     }
-    else {
-        return espeakLoaded;
+    cases() {
+        return ["Phonemize"];
     }
+}
+
+function EspeakMsg_$reflection() {
+    return union_type("Narrate.EspeakMsg", [], EspeakMsg, () => [[["text", string_type], ["lang", string_type], ["Item3", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [union_type("Microsoft.FSharp.Core.FSharpResult`2", [string_type, class_type("System.Exception")], FSharpResult$2, () => [[["ResultValue", string_type]], [["ErrorValue", class_type("System.Exception")]]])])]]]);
+}
+
+function load() {
+    return singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(importFromHome("@echogarden/espeak-ng-emscripten"), (_arg) => singleton_2.Bind(fromJs(_arg.default()), (_arg_1) => {
+        const instance = _arg_1;
+        const worker = new instance.eSpeakNGWorker();
+        const voices = ofArray_1(reverse_1(choose((v) => {
+            const langs = v.languages;
+            if (langs.length > 0) {
+                return [toString(item(0, langs).name), toString(v.identifier)];
+            }
+            else {
+                return undefined;
+            }
+        }, worker.list_voices())), {
+            Compare: (x, y) => (comparePrimitives(x, y) | 0),
+        });
+        return singleton_2.Return(new EspeakState(/* Loaded */ 1, [new Espeak(worker, () => instance.HEAPU8, voices), ""]));
+    }))), (_arg_2) => singleton_2.Return(new EspeakState(/* LoadFailed */ 2, [_arg_2]))));
+}
+
+function nulAt(heap, start) {
+    const go = (e_mut) => {
+        go:
+        while (true) {
+            const e = e_mut;
+            if (item(e, heap) !== 0) {
+                e_mut = ((e + 1) | 0);
+                continue go;
+            }
+            else {
+                return e | 0;
+            }
+            break;
+        }
+    };
+    return go(start) | 0;
 }
 
 function textToPhonemes(es, line) {
     let array;
     const ptr = (es.worker.text_to_phonemes(line, 1)).ptr | 0;
     const heap = es.heap();
-    let e = ptr;
-    while (item(e, heap) !== 0) {
-        e = ((e + 1) | 0);
-    }
-    return join(" ", (array = split_1(new TextDecoder().decode(heap.subarray(ptr, e)), [" | "], undefined, 0), array.filter((c) => (c !== ""))));
+    return join(" ", (array = split_1(new TextDecoder().decode(heap.subarray(ptr, nulAt(heap, ptr))), [" | "], undefined, 0), array.filter((c) => (c !== ""))));
 }
 
 function postprocessLine(line) {
@@ -863,29 +900,90 @@ function postprocessLine(line) {
     }
 }
 
+function phonemesOf(es, text) {
+    let array_4;
+    let lines;
+    const array_1 = map_1((l) => trim(l, "\n"), split_1(trim(text.trim(), "\n"), ["\n"], undefined, 0));
+    lines = array_1.filter((l_1) => (l_1.trim() !== ""));
+    let patternInput;
+    const tupledArg = unzip(ofArray(mapIndexed_1((num_1, line) => preserveLine(line, num_1), lines)));
+    patternInput = [filter((c_1) => (c_1 !== ""), concat(tupledArg[0])), concat(tupledArg[1])];
+    const phonemized = map_2((arg) => postprocessLine(textToPhonemes(es, arg)), patternInput[0]);
+    const joined = (lines.length === 0) ? "" : join("\n", restore(phonemized, patternInput[1]));
+    return join("", (array_4 = (Array.from(joined)), array_4.filter((key) => FSharpMap__ContainsKey(VOCAB, key)))).trim();
+}
+
+function attempt(f) {
+    try {
+        return new FSharpResult$2(/* Ok */ 0, [f()]);
+    }
+    catch (e) {
+        return new FSharpResult$2(/* Error */ 1, [e]);
+    }
+}
+
+function speak(es, voice, text, lang) {
+    const matchValue = attempt(() => FSharpMap__TryFind(es.voices, lang));
+    if (matchValue.tag === 0) {
+        if (matchValue.fields[0] != null) {
+            const id = matchValue.fields[0];
+            const matchValue_1 = attempt(() => {
+                if (voice !== id) {
+                    es.worker.set_voice(id);
+                }
+            });
+            if (matchValue_1.tag === 0) {
+                return [id, attempt(() => phonemesOf(es, text))];
+            }
+            else {
+                return [voice, new FSharpResult$2(/* Error */ 1, [matchValue_1.fields[0]])];
+            }
+        }
+        else {
+            return [voice, new FSharpResult$2(/* Error */ 1, [new Exception(concat_1("language \"", lang, "\" is not supported by the espeak backend"))])];
+        }
+    }
+    else {
+        return [voice, new FSharpResult$2(/* Error */ 1, [matchValue.fields[0]])];
+    }
+}
+
+function handleEspeak(state, text, lang) {
+    return singleton_2.Delay(() => {
+        switch (state.tag) {
+            case 2:
+                return singleton_2.Return([state, new FSharpResult$2(/* Error */ 1, [state.fields[0]])]);
+            case 1: {
+                const es = state.fields[0];
+                return singleton_2.TryWith(singleton_2.Delay(() => {
+                    const patternInput = speak(es, state.fields[1], text, lang);
+                    return singleton_2.Return([new EspeakState(/* Loaded */ 1, [es, patternInput[0]]), patternInput[1]]);
+                }), (_arg_1) => singleton_2.Return([state, new FSharpResult$2(/* Error */ 1, [_arg_1])]));
+            }
+            default:
+                return singleton_2.Bind(load(), (_arg) => singleton_2.ReturnFrom(handleEspeak(_arg, text, lang)));
+        }
+    });
+}
+
+const espeakAgent = start_1((inbox) => {
+    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => singleton_2.Bind(handleEspeak(state, _arg.fields[0], _arg.fields[1]), (_arg_1) => {
+        deliver(singleton(() => {
+            _arg.fields[2].reply(_arg_1[1]);
+        }));
+        return singleton_2.ReturnFrom(loop(_arg_1[0]));
+    })));
+    return loop(EspeakState.NotLoaded);
+});
+
 /**
- * Tokenizer.phonemize of kokoro-onnx: phonemizer.phonemize(text, lang, preserve_punctuation=True,
- * with_stress=True), then only the symbols in Kokoro's vocabulary.
+ * Tokenizer.phonemize of kokoro-onnx: the phonemes of a text in a language ("en-us", "fr-fr"). Raises what went
+ * wrong: the module's failed load, a language eSpeak does not know, or eSpeak's own error.
  */
 export function phonemize(text, lang) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (espeak().then((_arg) => {
-        let matchValue, id;
-        const es = _arg;
-        return ((matchValue = FSharpMap__TryFind(es.voices, lang), (matchValue != null) ? ((id = matchValue, (es.current !== id) ? ((void (es.worker.set_voice(id)), (es.current = id, Promise.resolve()))) : (Promise.resolve()))) : (((() => {
-            throw new Exception(concat("language \"", lang, "\" is not supported by the espeak backend"));
-        })(), Promise.resolve())))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-            let array_4;
-            let lines;
-            const array_1 = map_1((l) => trim(l, "\n"), split_1(trim(text.trim(), "\n"), ["\n"], undefined, 0));
-            lines = array_1.filter((l_1) => (l_1.trim() !== ""));
-            let patternInput;
-            const tupledArg = unzip(ofArray(mapIndexed((num_1, line) => preserveLine(line, num_1), lines)));
-            patternInput = [filter((c_1) => (c_1 !== ""), concat_1(tupledArg[0])), concat_1(tupledArg[1])];
-            const phonemized = map_2((arg) => postprocessLine(textToPhonemes(es, arg)), patternInput[0]);
-            const joined = (lines.length === 0) ? "" : join("\n", restore(phonemized, patternInput[1]));
-            return Promise.resolve(join("", (array_4 = (Array.from(joined)), array_4.filter((key) => FSharpMap__ContainsKey(VOCAB, key)))).trim());
-        }));
-    }))));
+    return singleton_2.Delay(() => singleton_2.Bind(postAndAsyncReply(espeakAgent, (reply) => (new EspeakMsg(text, lang, reply))), (_arg) => ((_arg.tag === 1) ? singleton_2.Return((() => {
+        throw _arg.fields[0];
+    })()) : singleton_2.Return(_arg.fields[0]))));
 }
 
 const MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
@@ -917,38 +1015,43 @@ function serveVoice() {
         transformers.env.cacheDir = modelDir();
         transformers.env.backends.onnx.logLevel = "error";
         const kokoro = requireFromHome("kokoro-js");
-        const pr = kokoro.KokoroTTS.from_pretrained(MODEL, {
+        const pretrained = kokoro.KokoroTTS.from_pretrained(MODEL, {
             dtype: DTYPE,
             device: "cpu",
         });
-        return pr.then((tts) => [tts, transformers.Tensor]);
+        return pretrained.then((tts) => [tts, transformers.Tensor]);
     });
-    const queue = new FSharpRef(Promise.resolve(undefined));
-    return port.on("message", ((msg_1) => {
-        let pr_2;
-        queue.contents = ((pr_2 = queue.contents, pr_2.then(() => {
-            const msg = msg_1;
-            const pr_1 = PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (model.Value.then((_arg) => {
+    const agent = start_1((inbox) => {
+        const loop = () => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg_4) => {
+            let msg;
+            return singleton_2.Bind((msg = _arg_4, singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => singleton_2.Bind(fromJs(model.Value), (_arg) => {
                 const input = new _arg[1]('int64', BigInt64Array.from(msg.ids, BigInt), [1, msg.ids.length]);
-                return (_arg[0].generate_from_ids(input, {
+                return singleton_2.Bind(fromJs(_arg[0].generate_from_ids(input, {
                     voice: msg.voice,
                     speed: msg.speed,
-                })).then((_arg_1) => {
+                })), (_arg_1) => {
                     const samples = _arg_1.audio;
                     port.postMessage({
                         id: msg.id,
                         audio: samples,
                     }, [samples.buffer]);
-                    return Promise.resolve();
+                    return singleton_2.Zero();
                 });
-            }))));
-            return pr_1.catch((e) => {
+            })), (_arg_2) => singleton_2.TryWith(singleton_2.Delay(() => {
                 port.postMessage({
                     id: msg.id,
-                    error: toString(e),
+                    error: toString(_arg_2),
                 });
-            });
-        })));
+                return singleton_2.Zero();
+            }), (_arg_3) => {
+                void Promise.reject(_arg_3);
+                return singleton_2.Zero();
+            })))), () => singleton_2.ReturnFrom(loop()));
+        }));
+        return loop();
+    });
+    return port.on("message", ((msg_2) => {
+        post(agent, msg_2);
     }));
 }
 
@@ -956,95 +1059,168 @@ if ((!workerThreads.isMainThread && !Operators_IsNull(workerThreads.workerData))
     serveVoice();
 }
 
-class VoiceWorker extends Record {
-    constructor(worker, pending, next) {
+class VoiceMsg extends Union {
+    constructor(tag, fields) {
         super();
-        this.worker = worker;
-        this.pending = pending;
-        this.next = (next | 0);
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Generate", "Reply", "Crashed", "Stop"];
     }
 }
 
-function VoiceWorker_$reflection() {
-    return record_type("Narrate.VoiceWorker", [], VoiceWorker, () => [["worker", obj_type], ["pending", class_type("System.Collections.Generic.Dictionary`2", [int32_type, tuple_type(lambda_type(array_type(float32_type), unit_type), lambda_type(class_type("System.Exception"), unit_type))])], ["next", int32_type]]);
+function VoiceMsg_$reflection() {
+    return union_type("Narrate.VoiceMsg", [], VoiceMsg, () => [[["Item1", array_type(int32_type)], ["Item2", string_type], ["Item3", float64_type], ["Item4", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [union_type("Microsoft.FSharp.Core.FSharpResult`2", [array_type(float32_type), string_type], FSharpResult$2, () => [[["ResultValue", array_type(float32_type)]], [["ErrorValue", string_type]]])])]], [["id", int32_type], ["Item2", union_type("Microsoft.FSharp.Core.FSharpResult`2", [array_type(float32_type), string_type], FSharpResult$2, () => [[["ResultValue", array_type(float32_type)]], [["ErrorValue", string_type]]])]], [["Item", string_type]], [["Item", class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [unit_type])]]]);
 }
 
-let voiceWorker = undefined;
-
-function voice() {
-    if (voiceWorker == null) {
-        const worker = new workerThreads.Worker((new url.URL(import.meta.url)), {
-            workerData: {
-                kokoro: true,
-            },
-        });
-        const v_1 = new VoiceWorker(worker, new Map([]), 0);
-        worker.on("message", ((msg) => {
-            const id = msg.id | 0;
-            let patternInput;
-            let outArg = defaultOf();
-            patternInput = [tryGetValue(v_1.pending, id, new FSharpRef(() => outArg, (v_2) => {
-                outArg = v_2;
-            })), outArg];
-            if (patternInput[0]) {
-                v_1.pending.delete(id);
-                if (Operators_IsNull(msg.error)) {
-                    patternInput[1][0](msg.audio);
-                }
-                else {
-                    patternInput[1][1](new Exception(toString(msg.error)));
-                }
-            }
-        }));
-        worker.on("error", ((e) => {
-            const enumerator = getEnumerator(ofSeq_1(v_1.pending));
-            try {
-                while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                    enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]()[1][1](new Exception(toString(e)));
-                }
-            }
-            finally {
-                disposeSafe(enumerator);
-            }
-            v_1.pending.clear();
-        }));
-        voiceWorker = v_1;
-        return v_1;
-    }
-    else {
-        return voiceWorker;
+class VoiceState extends Record {
+    constructor(Worker$, Next, Pending) {
+        super();
+        this.Worker = Worker$;
+        this.Next = (Next | 0);
+        this.Pending = Pending;
     }
 }
 
-function generate(ids, voiceName, speed) {
-    const v = voice();
-    return new Promise((resolve, reject) => {
-        const id = v.next | 0;
-        v.next = ((id + 1) | 0);
-        v.pending.set(id, [resolve, reject]);
-        v.worker.postMessage({
+function VoiceState_$reflection() {
+    return record_type("Narrate.VoiceState", [], VoiceState, () => [["Worker", option_type(obj_type)], ["Next", int32_type], ["Pending", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [int32_type, class_type("Microsoft.FSharp.Control.FSharpAsyncReplyChannel`1", [union_type("Microsoft.FSharp.Core.FSharpResult`2", [array_type(float32_type), string_type], FSharpResult$2, () => [[["ResultValue", array_type(float32_type)]], [["ErrorValue", string_type]]])])])]]);
+}
+
+const noWorker = new VoiceState(undefined, 0, empty_2({
+    Compare: (x, y) => (comparePrimitives(x, y) | 0),
+}));
+
+function startWorker(agent) {
+    const worker = new workerThreads.Worker((new url.URL(import.meta.url)), {
+        workerData: {
+            kokoro: true,
+        },
+    });
+    worker.on("message", ((msg) => {
+        post(agent, new VoiceMsg(/* Reply */ 1, [msg.id, Operators_IsNull(msg.error) ? (new FSharpResult$2(/* Ok */ 0, [msg.audio])) : (new FSharpResult$2(/* Error */ 1, [toString(msg.error)]))]));
+    }));
+    worker.on("error", ((e) => {
+        post(agent, new VoiceMsg(/* Crashed */ 2, [toString(e)]));
+    }));
+    return worker;
+}
+
+function failAll(pending, text) {
+    return toList(delay(() => collect((matchValue) => singleton_1(() => {
+        matchValue[1].reply(new FSharpResult$2(/* Error */ 1, [text]));
+    }), pending)));
+}
+
+function send(agent, state, ids, voiceName, speed, reply) {
+    const matchValue_1 = attempt(() => {
+        const matchValue = state.Worker;
+        return (matchValue == null) ? startWorker(agent) : value_4(matchValue);
+    });
+    if (matchValue_1.tag === 0) {
+        const worker = matchValue_1.fields[0];
+        const id = state.Next | 0;
+        const state_1 = new VoiceState(some(worker), (id + 1) | 0, state.Pending);
+        const request = {
             id: id,
             ids: ids,
             voice: voiceName,
             speed: speed,
+        };
+        const matchValue_2 = attempt(() => {
+            worker.postMessage(request);
         });
-    });
+        if (matchValue_2.tag === 1) {
+            return [state_1, singleton(() => {
+                reply.reply(new FSharpResult$2(/* Error */ 1, [toString(matchValue_2.fields[0])]));
+            })];
+        }
+        else {
+            return [new VoiceState(state_1.Worker, state_1.Next, FSharpMap__Add(state_1.Pending, id, reply)), empty()];
+        }
+    }
+    else {
+        return [state, singleton(() => {
+            reply.reply(new FSharpResult$2(/* Error */ 1, [toString(matchValue_1.fields[0])]));
+        })];
+    }
+}
+
+function handleVoice(agent, state, msg) {
+    return singleton_2.Delay(() => singleton_2.TryWith(singleton_2.Delay(() => {
+        switch (msg.tag) {
+            case 1: {
+                const id = msg.fields[0] | 0;
+                const matchValue = FSharpMap__TryFind(state.Pending, id);
+                if (matchValue == null) {
+                    return singleton_2.Return([state, empty()]);
+                }
+                else {
+                    const reply_1 = matchValue;
+                    return singleton_2.Return([new VoiceState(state.Worker, state.Next, FSharpMap__Remove(state.Pending, id)), singleton(() => {
+                        reply_1.reply(msg.fields[1]);
+                    })]);
+                }
+            }
+            case 2:
+                return singleton_2.Return([new VoiceState(state.Worker, state.Next, empty_2({
+                    Compare: (x, y) => (comparePrimitives(x, y) | 0),
+                })), failAll(state.Pending, msg.fields[0])]);
+            case 3: {
+                const reply_2 = msg.fields[0];
+                const matchValue_1 = state.Worker;
+                if (matchValue_1 != null) {
+                    const worker = value_4(matchValue_1);
+                    return singleton_2.Bind(fromJs(worker.terminate()), (_arg) => singleton_2.Return([noWorker, append(failAll(state.Pending, "the voice was released before it answered"), singleton(() => {
+                        reply_2.reply(undefined);
+                    }))]));
+                }
+                else {
+                    return singleton_2.Return([state, singleton(() => {
+                        reply_2.reply(undefined);
+                    })]);
+                }
+            }
+            default:
+                return singleton_2.Return(send(agent, state, msg.fields[0], msg.fields[1], msg.fields[2], msg.fields[3]));
+        }
+    }), (_arg_1) => {
+        const e = _arg_1;
+        switch (msg.tag) {
+            case 3:
+                return singleton_2.Return([noWorker, append(failAll(state.Pending, toString(e)), singleton(() => {
+                    msg.fields[0].reply(undefined);
+                }))]);
+            case 1:
+            case 2:
+                return singleton_2.Return([state, empty()]);
+            default:
+                return singleton_2.Return([state, singleton(() => {
+                    msg.fields[3].reply(new FSharpResult$2(/* Error */ 1, [toString(e)]));
+                })]);
+        }
+    }));
+}
+
+const voiceAgent = start_1((inbox) => {
+    const loop = (state) => singleton_2.Delay(() => singleton_2.Bind(receive(inbox), (_arg) => singleton_2.Bind(handleVoice(inbox, state, _arg), (_arg_1) => {
+        deliver(_arg_1[1]);
+        return singleton_2.ReturnFrom(loop(_arg_1[0]));
+    })));
+    return loop(noWorker);
+});
+
+function generate(ids, voiceName, speed) {
+    return singleton_2.Delay(() => singleton_2.Bind(postAndAsyncReply(voiceAgent, (reply) => (new VoiceMsg(/* Generate */ 0, [ids, voiceName, speed, reply]))), (_arg) => ((_arg.tag === 1) ? singleton_2.Return((() => {
+        throw new Exception(_arg.fields[0]);
+    })()) : singleton_2.Return(_arg.fields[0]))));
 }
 
 /**
  * Stops the model's worker thread, if it was started.
  */
 export function release() {
-    if (voiceWorker != null) {
-        const v = voiceWorker;
-        voiceWorker = undefined;
-        const pr = v.worker.terminate();
-        return pr.then((value) => {
-        });
-    }
-    else {
-        return Promise.resolve(undefined);
-    }
+    return singleton_2.Delay(() => singleton_2.ReturnFrom(postAndAsyncReply(voiceAgent, (Item) => (new VoiceMsg(/* Stop */ 3, [Item])))));
 }
 
 function voiceFile(name) {
@@ -1052,65 +1228,54 @@ function voiceFile(name) {
     return join_1(ofArray([dirname(req.resolve("kokoro-js")), "..", "voices", name + ".bin"]));
 }
 
+function foldA(step, state, items) {
+    return singleton_2.Delay(() => (!isEmpty(items) ? singleton_2.Bind(step(state, head(items)), (_arg) => singleton_2.ReturnFrom(foldA(step, _arg, tail_1(items)))) : singleton_2.Return(state)));
+}
+
 function splitPhonemes(phonemes) {
-    const batches = [];
-    let current = "";
-    const arr = phonemes.split(new RegExp("([.,!?;])", ""));
-    for (let idx = 0; idx <= (arr.length - 1); idx++) {
-        const raw = item(idx, arr);
-        const part = raw.trim();
-        if (part !== "") {
-            if ((((Array.from(current)).length + (Array.from(part)).length) + 1) >= MAX_PHONEMES) {
-                void (batches.push(current.trim()));
-                current = part;
-            }
-            else if (".,!?;".indexOf(part) >= 0) {
-                current = (current + part);
-            }
-            else {
-                if (current !== "") {
-                    current = (current + " ");
-                }
-                current = (current + part);
-            }
+    let array_1;
+    const patternInput = fold_1((tupledArg, part_1) => {
+        const batches = tupledArg[0];
+        const current = tupledArg[1];
+        if ((((Array.from(current)).length + (Array.from(part_1)).length) + 1) >= MAX_PHONEMES) {
+            return [cons(current.trim(), batches), part_1];
         }
-    }
-    if (current !== "") {
-        void (batches.push(current.trim()));
-    }
-    return ofSeq_1(batches);
+        else if (".,!?;".indexOf(part_1) >= 0) {
+            return [batches, current + part_1];
+        }
+        else {
+            return [batches, ((current !== "") ? (current + " ") : current) + part_1];
+        }
+    }, [empty(), ""], (array_1 = map_1((raw) => raw.trim(), phonemes.split(new RegExp("([.,!?;])", ""))), array_1.filter((part) => (part !== ""))));
+    const current_1 = patternInput[1];
+    const batches_1 = patternInput[0];
+    return reverse((current_1 !== "") ? cons(current_1.trim(), batches_1) : batches_1);
 }
 
 function create(phonemes, voiceName, speed) {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => ((!((speed >= 0.5) && (speed <= 2)) ? (((() => {
+    return singleton_2.Delay(() => singleton_2.Combine(!((speed >= 0.5) && (speed <= 2)) ? (((() => {
         throw new Exception("Speed should be between 0.5 and 2.0");
-    })(), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => ((!exists(voiceFile(voiceName)) ? (((() => {
-        throw new Exception(concat("Voice ", voiceName, " not found in available voices"));
-    })(), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-        const parts = [];
-        return PromiseBuilder__For_1565554B(promise, splitPhonemes(phonemes), (_arg) => {
-            const ids = choose((key) => FSharpMap__TryFind(VOCAB, key), truncate(MAX_PHONEMES, Array.from(_arg)), Int32Array);
-            return generate(concat_2([new Int32Array([0]), ids, new Int32Array([0])], Int32Array), voiceName, speed).then((_arg_1) => {
-                void (parts.push(trim_1(_arg_1)));
-                return Promise.resolve();
-            });
-        }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve(concat_3(ofSeq_1(parts))))));
-    }))))))));
+    })(), singleton_2.Zero())) : singleton_2.Zero(), singleton_2.Delay(() => singleton_2.Combine(!exists(voiceFile(voiceName)) ? (((() => {
+        throw new Exception(concat_1("Voice ", voiceName, " not found in available voices"));
+    })(), singleton_2.Zero())) : singleton_2.Zero(), singleton_2.Delay(() => singleton_2.Bind(foldA((parts, batch) => singleton_2.Delay(() => {
+        const ids = choose((key) => FSharpMap__TryFind(VOCAB, key), truncate(MAX_PHONEMES, Array.from(batch)), Int32Array);
+        return singleton_2.Bind(generate(concat_2([new Int32Array([0]), ids, new Int32Array([0])], Int32Array), voiceName, speed), (_arg) => singleton_2.Return(cons(trim_1(_arg), parts)));
+    }), empty(), splitPhonemes(phonemes)), (_arg_1) => singleton_2.Return(concat_3(reverse(_arg_1)))))))));
 }
 
 /**
  * Voices a short phrase end to end (setup's check that the voice works).
  */
 export function selfTest() {
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => (phonemize("Ready.", "en-us").then((_arg) => (create(_arg, "af_heart", 1).then((_arg_1) => (release().then(() => {
+    return singleton_2.Delay(() => singleton_2.Bind(phonemize("Ready.", "en-us"), (_arg) => singleton_2.Bind(create(_arg, "af_heart", 1), (_arg_1) => singleton_2.Bind(release(), () => {
         if (_arg_1.length === 0) {
             throw new Exception("the voice produced no audio");
-            return Promise.resolve();
+            return singleton_2.Zero();
         }
         else {
-            return Promise.resolve();
+            return singleton_2.Zero();
         }
-    }))))))));
+    }))));
 }
 
 class Audio extends Union {
@@ -1188,6 +1353,40 @@ function Scene_$reflection() {
     return record_type("Narrate.Scene", [], Scene, () => [["id", obj_type], ["idJson", Py_Json_$reflection()], ["start", float64_type], ["finish", float64_type], ["sentences", list_type(Sentence_$reflection())], ["extras", list_type(tuple_type(string_type, Py_Json_$reflection()))]]);
 }
 
+class Track extends Record {
+    constructor(audio, pos, report) {
+        super();
+        this.audio = audio;
+        this.pos = (pos | 0);
+        this.report = report;
+    }
+}
+
+function Track_$reflection() {
+    return record_type("Narrate.Track", [], Track, () => [["audio", list_type(Audio_$reflection())], ["pos", int32_type], ["report", list_type(string_type)]]);
+}
+
+function samplesOf(piece) {
+    if (piece.tag === 1) {
+        return piece.fields[0].length | 0;
+    }
+    else {
+        return piece.fields[0] | 0;
+    }
+}
+
+function lay(piece, t) {
+    return new Track(cons(piece, t.audio), t.pos + samplesOf(piece), t.report);
+}
+
+function silence(seconds, t) {
+    return lay(new Audio(/* Silence */ 0, [Py_roundInt(seconds * 24000)]), t);
+}
+
+function now(frame, t) {
+    return timeAt(frame, t.pos);
+}
+
 function num(x) {
     return new Py_Json(/* Float */ 3, [x]);
 }
@@ -1212,34 +1411,42 @@ function getFloat(o, key, fallback) {
         return fallback;
     }
     else {
-        return value_8(matchValue);
+        return value_4(matchValue);
+    }
+}
+
+function $007CTruthy$007C_$007C(v) {
+    let matchResult, x_1;
+    if (v != null) {
+        if (Py_truthy(value_4(v))) {
+            matchResult = 0;
+            x_1 = value_4(v);
+        }
+        else {
+            matchResult = 1;
+        }
+    }
+    else {
+        matchResult = 1;
+    }
+    switch (matchResult) {
+        case 0:
+            return some(x_1);
+        default:
+            return undefined;
     }
 }
 
 function soundtrack(audio) {
-    const out = new Float32Array(sumBy((_arg) => {
-        if (_arg.tag === 1) {
-            return _arg.fields[0].length | 0;
-        }
-        else {
-            return _arg.fields[0] | 0;
-        }
-    }, audio, {
-        GetZero: () => 0,
-        Add: (x, y) => ((x + y) | 0),
-    }));
-    let at = 0;
-    const enumerator = getEnumerator(audio);
+    const patternInput = mapFold((at, piece) => [[at, piece], (at + samplesOf(piece)) | 0], 0, audio);
+    const out = new Float32Array(patternInput[1]);
+    const enumerator = getEnumerator(patternInput[0]);
     try {
         while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const a = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            if (a.tag === 1) {
-                const s_1 = a.fields[0];
-                out.set(s_1, at);
-                at = ((at + s_1.length) | 0);
-            }
-            else {
-                at = ((at + a.fields[0]) | 0);
+            const forLoopVar = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+            const piece_1 = forLoopVar[1];
+            if (piece_1.tag === 1) {
+                out.set(piece_1.fields[0], forLoopVar[0]);
             }
         }
     }
@@ -1265,277 +1472,286 @@ function briefLength(ws) {
     }
 }
 
-export function run(ws) {
-    let v_1, option_2;
-    requirePackages(voicePackages);
-    const clip = resolve_1(ws);
-    const scriptText = readText(join_1(ofArray([clip, "script.json"])));
-    const script = parseJson(scriptText);
-    const marked = JSON.parse(scriptText, (k, v, c) => typeof v === 'number' && c && typeof c.source === 'string' && /[.eE]/.test(c.source) ? {__py_float__: v} : v);
-    const name = script.name;
-    if (!(((typeof name) === "string") && (NAME.test(name)))) {
-        fail(`name ${Py_repr(name)} must match ${NAME_PATTERN} - it becomes the file name on the server`);
+class Settings extends Record {
+    constructor(Ws, Script, Marked, Name, Voice, Lang, Speed, Others, Pronounce, Glossary, Build, Cache) {
+        super();
+        this.Ws = Ws;
+        this.Script = Script;
+        this.Marked = Marked;
+        this.Name = Name;
+        this.Voice = Voice;
+        this.Lang = Lang;
+        this.Speed = Speed;
+        this.Others = Others;
+        this.Pronounce = Pronounce;
+        this.Glossary = Glossary;
+        this.Build = Build;
+        this.Cache = Cache;
     }
-    const name_1 = name;
-    let voiceName;
-    const matchValue = get$(script, "voice");
-    voiceName = ((matchValue != null) ? (Py_truthy(value_8(matchValue)) ? ((v_1 = value_8(matchValue), v_1)) : undefined) : "af_heart");
-    const lang = defaultArg(get$(script, "lang"), "en-us");
-    const speed = getFloat(script, "speed", 1);
-    const others = defaultArg((option_2 = get$(script, "voices"), (option_2 != null) ? (!Operators_IsNull(value_8(option_2)) ? option_2 : undefined) : undefined), {});
-    let pronounce;
-    const matchValue_1 = get$(script, "pronounce");
-    let matchResult, p_1;
-    if (matchValue_1 != null) {
-        if (!Operators_IsNull(value_8(matchValue_1))) {
-            matchResult = 0;
-            p_1 = value_8(matchValue_1);
+}
+
+function Settings_$reflection() {
+    return record_type("Narrate.Settings", [], Settings, () => [["Ws", string_type], ["Script", obj_type], ["Marked", obj_type], ["Name", string_type], ["Voice", option_type(string_type)], ["Lang", obj_type], ["Speed", float64_type], ["Others", obj_type], ["Pronounce", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, obj_type])], ["Glossary", Glossary_$reflection()], ["Build", string_type], ["Cache", string_type]]);
+}
+
+function specFor(settings, code) {
+    if (code != null) {
+        const code_1 = code;
+        const matchValue = get$(settings.Others, code_1);
+        if (matchValue == null) {
+            return fail((((("{" + code_1) + ":...} needs \"voices\": {\"") + code_1) + "\": {\"voice\": ..., \"lang\": ...}}") + " in script.json");
+        }
+        else {
+            const spec = value_4(matchValue);
+            return [spec.voice, spec.lang];
+        }
+    }
+    else {
+        return [value_4(settings.Voice), settings.Lang];
+    }
+}
+
+function synth(settings, code, text, where) {
+    return singleton_2.Delay(() => {
+        let c;
+        const patternInput = specFor(settings, code);
+        const v = patternInput[0];
+        const l = patternInput[1];
+        let phonemes;
+        let option_3;
+        const option_1 = FSharpMap__TryFind(settings.Pronounce, text.trim());
+        option_3 = ((option_1 != null) ? (Py_truthy(value_4(option_1)) ? option_1 : undefined) : undefined);
+        phonemes = ((option_3 != null) ? toString(value_4(option_3)) : undefined);
+        const text_1 = ((phonemes == null) && l.toLocaleLowerCase().startsWith("en")) ? voiced(text) : text;
+        return singleton_2.Bind((code == null) ? singleton_2.Return(undefined) : ((c = code, singleton_2.Delay(() => {
+            let p_1;
+            return singleton_2.Bind((phonemes == null) ? phonemize(text_1, l) : ((p_1 = phonemes, singleton_2.Return(p_1))), (_arg) => {
+                const source = (phonemes != null) ? "pinned" : "auto";
+                return singleton_2.Return(`${where}	${c}	${text_1}	${_arg}	${source}`);
+            });
+        }))), (_arg_1) => {
+            let p_2;
+            const path = join_1(ofArray([settings.Cache, substring(sha1Hex(toJson(["kokoro-js 1.2.1 fp32", v, l, settings.Speed, defaultArg(phonemes, text_1)])), 0, 16) + ".wav"]));
+            return singleton_2.Combine(!exists(path) ? singleton_2.Bind((phonemes == null) ? phonemize(text_1, l) : ((p_2 = phonemes, singleton_2.Return(p_2))), (_arg_2) => singleton_2.Bind(create(_arg_2, v, settings.Speed), (_arg_3) => {
+                write(path + ".part", _arg_3);
+                rename(path + ".part", path);
+                return singleton_2.Zero();
+            })) : singleton_2.Zero(), singleton_2.Delay(() => singleton_2.Return([read(path), _arg_1])));
+        });
+    });
+}
+
+function voiceScene(settings, markedScenes, track, finished, si, sc) {
+    return singleton_2.Delay(() => {
+        const id = sc.id;
+        return singleton_2.Combine(exists_1((f) => (toJson(f.id) === toJson(id)), finished) ? ((fail(concat_1("duplicate scene id ", Py_repr(id))), singleton_2.Zero())) : singleton_2.Zero(), singleton_2.Delay(() => {
+            let option_3, option_1;
+            const startFrame = ~~(track.pos / FRAME) | 0;
+            const track_1 = silence(getFloat(sc, "lead", 0.4), track);
+            const say_1 = apply(settings.Glossary, defaultArg((option_3 = ((option_1 = get$(sc, "say"), (option_1 != null) ? (!Operators_IsNull(value_4(option_1)) ? option_1 : undefined) : undefined)), (option_3 != null) ? value_4(option_3) : undefined), ""));
+            return singleton_2.Bind(foldA((tupledArg_2, tupledArg_3) => {
+                const track_6 = tupledArg_2[0];
+                const i_1 = tupledArg_3[0] | 0;
+                const s = tupledArg_3[1];
+                return singleton_2.Delay(() => {
+                    const track_7 = (i_1 > 0) ? silence(GAP, track_6) : track_6;
+                    const sentenceStart = now(startFrame, track_7);
+                    const after = breaks(s);
+                    const s_1 = (s.replace(BREAK, '')).trim();
+                    const voicedPieces = toList(delay(() => collect((matchValue) => {
+                        const ps = pieces(matchValue[0]);
+                        return collect((matchValue_1) => singleton_1([matchValue_1[1][0], matchValue_1[1][1], (matchValue_1[0] === (length(ps) - 1)) ? matchValue[1] : 0]), indexed(ps));
+                    }, rests(s_1))));
+                    return singleton_2.Bind(foldA((tupledArg, tupledArg_1) => {
+                        const track_2 = tupledArg[0];
+                        const _arg = tupledArg_1[1];
+                        const text = _arg[1];
+                        const code = _arg[0];
+                        return singleton_2.Delay(() => {
+                            const track_3 = (tupledArg_1[0] > 0) ? silence(max(tupledArg[2], PART_GAP), track_2) : track_2;
+                            const partStart = now(startFrame, track_3);
+                            return singleton_2.Bind((settings.Voice != null) ? singleton_2.Delay(() => singleton_2.Bind(synth(settings, code, spoken(text), `${Py_str(id)}[${i_1}]`), (_arg_1) => {
+                                const line = _arg_1[1];
+                                const track_4 = (line == null) ? track_3 : (new Track(track_3.audio, track_3.pos, cons(line, track_3.report)));
+                                return singleton_2.Return(lay(new Audio(/* Speech */ 1, [_arg_1[0]]), track_4));
+                            })) : singleton_2.Return(silence(readingTime(shown(text)), track_3)), (_arg_2) => {
+                                const track_5 = _arg_2;
+                                const part = new Part(shown(text), heard(text), (code == null) ? Py_ofJs(settings.Lang) : (new Py_Json(/* Str */ 4, [code])), partStart, now(startFrame, track_5));
+                                return singleton_2.Return([track_5, cons(part, tupledArg[1]), _arg[2]]);
+                            });
+                        });
+                    }, [track_7, empty(), 0], indexed(voicedPieces)), (_arg_3) => {
+                        const track_8 = _arg_3[0];
+                        const line_1 = new Sentence(shown(s_1), heard(s_1), sentenceStart, now(startFrame, track_8), reverse(_arg_3[1]));
+                        const patternInput = mapFold((track_9, tupledArg_4) => {
+                            const breakStart = now(startFrame, track_9);
+                            const track_10 = silence(tupledArg_4[1], track_9);
+                            return [new Break(tupledArg_4[0], i_1, breakStart, now(startFrame, track_10)), track_10];
+                        }, track_8, after);
+                        return singleton_2.Return([patternInput[1], cons(line_1, tupledArg_2[1]), append(reverse(patternInput[0]), tupledArg_2[2])]);
+                    });
+                });
+            }, [track_1, empty(), empty()], indexed(sentences(say_1))), (_arg_4) => {
+                const sceneBreaks_1 = _arg_4[2];
+                const lines_1 = _arg_4[1];
+                const track_13 = silence(getFloat(sc, "hold", 0) + getFloat(sc, "pad", isEmpty(lines_1) ? 0 : 0.9), _arg_4[0]);
+                const over = (track_13.pos % FRAME) | 0;
+                const track_14 = ((over !== 0) ? true : (track_13.pos === (startFrame * FRAME))) ? lay(new Audio(/* Silence */ 0, [FRAME - over]), track_13) : track_13;
+                const endFrame = ~~(track_14.pos / FRAME) | 0;
+                const msc = item(si, markedScenes);
+                const passthrough = (key) => {
+                    const matchValue_2 = get$(sc, key);
+                    if ($007CTruthy$007C_$007C(matchValue_2) != null) {
+                        return singleton([key, Py_ofJs(msc[key])]);
+                    }
+                    else {
+                        return empty();
+                    }
+                };
+                const breaksJson = isEmpty(sceneBreaks_1) ? empty() : singleton(["breaks", new Py_Json(/* List */ 5, [toList(delay(() => map((b_1) => {
+                    const b = b_1;
+                    return new Py_Json(/* Obj */ 6, [ofArray([["kind", new Py_Json(/* Str */ 4, [b.kind])], ["sentence", new Py_Json(/* Int */ 2, [b.sentence])], ["start", num(b.start)], ["end", num(b.finish)]])]);
+                }, reverse(sceneBreaks_1))))])]);
+                const timed = new Scene(id, Py_ofJs(msc.id), startFrame / 30, endFrame / 30, reverse(lines_1), append(passthrough("chapter"), append(passthrough("toasts"), append(breaksJson, append(passthrough("recap"), append(passthrough("path"), passthrough("inside")))))));
+                return singleton_2.Return([track_14, cons(timed, finished)]);
+            });
+        }));
+    });
+}
+
+function writeOutputs(settings, track, scenes) {
+    let p, ps_1, ps_2, matchValue_2, matchValue_3, matchValue_4, activePatternResult_1, c, asked, on, total, label, matchValue_5, activePatternResult_2, k, matchValue_6, activePatternResult_3, m;
+    const duration = ~~(track.pos / FRAME) / 30;
+    write(join_1(ofArray([settings.Build, "narration.wav"])), soundtrack(reverse(track.audio)));
+    let posterId;
+    const matchValue = get$(settings.Script, "poster");
+    const activePatternResult = $007CTruthy$007C_$007C(matchValue);
+    posterId = ((activePatternResult != null) ? ((p = value_4(activePatternResult), p)) : ((length(scenes) > 1) ? item_1(1, scenes) : item_1(0, scenes)).id);
+    let poster;
+    const matchValue_1 = tryFind((s) => (toJson(s.id) === toJson(posterId)), scenes);
+    poster = ((matchValue_1 != null) ? (isEmpty(matchValue_1.sentences) ? ((ps_1 = matchValue_1, ps_1.finish - 0.1)) : ((ps_2 = matchValue_1, last_2(ps_2.sentences).finish))) : fail(concat_1("poster scene ", Py_repr(posterId), " not found")));
+    const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [settings.Name])], ["title", (matchValue_2 = get$(settings.Script, "title"), (matchValue_2 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_4(matchValue_2)))], ["voiced", new Py_Json(/* Bool */ 1, [settings.Voice != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_3 = get$(settings.Script, "captions"), (matchValue_3 == null) ? false : Py_truthy(value_4(matchValue_3)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes)])]]), append((matchValue_4 = get$(settings.Script, "card"), (activePatternResult_1 = $007CTruthy$007C_$007C(matchValue_4), (activePatternResult_1 != null) ? ((c = value_4(activePatternResult_1), (asked = c.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(settings.Ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton(["card", Py_ofJs(Object.assign({}, settings.Marked.card, { thumbnail: (on && label) }))]))))))) : empty())), append((matchValue_5 = get$(settings.Script, "kind"), (activePatternResult_2 = $007CTruthy$007C_$007C(matchValue_5), (activePatternResult_2 != null) ? ((k = value_4(activePatternResult_2), singleton(["kind", Py_ofJs(k)]))) : empty())), (matchValue_6 = get$(settings.Script, "map"), (activePatternResult_3 = $007CTruthy$007C_$007C(matchValue_6), (activePatternResult_3 != null) ? ((m = value_4(activePatternResult_3), singleton(["map", Py_ofJs(m)]))) : empty())))))]);
+    writeText(join_1(ofArray([settings.Build, "timing.json"])), Py_dumpsIndented(2, timing));
+    writeText(join_1(ofArray([settings.Build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
+    const cues = toList(delay(() => append_1(singleton_1("WEBVTT"), delay(() => append_1(singleton_1(""), delay(() => collect((s_2) => collect((c_1) => append_1(singleton_1(concat_1(vttTime(c_1.start), " --> ", vttTime(c_1.finish))), delay(() => append_1(singleton_1(c_1.text), delay(() => singleton_1(""))))), s_2.sentences), scenes)))))));
+    writeText(join_1(ofArray([settings.Build, "captions.vtt"])), join("\n", cues));
+    writeText(join_1(ofArray([settings.Build, "phonemes.txt"])), ("where\tvoice\tphrase\tphonemes\tsource\n" + join("\n", reverse(track.report))) + (isEmpty(track.report) ? "" : "\n"));
+    const words = sumBy((s_3) => (sumBy((c_2) => ((c_2.text.split(/\s+/).filter(w => w).length) | 0), s_3.sentences, {
+        GetZero: () => 0,
+        Add: (x, y) => ((x + y) | 0),
+    }) | 0), scenes, {
+        GetZero: () => 0,
+        Add: (x_1, y_1) => ((x_1 + y_1) | 0),
+    }) | 0;
+    const at = Py_toFixed(poster, 1);
+    const arg = `${settings.Name}: ${Py_toFixed(duration, 1)}s, ${length(scenes)} scenes, ${words} words, poster at ${at}s`;
+    toConsole(printf("%s"))(arg);
+    iterate((s_4) => {
+        const times = concat_1(padLeft(Py_toFixed(s_4.start, 1), 6), " - ", padLeft(Py_toFixed(s_4.finish, 1), 6));
+        const arg_1 = `  ${padRight(Py_str(s_4.id), 14)} ${times}  (${length(s_4.sentences)} sentences)`;
+        toConsole(printf("%s"))(arg_1);
+    }, scenes);
+    if (!isEmpty(track.report)) {
+        const arg_2 = `  ${length(track.report)} phrase(s) in another voice - check build/phonemes.txt against the lesson`;
+        toConsole(printf("%s"))(arg_2);
+    }
+}
+
+function narrate(settings) {
+    return singleton_2.Delay(() => {
+        const sceneObjs = settings.Script.scenes;
+        const markedScenes = settings.Marked.scenes;
+        const scenes = toList(delay(() => map((si) => [si, item(si, sceneObjs)], rangeDouble(0, 1, sceneObjs.length - 1))));
+        const emptyTrack = new Track(empty(), 0, empty());
+        return singleton_2.Bind(foldA((tupledArg, tupledArg_1) => voiceScene(settings, markedScenes, tupledArg[0], tupledArg[1], tupledArg_1[0], tupledArg_1[1]), [emptyTrack, empty()], scenes), (_arg) => singleton_2.Bind(release(), () => {
+            writeOutputs(settings, _arg[0], reverse(_arg[1]));
+            return singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [undefined]));
+        }));
+    });
+}
+
+/**
+ * Voices the workspace, or the setup hint when the voice is not installed. Reading and checking script.json happen
+ * as `run` is called, before the Async starts: what throws there reaches the caller at once.
+ */
+export function run(ws) {
+    let v, option_2;
+    const matchValue = requirePackages(voicePackages);
+    if (matchValue.tag === 0) {
+        const clip = resolve(ws);
+        const scriptText = readText(join_1(ofArray([clip, "script.json"])));
+        const script = parseJson(scriptText);
+        const marked = JSON.parse(scriptText, (k, v, c) => typeof v === 'number' && c && typeof c.source === 'string' && /[.eE]/.test(c.source) ? {__py_float__: v} : v);
+        const name = script.name;
+        if (!(((typeof name) === "string") && (NAME.test(name)))) {
+            fail(`name ${Py_repr(name)} must match ${NAME_PATTERN} - it becomes the file name on the server`);
+        }
+        let voiceName;
+        const matchValue_1 = get$(script, "voice");
+        if (matchValue_1 != null) {
+            const activePatternResult = $007CTruthy$007C_$007C(matchValue_1);
+            voiceName = ((activePatternResult != null) ? ((v = value_4(activePatternResult), v)) : undefined);
+        }
+        else {
+            voiceName = "af_heart";
+        }
+        const lang = defaultArg(get$(script, "lang"), "en-us");
+        const speed = getFloat(script, "speed", 1);
+        const others = defaultArg((option_2 = get$(script, "voices"), (option_2 != null) ? (!Operators_IsNull(value_4(option_2)) ? option_2 : undefined) : undefined), {});
+        let pronounce;
+        const matchValue_2 = get$(script, "pronounce");
+        let matchResult, p_1;
+        if (matchValue_2 != null) {
+            if (!Operators_IsNull(value_4(matchValue_2))) {
+                matchResult = 0;
+                p_1 = value_4(matchValue_2);
+            }
+            else {
+                matchResult = 1;
+            }
         }
         else {
             matchResult = 1;
         }
+        switch (matchResult) {
+            case 0: {
+                pronounce = ofArray_1(map_1((k) => [k.trim(), p_1[k]], Object.keys(p_1)), {
+                    Compare: (x, y) => (comparePrimitives(x, y) | 0),
+                });
+                break;
+            }
+            default:
+                pronounce = empty_2({
+                    Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+                });
+        }
+        const enumerator = getEnumerator(cons({
+            voice: voiceName,
+            lang: lang,
+        }, toList(delay(() => map((k_1) => others[k_1], Object.keys(others))))));
+        try {
+            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
+                const spec = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
+                const lang_1 = spec.lang;
+                if (Py_truthy(spec.voice) && !(((typeof lang_1) === "string") && FSharpSet__Contains(KOKORO_LANGS, lang_1))) {
+                    const can = join(", ", sort(toList_1(KOKORO_LANGS), {
+                        Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+                    }));
+                    fail((`Kokoro cannot speak ${Py_repr(lang_1)} (it can: ${can}). `) + "Narrate in the learner\'s language, or set \"voice\": null for a captioned silent clip.");
+                }
+            }
+        }
+        finally {
+            disposeSafe(enumerator);
+        }
+        const glossary = load_1(clip);
+        const build = join_1(ofArray([clip, "build"]));
+        const cache = join_1(ofArray([build, "tts-cache"]));
+        mkdirp(cache);
+        return narrate(new Settings(ws, script, marked, name, voiceName, lang, speed, others, pronounce, glossary, build, cache));
     }
     else {
-        matchResult = 1;
+        return singleton_2.Delay(() => singleton_2.Return(new FSharpResult$2(/* Error */ 1, [matchValue.fields[0]])));
     }
-    switch (matchResult) {
-        case 0: {
-            pronounce = ofArray_1(map_1((k) => [k.trim(), p_1[k]], Object.keys(p_1)), {
-                Compare: (x, y) => (comparePrimitives(x, y) | 0),
-            });
-            break;
-        }
-        default:
-            pronounce = empty_2({
-                Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
-            });
-    }
-    const enumerator = getEnumerator(cons({
-        voice: voiceName,
-        lang: lang,
-    }, toList(delay(() => map((k_1) => others[k_1], Object.keys(others))))));
-    try {
-        while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-            const spec = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-            const lang_1 = spec.lang;
-            if (Py_truthy(spec.voice) && !(((typeof lang_1) === "string") && FSharpSet__Contains(KOKORO_LANGS, lang_1))) {
-                const can = join(", ", sort(toList_1(KOKORO_LANGS), {
-                    Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
-                }));
-                fail((`Kokoro cannot speak ${Py_repr(lang_1)} (it can: ${can}). `) + "Narrate in the learner\'s language, or set \"voice\": null for a captioned silent clip.");
-            }
-        }
-    }
-    finally {
-        disposeSafe(enumerator);
-    }
-    const glossary = load(clip);
-    const build = join_1(ofArray([clip, "build"]));
-    const cache = join_1(ofArray([build, "tts-cache"]));
-    mkdirp(cache);
-    const report = [];
-    const audio = [];
-    const pos = new FSharpRef(0);
-    const frame = new FSharpRef(0);
-    const silence = (seconds) => {
-        const n = Py_roundInt(seconds * 24000) | 0;
-        void (audio.push(new Audio(/* Silence */ 0, [n])));
-        pos.contents = ((pos.contents + n) | 0);
-    };
-    const now = () => timeAt(frame.contents, pos.contents);
-    return PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
-        const scenes = [];
-        const seen = new Set([]);
-        const sceneObjs = script.scenes;
-        const markedScenes = marked.scenes;
-        return PromiseBuilder__For_1565554B(promise, rangeDouble(0, 1, sceneObjs.length - 1), (_arg_3) => {
-            const si = _arg_3 | 0;
-            const sc = item(si, sceneObjs);
-            const id = sc.id;
-            return (!addToSet(toJson(id), seen) ? ((fail(concat("duplicate scene id ", Py_repr(id))), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                let option_11, option_9;
-                const startFrame = frame.contents | 0;
-                silence(getFloat(sc, "lead", 0.4));
-                const lines = [];
-                const sceneBreaks = [];
-                const say_1 = apply(glossary, defaultArg((option_11 = ((option_9 = get$(sc, "say"), (option_9 != null) ? (!Operators_IsNull(value_8(option_9)) ? option_9 : undefined) : undefined)), (option_11 != null) ? value_8(option_11) : undefined), ""));
-                return PromiseBuilder__For_1565554B(promise, indexed(sentences(say_1)), (_arg_4) => {
-                    const s = _arg_4[1];
-                    const i = _arg_4[0] | 0;
-                    return ((i > 0) ? ((silence(GAP), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                        const sentenceStart = now();
-                        const parts = [];
-                        const after = breaks(s);
-                        const s_1 = (s.replace(BREAK, '')).trim();
-                        const voicedPieces = toList(delay(() => collect((matchValue_3) => {
-                            const ps = pieces(matchValue_3[0]);
-                            return collect((matchValue_4) => singleton([matchValue_4[1][0], matchValue_4[1][1], (matchValue_4[0] === (length(ps) - 1)) ? matchValue_3[1] : 0]), indexed(ps));
-                        }, rests(s_1))));
-                        let gap = 0;
-                        return PromiseBuilder__For_1565554B(promise, indexed(voicedPieces), (_arg_5) => {
-                            const text_3 = _arg_5[1][1];
-                            const code_4 = _arg_5[1][0];
-                            return ((_arg_5[0] > 0) ? ((silence(max(gap, PART_GAP)), Promise.resolve())) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                                let code_2, text, where;
-                                gap = _arg_5[1][2];
-                                const partStart = now();
-                                return ((voiceName != null) ? (((code_2 = code_4, (text = spoken(text_3), (where = (`${Py_str(id)}[${i}]`), PromiseBuilder__Run_212F1D4B(promise, PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                                    let c, p_3;
-                                    let patternInput;
-                                    const code = code_2;
-                                    if (code != null) {
-                                        const code_1 = code;
-                                        const matchValue_2 = get$(others, code_1);
-                                        if (matchValue_2 == null) {
-                                            patternInput = fail(((("{" + code_1) + ":...} needs \"voices\": {\"") + code_1) + "\": {\"voice\": ..., \"lang\": ...}} in script.json");
-                                        }
-                                        else {
-                                            const spec_1 = value_8(matchValue_2);
-                                            patternInput = [spec_1.voice, spec_1.lang];
-                                        }
-                                    }
-                                    else {
-                                        patternInput = [value_8(voiceName), lang];
-                                    }
-                                    const v_2 = patternInput[0];
-                                    const l = patternInput[1];
-                                    let phonemes;
-                                    let option_7;
-                                    const option_5 = FSharpMap__TryFind(pronounce, text.trim());
-                                    option_7 = ((option_5 != null) ? (Py_truthy(value_8(option_5)) ? option_5 : undefined) : undefined);
-                                    phonemes = ((option_7 != null) ? toString(value_8(option_7)) : undefined);
-                                    const text_1 = ((phonemes == null) && l.toLocaleLowerCase().startsWith("en")) ? voiced(text) : text;
-                                    return ((code_2 == null) ? (Promise.resolve()) : ((c = code_2, ((phonemes == null) ? phonemize(text_1, l) : ((p_3 = phonemes, Promise.resolve(p_3)))).then((_arg) => {
-                                        const source = (phonemes != null) ? "pinned" : "auto";
-                                        void (report.push(`${where}	${c}	${text_1}	${_arg}	${source}`));
-                                        return Promise.resolve();
-                                    })))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                                        let p_4;
-                                        const path = join_1(ofArray([cache, substring(sha1Hex(toJson(["kokoro-js 1.2.1 fp32", v_2, l, speed, defaultArg(phonemes, text_1)])), 0, 16) + ".wav"]));
-                                        return (!exists(path) ? (((phonemes == null) ? phonemize(text_1, l) : ((p_4 = phonemes, Promise.resolve(p_4)))).then((_arg_1) => (create(_arg_1, v_2, speed).then((_arg_2) => {
-                                            write(path + ".part", _arg_2);
-                                            rename(path + ".part", path);
-                                            return Promise.resolve();
-                                        })))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (Promise.resolve(read(path)))));
-                                    }));
-                                })))))).then((_arg_6) => {
-                                    const samples_1 = _arg_6;
-                                    void (audio.push(new Audio(/* Speech */ 1, [samples_1])));
-                                    pos.contents = ((pos.contents + samples_1.length) | 0);
-                                    return Promise.resolve();
-                                })) : ((silence(readingTime(shown(text_3))), Promise.resolve()))).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                                    void (parts.push(new Part(shown(text_3), heard(text_3), (code_4 == null) ? Py_ofJs(lang) : (new Py_Json(/* Str */ 4, [code_4])), partStart, now())));
-                                    return Promise.resolve();
-                                }));
-                            }));
-                        }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                            void (lines.push(new Sentence(shown(s_1), heard(s_1), sentenceStart, now(), ofSeq_1(parts))));
-                            return PromiseBuilder__For_1565554B(promise, after, (_arg_7) => {
-                                const breakStart = now();
-                                silence(_arg_7[1]);
-                                void (sceneBreaks.push(new Break(_arg_7[0], i, breakStart, now())));
-                                return Promise.resolve();
-                            });
-                        }));
-                    }));
-                }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                    silence(getFloat(sc, "hold", 0) + getFloat(sc, "pad", (lines.length > 0) ? 0.9 : 0));
-                    const over = (pos.contents % FRAME) | 0;
-                    return (((over !== 0) ? true : (pos.contents === (startFrame * FRAME))) ? ((void (audio.push(new Audio(/* Silence */ 0, [FRAME - over]))), (pos.contents = (((pos.contents + FRAME) - over) | 0), Promise.resolve()))) : (Promise.resolve())).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                        frame.contents = (~~(pos.contents / FRAME) | 0);
-                        const msc = item(si, markedScenes);
-                        const passthrough = (key_1) => {
-                            const matchValue_5 = get$(sc, key_1);
-                            let matchResult_1, v_5;
-                            if (matchValue_5 != null) {
-                                if (Py_truthy(value_8(matchValue_5))) {
-                                    matchResult_1 = 0;
-                                    v_5 = value_8(matchValue_5);
-                                }
-                                else {
-                                    matchResult_1 = 1;
-                                }
-                            }
-                            else {
-                                matchResult_1 = 1;
-                            }
-                            switch (matchResult_1) {
-                                case 0:
-                                    return singleton_1([key_1, Py_ofJs(msc[key_1])]);
-                                default:
-                                    return empty_1();
-                            }
-                        };
-                        void (scenes.push(new Scene(id, Py_ofJs(msc.id), startFrame / 30, frame.contents / 30, ofSeq_1(lines), append(passthrough("chapter"), append(passthrough("toasts"), append((sceneBreaks.length > 0) ? singleton_1(["breaks", new Py_Json(/* List */ 5, [toList(delay(() => map((b_1) => {
-                            const b = b_1;
-                            return new Py_Json(/* Obj */ 6, [ofArray([["kind", new Py_Json(/* Str */ 4, [b.kind])], ["sentence", new Py_Json(/* Int */ 2, [b.sentence])], ["start", num(b.start)], ["end", num(b.finish)]])]);
-                        }, sceneBreaks)))])]) : empty_1(), append(passthrough("recap"), append(passthrough("path"), passthrough("inside")))))))));
-                        return Promise.resolve();
-                    }));
-                }));
-            }));
-        }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => (release().then(() => {
-            let ps_2, ps_3, matchValue_8, matchValue_9, matchValue_10, c_3, asked, on, total, label, matchValue_11, k_4, matchValue_12, m_1;
-            const duration = frame.contents / 30;
-            write(join_1(ofArray([build, "narration.wav"])), soundtrack(ofSeq_1(audio)));
-            const scenes_1 = ofSeq_1(scenes);
-            let posterId;
-            const matchValue_6 = get$(script, "poster");
-            let matchResult_2, p_6;
-            if (matchValue_6 != null) {
-                if (Py_truthy(value_8(matchValue_6))) {
-                    matchResult_2 = 0;
-                    p_6 = value_8(matchValue_6);
-                }
-                else {
-                    matchResult_2 = 1;
-                }
-            }
-            else {
-                matchResult_2 = 1;
-            }
-            switch (matchResult_2) {
-                case 0: {
-                    posterId = p_6;
-                    break;
-                }
-                default:
-                    posterId = ((length(scenes_1) > 1) ? item_1(1, scenes_1) : item_1(0, scenes_1)).id;
-            }
-            let poster;
-            const matchValue_7 = tryFind((s_2) => (toJson(s_2.id) === toJson(posterId)), scenes_1);
-            poster = ((matchValue_7 != null) ? (isEmpty(matchValue_7.sentences) ? ((ps_2 = matchValue_7, ps_2.finish - 0.1)) : ((ps_3 = matchValue_7, last_1(ps_3.sentences).finish))) : fail(concat("poster scene ", Py_repr(posterId), " not found")));
-            const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [name_1])], ["title", (matchValue_8 = get$(script, "title"), (matchValue_8 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_8(matchValue_8)))], ["voiced", new Py_Json(/* Bool */ 1, [voiceName != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_9 = get$(script, "captions"), (matchValue_9 == null) ? false : Py_truthy(value_8(matchValue_9)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes_1)])]]), append((matchValue_10 = get$(script, "card"), (matchValue_10 != null) ? (Py_truthy(value_8(matchValue_10)) ? ((c_3 = value_8(matchValue_10), (asked = c_3.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton_1(["card", Py_ofJs(Object.assign({}, marked.card, { thumbnail: (on && label) }))]))))))) : empty_1()) : empty_1()), append((matchValue_11 = get$(script, "kind"), (matchValue_11 != null) ? (Py_truthy(value_8(matchValue_11)) ? ((k_4 = value_8(matchValue_11), singleton_1(["kind", Py_ofJs(k_4)]))) : empty_1()) : empty_1()), (matchValue_12 = get$(script, "map"), (matchValue_12 != null) ? (Py_truthy(value_8(matchValue_12)) ? ((m_1 = value_8(matchValue_12), singleton_1(["map", Py_ofJs(m_1)]))) : empty_1()) : empty_1()))))]);
-            writeText(join_1(ofArray([build, "timing.json"])), Py_dumpsIndented(2, timing));
-            writeText(join_1(ofArray([build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
-            const cues = toList(delay(() => append_1(singleton("WEBVTT"), delay(() => append_1(singleton(""), delay(() => collect((s_4) => collect((c_4) => append_1(singleton(concat(vttTime(c_4.start), " --> ", vttTime(c_4.finish))), delay(() => append_1(singleton(c_4.text), delay(() => singleton(""))))), s_4.sentences), scenes_1)))))));
-            writeText(join_1(ofArray([build, "captions.vtt"])), join("\n", cues));
-            writeText(join_1(ofArray([build, "phonemes.txt"])), ("where\tvoice\tphrase\tphonemes\tsource\n" + join("\n", report)) + ((report.length > 0) ? "\n" : ""));
-            const words = sumBy((s_5) => (sumBy((c_5) => ((c_5.text.split(/\s+/).filter(w => w).length) | 0), s_5.sentences, {
-                GetZero: () => 0,
-                Add: (x_3, y_3) => ((x_3 + y_3) | 0),
-            }) | 0), scenes_1, {
-                GetZero: () => 0,
-                Add: (x_4, y_4) => ((x_4 + y_4) | 0),
-            }) | 0;
-            const arg_2 = `${name_1}: ${Py_toFixed(duration, 1)}s, ${length(scenes_1)} scenes, ${words} words, poster at ${Py_toFixed(poster, 1)}s`;
-            toConsole(printf("%s"))(arg_2);
-            return PromiseBuilder__For_1565554B(promise, scenes_1, (_arg_9) => {
-                const s_6 = _arg_9;
-                const arg_3 = `  ${padRight(Py_str(s_6.id), 14)} ${padLeft(Py_toFixed(s_6.start, 1), 6)} - ${padLeft(Py_toFixed(s_6.finish, 1), 6)}  (${length(s_6.sentences)} sentences)`;
-                toConsole(printf("%s"))(arg_3);
-                return Promise.resolve();
-            }).then(() => PromiseBuilder__Delay_62FBFDE1(promise, () => {
-                if (report.length > 0) {
-                    const arg_4 = `  ${report.length} phrase(s) in another voice - check build/phonemes.txt against the lesson`;
-                    toConsole(printf("%s"))(arg_4);
-                    return Promise.resolve();
-                }
-                else {
-                    return Promise.resolve();
-                }
-            }));
-        }))));
-    }));
 }
 

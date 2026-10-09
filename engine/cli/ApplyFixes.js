@@ -1,13 +1,14 @@
 
 import { writeText, readJson, readText, resolve, exists, join, path } from "./Node.js";
-import { zip, setItem, item, fill, iterateIndexed } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { stringHash, disposeSafe, getEnumerator, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { tryGetValue } from "./fable_modules/fable-library-js.5.19.0/MapUtil.js";
-import { FSharpRef } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { empty, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
-import { Stack$1__Pop, Stack$1__get_Count, Stack$1__Push_2B595, Stack$1_$ctor } from "./fable_modules/fable-library-js.5.19.0/System.Collections.Generic.js";
+import { zip, initialize, item, indexed, foldBack } from "./fable_modules/fable-library-js.5.19.0/Array.js";
+import { tryFind, filter, empty as empty_1, FSharpMap__TryFind, FSharpMap__Add } from "./fable_modules/fable-library-js.5.19.0/Map.js";
+import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { ofArray, contains, map, collect, singleton, takeWhile, filter as filter_1, fold, head, tail, isEmpty, length as length_1, cons, empty } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { stringHash, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
+import { FSharpSet__Contains, ofList } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { split } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { head, ofArray, isEmpty, filter, contains } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { Py_fail, Py_flush, Py_len, Py_print, Py_get, Py_str, Py_count } from "./Check.js";
 
@@ -16,116 +17,113 @@ function isAbsolutePath(p) {
 }
 
 function unmatched(a, b) {
-    const b2j = new Map([]);
-    iterateIndexed((i, elt) => {
-        let matchValue;
-        let outArg = defaultOf();
-        matchValue = [tryGetValue(b2j, elt, new FSharpRef(() => outArg, (v) => {
-            outArg = v;
-        })), outArg];
-        if (matchValue[0]) {
-            void (matchValue[1].push(i));
-        }
-        else {
-            b2j.set(elt, [i]);
-        }
-    }, b);
+    const occurrences = foldBack((tupledArg, m) => {
+        const elt = tupledArg[1];
+        return FSharpMap__Add(m, elt, cons(tupledArg[0], defaultArg(FSharpMap__TryFind(m, elt), empty())));
+    }, indexed(b), empty_1({
+        Compare: (x, y) => (comparePrimitives(x, y) | 0),
+    }));
+    let b2j;
     if (b.length >= 200) {
         const ntest = (~~(b.length / 100) + 1) | 0;
-        const enumerator = getEnumerator(toList(delay(() => collect((kv) => ((kv[1].length > ntest) ? singleton(kv[0]) : empty()), b2j))));
-        try {
-            while (enumerator["System.Collections.IEnumerator.MoveNext"]()) {
-                const elt_1 = enumerator["System.Collections.Generic.IEnumerator`1.get_Current"]();
-                b2j.delete(elt_1);
-            }
-        }
-        finally {
-            disposeSafe(enumerator);
-        }
+        b2j = filter((_arg, idxs) => (length_1(idxs) <= ntest), occurrences);
     }
-    const inA = fill(new Array(a.length), 0, a.length, true);
-    const inB = fill(new Array(b.length), 0, b.length, true);
-    const queue = Stack$1_$ctor();
-    Stack$1__Push_2B595(queue, [0, a.length, 0, b.length]);
-    while (Stack$1__get_Count(queue) > 0) {
-        const patternInput_1 = Stack$1__Pop(queue);
-        const blo_1 = patternInput_1[2] | 0;
-        const bhi_1 = patternInput_1[3] | 0;
-        const alo_1 = patternInput_1[0] | 0;
-        const ahi_1 = patternInput_1[1] | 0;
-        let patternInput_2;
-        const alo = alo_1 | 0;
-        const ahi = ahi_1 | 0;
-        const blo = blo_1 | 0;
-        const bhi = bhi_1 | 0;
-        let bestsize = 0;
-        let bestj = blo;
-        let besti = alo;
-        let j2len = new Map([]);
-        for (let i_1 = alo; i_1 <= (ahi - 1); i_1++) {
-            const newj2len = new Map([]);
-            let matchValue_2;
-            let outArg_1 = defaultOf();
-            matchValue_2 = [tryGetValue(b2j, item(i_1, a), new FSharpRef(() => outArg_1, (v_1) => {
-                outArg_1 = v_1;
-            })), outArg_1];
-            if (matchValue_2[0]) {
-                let stop = false;
-                let enumerator_1 = getEnumerator(matchValue_2[1]);
-                try {
-                    while (enumerator_1["System.Collections.IEnumerator.MoveNext"]()) {
-                        let matchValue_3, outArg_2;
-                        const j = enumerator_1["System.Collections.Generic.IEnumerator`1.get_Current"]() | 0;
-                        if (!stop && (j >= blo)) {
-                            if (j >= bhi) {
-                                stop = true;
-                            }
-                            else {
-                                const k = (((matchValue_3 = ((outArg_2 = 0, [tryGetValue(j2len, j - 1, new FSharpRef(() => (outArg_2 | 0), (v_2) => {
-                                    outArg_2 = (v_2 | 0);
-                                })), outArg_2])), matchValue_3[0] ? matchValue_3[1] : 0)) + 1) | 0;
-                                newj2len.set(j, k);
-                                if (k > bestsize) {
-                                    besti = (((i_1 - k) + 1) | 0);
-                                    bestj = (((j - k) + 1) | 0);
-                                    bestsize = (k | 0);
-                                }
-                            }
+    else {
+        b2j = occurrences;
+    }
+    const blocks = (queue_mut, found_mut) => {
+        blocks:
+        while (true) {
+            const queue = queue_mut, found = found_mut;
+            if (!isEmpty(queue)) {
+                const rest = tail(queue);
+                const blo_1 = head(queue)[2] | 0;
+                const bhi_1 = head(queue)[3] | 0;
+                const alo_1 = head(queue)[0] | 0;
+                const ahi_1 = head(queue)[1] | 0;
+                let matchValue;
+                const alo = alo_1 | 0;
+                const ahi = ahi_1 | 0;
+                const blo = blo_1 | 0;
+                const bhi = bhi_1 | 0;
+                const back = (tupledArg_3_mut) => {
+                    back:
+                    while (true) {
+                        const tupledArg_3 = tupledArg_3_mut;
+                        const besti = tupledArg_3[0] | 0;
+                        const bestj = tupledArg_3[1] | 0;
+                        const bestsize_1 = tupledArg_3[2] | 0;
+                        if (((besti > alo) && (bestj > blo)) && (item(besti - 1, a) === item(bestj - 1, b))) {
+                            tupledArg_3_mut = [besti - 1, bestj - 1, bestsize_1 + 1];
+                            continue back;
                         }
+                        else {
+                            return [besti, bestj, bestsize_1];
+                        }
+                        break;
                     }
+                };
+                const forward = (tupledArg_4_mut) => {
+                    forward:
+                    while (true) {
+                        const tupledArg_4 = tupledArg_4_mut;
+                        const besti_1 = tupledArg_4[0] | 0;
+                        const bestj_1 = tupledArg_4[1] | 0;
+                        const bestsize_2 = tupledArg_4[2] | 0;
+                        if ((((besti_1 + bestsize_2) < ahi) && ((bestj_1 + bestsize_2) < bhi)) && (item(besti_1 + bestsize_2, a) === item(bestj_1 + bestsize_2, b))) {
+                            tupledArg_4_mut = [besti_1, bestj_1, bestsize_2 + 1];
+                            continue forward;
+                        }
+                        else {
+                            return [besti_1, bestj_1, bestsize_2];
+                        }
+                        break;
+                    }
+                };
+                matchValue = forward(back(fold((tupledArg_1, i_1) => {
+                    const inRange = filter_1((j_1) => (j_1 >= blo), takeWhile((j) => (j < bhi), defaultArg(tryFind(item(i_1, a), b2j), empty())));
+                    return fold((tupledArg_2, j_2) => {
+                        const best_2 = tupledArg_2[1];
+                        const k = (defaultArg(tryFind(j_2 - 1, tupledArg_1[0]), 0) + 1) | 0;
+                        return [FSharpMap__Add(tupledArg_2[0], j_2, k), (k > best_2[2]) ? [(i_1 - k) + 1, (j_2 - k) + 1, k] : best_2];
+                    }, [empty_1({
+                        Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+                    }), tupledArg_1[1]], inRange);
+                }, [empty_1({
+                    Compare: (x_2, y_2) => (comparePrimitives(x_2, y_2) | 0),
+                }), [alo, blo, 0]], toList(rangeDouble(alo, 1, ahi - 1)))[1]));
+                if (matchValue[2] > 0) {
+                    const k_2 = matchValue[2] | 0;
+                    const j_4 = matchValue[1] | 0;
+                    const i_3 = matchValue[0] | 0;
+                    const rest_1 = ((alo_1 < i_3) && (blo_1 < j_4)) ? cons([alo_1, i_3, blo_1, j_4], rest) : rest;
+                    queue_mut = ((((i_3 + k_2) < ahi_1) && ((j_4 + k_2) < bhi_1)) ? cons([i_3 + k_2, ahi_1, j_4 + k_2, bhi_1], rest_1) : rest_1);
+                    found_mut = cons([i_3, j_4, k_2], found);
+                    continue blocks;
                 }
-                finally {
-                    disposeSafe(enumerator_1);
+                else {
+                    queue_mut = rest;
+                    found_mut = found;
+                    continue blocks;
                 }
             }
-            j2len = newj2len;
-        }
-        while (((besti > alo) && (bestj > blo)) && (item(besti - 1, a) === item(bestj - 1, b))) {
-            besti = ((besti - 1) | 0);
-            bestj = ((bestj - 1) | 0);
-            bestsize = ((bestsize + 1) | 0);
-        }
-        while ((((besti + bestsize) < ahi) && ((bestj + bestsize) < bhi)) && (item(besti + bestsize, a) === item(bestj + bestsize, b))) {
-            bestsize = ((bestsize + 1) | 0);
-        }
-        patternInput_2 = [besti, bestj, bestsize];
-        const k_1 = patternInput_2[2] | 0;
-        const j_1 = patternInput_2[1] | 0;
-        const i_2 = patternInput_2[0] | 0;
-        if (k_1 > 0) {
-            for (let d = 0; d <= (k_1 - 1); d++) {
-                setItem(inA, i_2 + d, false);
-                setItem(inB, j_1 + d, false);
+            else {
+                return found;
             }
-            if ((alo_1 < i_2) && (blo_1 < j_1)) {
-                Stack$1__Push_2B595(queue, [alo_1, i_2, blo_1, j_1]);
-            }
-            if (((i_2 + k_1) < ahi_1) && ((j_1 + k_1) < bhi_1)) {
-                Stack$1__Push_2B595(queue, [i_2 + k_1, ahi_1, j_1 + k_1, bhi_1]);
-            }
+            break;
         }
-    }
-    return [inA, inB];
+    };
+    const matched = blocks(singleton([0, a.length, 0, b.length]), empty());
+    const uncovered = (length, starts) => {
+        const covered = ofList(collect((tupledArg_5) => {
+            const start = tupledArg_5[0] | 0;
+            return toList(rangeDouble(start, 1, (start + tupledArg_5[1]) - 1));
+        }, starts), {
+            Compare: (x_3, y_3) => (comparePrimitives(x_3, y_3) | 0),
+        });
+        return initialize(length, (x_4) => !FSharpSet__Contains(covered, x_4));
+    };
+    return [uncovered(a.length, map((tupledArg_6) => [tupledArg_6[0], tupledArg_6[2]], matched)), uncovered(b.length, map((tupledArg_7) => [tupledArg_7[1], tupledArg_7[2]], matched))];
 }
 
 function changedLines(before, after) {
@@ -158,7 +156,7 @@ export function run(ws, args) {
         GetHashCode: (x) => (stringHash(x) | 0),
     });
     let fixesPath;
-    const matchValue = filter((y_1) => ("--apply" !== y_1), args);
+    const matchValue = filter_1((y_1) => ("--apply" !== y_1), args);
     if (isEmpty(matchValue)) {
         fixesPath = join(ofArray([ws, "build", "lesson-fixes.json"]));
     }
@@ -200,13 +198,24 @@ export function run(ws, args) {
         Py_print(`${Py_len(before)} -> ${Py_len(after)} chars; ${changedLines(before, after)} changed lines`);
         if (apply) {
             const backup = (n_1) => join(ofArray([ws, "build", `lesson.before-${n_1}.md`]));
-            let n_2 = 1;
-            while (exists(backup(n_2))) {
-                n_2 = ((n_2 + 1) | 0);
-            }
-            writeText(backup(n_2), before);
+            const firstFree = (n_2_mut) => {
+                firstFree:
+                while (true) {
+                    const n_2 = n_2_mut;
+                    if (exists(backup(n_2))) {
+                        n_2_mut = (n_2 + 1);
+                        continue firstFree;
+                    }
+                    else {
+                        return n_2 | 0;
+                    }
+                    break;
+                }
+            };
+            const n_3 = firstFree(1) | 0;
+            writeText(backup(n_3), before);
             writeText(doc, after);
-            Py_print(`applied; the previous text is build/lesson.before-${n_2}.md`);
+            Py_print(`applied; the previous text is build/lesson.before-${n_3}.md`);
         }
         else {
             Py_print("dry run: nothing written (add --apply)");

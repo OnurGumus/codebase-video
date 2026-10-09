@@ -319,29 +319,50 @@ let private SENTENCE_SPLIT = regex """(?<=[.!?\x01])\s+(?=["'“A-Z0-9\[\x00])""
 let private SHIELDED = regex """\x00(\d+)[\x00\x01]""" "g"
 let private LEADING_BREAKS = regex """^(?:\[(?:pause|think)(?:\s+[\d.]+)?\]\s*)+""" ""
 
+/// A text cut at every match of `re`: each match with the text between it and the match before, and the text after
+/// the last match. (Cut at nothing, the text is the tail.) `re` must be global ("g"): matchAll throws on one that is
+/// not.
+let private cut (re: obj) (text: string) : (string * obj) list * string =
+    let found, pos =
+        matchAll text re
+        |> Array.toList
+        |> List.mapFold
+            (fun pos m ->
+                let i = matchIndex m
+                (text.Substring(pos, i - pos), m), (i + (group0 m).Length) ||| 0)
+            0
+    found, text.Substring pos
+
 let sentences (say: string) : string list =
     // Split after . ! ? when a space and a capital, digit, quote or markup follows; keeps "e.g. the"
     // and "0.802" whole. {code:...} phrases are shielded first, so "{fr:Il est une heure.}" stays one
     // piece. A shielded phrase ends a sentence only when it ends in . ! ? itself (marked \x01): "is
     // {fr:moins le quart} [3:45] or..." is one sentence, "{fr:Il est midi.} Then..." is two.
-    let shielded = ResizeArray<string>()
-    let text =
-        subWith (say.Trim()) FOREIGN (fun m ->
-            shielded.Add(group0 m)
+    let found, tail = cut FOREIGN (say.Trim())
+    // the shielded phrases, in order: phrase n is replaced by a marker that holds n
+    let shielded = found |> List.map (snd >> group0) |> List.toArray
+    let marked =
+        found
+        |> List.mapi (fun n (before, m) ->
             let mark = if test ENDS_SENTENCE (group m 2).Value then "\u0001" else "\u0000"
-            "\u0000" + string (shielded.Count - 1) + mark)
-    let restore (s: string) = subWith s SHIELDED (fun m -> shielded[int (group m 1).Value])
-    let out = ResizeArray<string>()
-    for raw in splitRe text SENTENCE_SPLIT do
-        if raw.Trim() <> "" then
-            let mutable p = (restore raw).Trim()
-            // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because...").
-            let m = exec LEADING_BREAKS p
-            if not (isNull m) && out.Count > 0 then
-                out[out.Count - 1] <- out[out.Count - 1] + " " + (group0 m).Trim()
-                p <- p.Substring((group0 m).Length).Trim()
-            if p <> "" then out.Add p
-    List.ofSeq out
+            before + "\u0000" + string n + mark)
+    let unshield (s: string) = subWith s SHIELDED (fun m -> shielded[int (group m 1).Value])
+    // A break marker opening a piece belongs to the sentence before it ("Why? [think 4] Because..."): the
+    // sentences so far, the latest first, take it in; what is left of the piece is a sentence of its own.
+    let add (sofar: string list) (p: string) : string list =
+        let m = exec LEADING_BREAKS p
+        match sofar with
+        | last :: before when not (isNull m) ->
+            let p = p.Substring((group0 m).Length).Trim()
+            let sofar = (last + " " + (group0 m).Trim()) :: before
+            if p <> "" then p :: sofar else sofar
+        | _ -> if p <> "" then p :: sofar else sofar
+    splitRe (String.concat "" marked + tail) SENTENCE_SPLIT
+    |> Array.toList
+    |> List.filter (fun raw -> raw.Trim() <> "")
+    |> List.map (fun raw -> (unshield raw).Trim())
+    |> List.fold add []
+    |> List.rev
 
 /// The silences a sentence asks for after it: [("pause", 1.5); ("think", 4.0)].
 let breaks (s: string) : (string * float) list =
@@ -351,14 +372,9 @@ let breaks (s: string) : (string * float) list =
 
 /// A sentence as the stretches between its [rest] marks, each with the silence that follows it (0 after the last).
 let rests (s: string) : (string * float) list =
-    let out = ResizeArray<string * float>()
-    let mutable pos = 0
-    for m in matchAll s REST do
-        let i = matchIndex m
-        out.Add(s.Substring(pos, i - pos), (match group m 1 with Some secs -> float secs | None -> REST_DEFAULT))
-        pos <- i + (group0 m).Length
-    out.Add(s.Substring pos, 0.0)
-    List.ofSeq out
+    let found, tail = cut REST s
+    let silenceAfter (m: obj) = match group m 1 with Some secs -> float secs | None -> REST_DEFAULT
+    (found |> List.map (fun (before, m) -> before, silenceAfter m)) @ [ tail, 0.0 ]
 
 let shown (s: string) : string =
     subWith (subWith (subEmpty (subEmpty s REST) BREAK) PRONOUNCE (fun m -> (group m 1).Value)) FOREIGN (fun m -> (group m 2).Value)
@@ -379,31 +395,28 @@ let heard (s: string) : string =
 // (Python's \w is Unicode-aware: [\p{L}\p{N}_] here.)
 let private LETTER_A = regex """(?<![\p{L}\p{N}_'’])A(?![\p{L}\p{N}_'’])""" "gu"
 let private SENTENCE_OPEN = regex """(?:^|[.!?:;]\s+|["“(]\s*)$""" ""
-let private NEXT_LETTER = regex """\s+[A-Z](?:'s|s)?(?![A-Za-z])""" "y"
+let private NEXT_LETTER = regex """^\s+[A-Z](?:'s|s)?(?![A-Za-z])""" ""
 
 /// The text as sent to an English voice: letter "A" spelled so that it is said as a letter.
 let voiced (text: string) : string =
     subWith text LETTER_A (fun m ->
         let start: int = unbox m[m.Length - 2]
         let opening = test SENTENCE_OPEN (text.Substring(0, start))
-        NEXT_LETTER?lastIndex <- start + 1
-        if not opening || test NEXT_LETTER text then "eigh" else "A")
+        // opening a sentence, it is still a letter when another single letter follows the "A"
+        if not opening || test NEXT_LETTER (text.Substring(start + 1)) then "eigh" else "A")
 
 let private WORD_CHAR = regex """[\p{L}\p{N}_]""" "u"
 
 /// (code or None, text) runs of a sentence: main-voice text and {code:...} phrases in order.
 let pieces (sentence: string) : (string option * string) list =
-    let out = ResizeArray<string option * string>()
-    let mutable pos = 0
-    for m in matchAll sentence FOREIGN do
-        let i = matchIndex m
-        if i > pos then out.Add(None, sentence.Substring(pos, i - pos))
-        out.Add(group m 1, (group m 2).Value)
-        pos <- i + (group0 m).Length
-    if pos < sentence.Length then out.Add(None, sentence.Substring pos)
+    let found, tail = cut FOREIGN sentence
+    [ for before, m in found do
+          if before <> "" then None, before
+          group m 1, (group m 2).Value
+      if tail <> "" then None, tail ]
     // Punctuation left between two phrases ("." after a brace) has nothing to say.
-    [ for code, text in out do
-          if test WORD_CHAR text then code, text.Trim() ]
+    |> List.filter (fun (_, text) -> test WORD_CHAR text)
+    |> List.map (fun (code, text) -> code, text.Trim())
 
 /// Silent clips hold each caption long enough to read: about 2.5 words a second, never under 2 s.
 let readingTime (text: string) : float =
@@ -428,20 +441,19 @@ let setupHint () : string =
     let cv = join [ engineDir; "cli"; "Cv.js" ]
     $"the tool is not set up yet: run: node {cv} setup (installs the Kokoro voice and puppeteer-core into {toolHome})"
 
-/// Exits 2 with the setup hint when a package is missing from the tool home.
-let requirePackages (names: string list) : unit =
-    if names |> List.exists (packageInstalled >> not) then
-        eprint (setupHint ())
-        exit 2
+/// The setup hint as the error when a package is missing from the tool home.
+let requirePackages (names: string list) : Result<unit, string> =
+    if names |> List.exists (packageInstalled >> not) then Error(setupHint ()) else Ok()
 
+/// import(): a promise of the module.
 [<Emit("import($0)")>]
-let private importDynamic (specifier: string) : JS.Promise<obj> = jsNative
+let private importDynamic (specifier: string) : obj = jsNative
 
 /// import() of an ES-module package installed in the tool home (require() cannot load those on Node 18-20).
-let private importFromHome (name: string) : JS.Promise<obj> =
+let private importFromHome (name: string) : Async<obj> =
     let req: obj = nodeModule?createRequire(join [ toolHome; "node"; "package.json" ])
     let resolved: string = req?resolve(name)
-    importDynamic (url?pathToFileURL(resolved)?href)
+    fromJs (importDynamic (url?pathToFileURL(resolved)?href))
 
 // Phonemes ----------------------------------------------------------------------------------------------------
 // kokoro-onnx phonemized with Python's phonemizer (espeak backend, preserve_punctuation=True, with_stress=True) on
@@ -502,84 +514,84 @@ let private preserveLine (line: string) (num: int) : string list * Mark list =
                     else Inner
                 { line = num; mark = m; position = position })
             |> Array.toList
-        let rest = ref line
-        let chunks =
-            [ for mk in marks do
-                  let split = rest.Value.Split([| mk.mark |], System.StringSplitOptions.None)
-                  yield split[0]
-                  rest.Value <- String.concat mk.mark split[1..] ]
-        chunks @ [ rest.Value ], marks
+        // each mark cuts the line once: the chunk before it, then what follows it is cut by the next mark
+        let chunks, rest =
+            marks
+            |> List.mapFold
+                (fun (rest: string) (mk: Mark) ->
+                    let split = rest.Split([| mk.mark |], System.StringSplitOptions.None)
+                    split[0], String.concat mk.mark split[1..])
+                line
+        chunks @ [ rest ], marks
 
-/// Punctuation.restore with the default separator (words joined by " ", strip=False).
+/// Punctuation.restore with the default separator (words joined by " ", strip=False). `out` holds the lines made so
+/// far, the latest first.
 let private restore (text: string list) (marks: Mark list) : string list =
-    let out = ResizeArray<string>()
-    let rec go (text: string list) (marks: Mark list) (pos: int) =
+    let rec go (out: string list) (text: string list) (marks: Mark list) (pos: int) : string list =
         match text, marks with
-        | [], [] -> ()
-        | text, [] ->
-            for l in text do
-                out.Add(if l.EndsWith " " then l else l + " ")
-        | [], marks -> out.Add(marks |> List.map (fun m -> m.mark) |> String.concat "")
+        | [], [] -> out
+        | text, [] -> (text |> List.map (fun l -> if l.EndsWith " " then l else l + " ") |> List.rev) @ out
+        | [], marks -> (marks |> List.map (fun m -> m.mark) |> String.concat "") :: out
         | t0 :: trest, m :: mrest when m.line = pos ->
             let t0 = if t0.EndsWith " " then t0.Substring(0, t0.Length - 1) else t0
             let space = if m.mark.EndsWith " " then "" else " "
             match m.position with
-            | Begin -> go ((m.mark + t0) :: trest) mrest pos
-            | End ->
-                out.Add(t0 + m.mark + space)
-                go trest mrest (pos + 1)
-            | Alone ->
-                out.Add(m.mark + space)
-                go (t0 :: trest) mrest (pos + 1)
+            | Begin -> go out ((m.mark + t0) :: trest) mrest pos
+            | End -> go ((t0 + m.mark + space) :: out) trest mrest (pos + 1)
+            | Alone -> go ((m.mark + space) :: out) (t0 :: trest) mrest (pos + 1)
             | Inner ->
                 match trest with
-                | [] -> go [ t0 + m.mark ] mrest pos
-                | t1 :: trest2 -> go ((t0 + m.mark + t1) :: trest2) mrest pos
-        | t0 :: trest, marks ->
-            out.Add t0
-            go trest marks (pos + 1)
-    go text marks 0
-    List.ofSeq out
+                | [] -> go out [ t0 + m.mark ] mrest pos
+                | t1 :: trest2 -> go out ((t0 + m.mark + t1) :: trest2) mrest pos
+        | t0 :: trest, marks -> go (t0 :: out) trest marks (pos + 1)
+    go [] text marks 0 |> List.rev
 
-type private Espeak = { worker: obj; heap: unit -> byte[]; voices: Map<string, string>; mutable current: string }
+type private Espeak = { worker: obj; heap: unit -> byte[]; voices: Map<string, string> }
 
-let mutable private espeakLoaded: JS.Promise<Espeak> option = None
+/// What the agent knows: nothing yet (the module loads on the first message), the module loaded and the voice it is
+/// set to, or the error the load ended in (a failed load is never retried: every later message gets the same error).
+type private EspeakState =
+    | NotLoaded
+    | Loaded of Espeak * voice: string
+    | LoadFailed of exn
 
-/// The eSpeak NG module, loaded once. Voices are picked as phonemizer picked them: the first voice whose main
-/// language is the code ("en-us" -> gmw/en-US, "fr-fr" -> roa/fr).
-let private espeak () : JS.Promise<Espeak> =
-    match espeakLoaded with
-    | Some p -> p
-    | None ->
-        let p =
-            promise {
-                let! m = importFromHome "@echogarden/espeak-ng-emscripten"
-                let! instance = (m?``default``: unit -> JS.Promise<obj>) ()
-                let worker = createNew instance?eSpeakNGWorker ()
-                let voices =
-                    (worker?list_voices(): obj[])
-                    |> Array.choose (fun v ->
-                        let langs: obj[] = v?languages
-                        if langs.Length > 0 then Some(string langs[0]?name, string v?identifier) else None)
-                    |> Array.rev // the first voice of a language wins
-                    |> Map.ofArray
-                return { worker = worker; heap = (fun () -> instance?HEAPU8); voices = voices; current = "" }
-            }
-        espeakLoaded <- Some p
-        p
+type private EspeakMsg = Phonemize of text: string * lang: string * AsyncReplyChannel<Result<string, exn>>
+
+/// The eSpeak NG module. Voices are picked as phonemizer picked them: the first voice whose main language is the code
+/// ("en-us" -> gmw/en-US, "fr-fr" -> roa/fr).
+let private load () : Async<EspeakState> =
+    async {
+        try
+            let! m = importFromHome "@echogarden/espeak-ng-emscripten"
+            let! (instance: obj) = fromJs (m?``default`` ())
+            let worker = createNew instance?eSpeakNGWorker ()
+            let voices =
+                (worker?list_voices(): obj[])
+                |> Array.choose (fun v ->
+                    let langs: obj[] = v?languages
+                    if langs.Length > 0 then Some(string langs[0]?name, string v?identifier) else None)
+                |> Array.rev // the first voice of a language wins
+                |> Map.ofArray
+            return Loaded({ worker = worker; heap = (fun () -> instance?HEAPU8); voices = voices }, "")
+        with e ->
+            return LoadFailed e
+    }
 
 [<Emit("new TextDecoder().decode($0)")>]
 let private utf8 (bytes: byte[]) : string = jsNative
+
+/// The index of the terminating NUL byte of the string at `start` in the heap. The index wraps at 32 bits like every
+/// int sum (`||| 0`: Fable drops `| 0` on a tail call's argument).
+let private nulAt (heap: byte[]) (start: int) : int =
+    let rec go e = if heap[e] <> 0uy then go ((e + 1) ||| 0) else e
+    go start
 
 /// espeak_TextToPhonemes over every clause of a line (IPA, "_" between phonemes), joined by " " as phonemizer's
 /// wrapper joins them; the emscripten build returns the clauses joined by " | ".
 let private textToPhonemes (es: Espeak) (line: string) : string =
     let ptr: int = es.worker?text_to_phonemes(line, 1)?ptr
     let heap = es.heap ()
-    let mutable e = ptr
-    while heap[e] <> 0uy do
-        e <- e + 1
-    let raw = utf8 (heap?subarray(ptr, e))
+    let raw = utf8 (heap?subarray(ptr, nulAt heap ptr))
     raw.Split([| " | " |], System.StringSplitOptions.None) |> Array.filter (fun c -> c <> "") |> String.concat " "
 
 /// EspeakBackend._postprocess_line with with_stress=True, no tie and the default separator.
@@ -593,29 +605,80 @@ let private postprocessLine (line: string) : string =
     else
         line.Split(' ') |> Array.map (fun w -> (w.Trim() + "_").Replace("_", "") + " ") |> String.concat ""
 
-/// Tokenizer.phonemize of kokoro-onnx: phonemizer.phonemize(text, lang, preserve_punctuation=True,
-/// with_stress=True), then only the symbols in Kokoro's vocabulary.
-let phonemize (text: string) (lang: string) : JS.Promise<string> =
-    promise {
-        let! es = espeak ()
-        match es.voices.TryFind lang with
-        | None -> failwith $"language \"{lang}\" is not supported by the espeak backend"
-        | Some id ->
-            if es.current <> id then
-                es.worker?set_voice(id) |> ignore
-                es.current <- id
-        let text = text.Trim()
-        let lines =
-            text.Trim('\n').Split('\n') |> Array.map (fun l -> l.Trim('\n')) |> Array.filter (fun l -> l.Trim() <> "")
-        let chunks, marks =
-            lines
-            |> Array.mapi (fun num line -> preserveLine line num)
-            |> Array.toList
-            |> List.unzip
-            |> fun (c, m) -> List.concat c |> List.filter (fun c -> c <> ""), List.concat m
-        let phonemized = chunks |> List.map (textToPhonemes es >> postprocessLine)
-        let joined = if lines.Length = 0 then "" else restore phonemized marks |> String.concat "\n"
-        return (codePoints joined |> Array.filter VOCAB.ContainsKey |> String.concat "").Trim()
+/// Tokenizer.phonemize of kokoro-onnx once the voice is set: phonemizer.phonemize(text, lang,
+/// preserve_punctuation=True, with_stress=True), then only the symbols in Kokoro's vocabulary.
+let private phonemesOf (es: Espeak) (text: string) : string =
+    let text = text.Trim()
+    let lines =
+        text.Trim('\n').Split('\n') |> Array.map (fun l -> l.Trim('\n')) |> Array.filter (fun l -> l.Trim() <> "")
+    let chunks, marks =
+        lines
+        |> Array.mapi (fun num line -> preserveLine line num)
+        |> Array.toList
+        |> List.unzip
+        |> fun (c, m) -> List.concat c |> List.filter (fun c -> c <> ""), List.concat m
+    let phonemized = chunks |> List.map (textToPhonemes es >> postprocessLine)
+    let joined = if lines.Length = 0 then "" else restore phonemized marks |> String.concat "\n"
+    (codePoints joined |> Array.filter VOCAB.ContainsKey |> String.concat "").Trim()
+
+/// The result of one step, or the exception it raised.
+let private attempt (f: unit -> 'a) : Result<'a, exn> =
+    try
+        Ok(f ())
+    with e ->
+        Error e
+
+/// One message on the loaded module: the voice set when the language needs another one (only then), then the phonemes.
+/// An exception comes back as the reply; the voice already set stays set.
+let private speak (es: Espeak) (voice: string) (text: string) (lang: string) : string * Result<string, exn> =
+    match attempt (fun () -> es.voices.TryFind lang) with
+    | Error e -> voice, Error e
+    | Ok None -> voice, Error(exn $"language \"{lang}\" is not supported by the espeak backend")
+    | Ok(Some id) ->
+        match attempt (fun () -> if voice <> id then es.worker?set_voice(id) |> ignore) with
+        | Error e -> voice, Error e
+        | Ok() -> id, attempt (fun () -> phonemesOf es text)
+
+/// One message: the module loaded first if it is not yet, then `speak`. Whatever is thrown while handling it is the
+/// reply and the state stays as the message found it (`speak` returns the voice it set, so nothing that can throw lies
+/// between its set_voice and its result): the agent does not stop. `load` catches its own errors (a failed load is
+/// the state, not an exception).
+let rec private handleEspeak (state: EspeakState) (text: string) (lang: string) : Async<EspeakState * Result<string, exn>> =
+    async {
+        match state with
+        | NotLoaded ->
+            let! loaded = load ()
+            return! handleEspeak loaded text lang
+        | LoadFailed e -> return state, Error e
+        | Loaded(es, current) ->
+            try
+                let voice, result = speak es current text lang
+                return Loaded(es, voice), result
+            with e ->
+                return state, Error e
+    }
+
+/// The only holder of the eSpeak module: one message at a time, so the voice it is set to cannot change between a
+/// message's set_voice and its phonemes. It loads the module on the first message; the loop state is the module and
+/// its current voice, or the failed load.
+let private espeakAgent: MailboxProcessor<EspeakMsg> =
+    MailboxProcessor.Start(fun inbox ->
+        let rec loop (state: EspeakState) : Async<unit> =
+            async {
+                let! (Phonemize(text, lang, reply)) = inbox.Receive()
+                let! next, result = handleEspeak state text lang
+                deliver [ fun () -> reply.Reply result ]
+                return! loop next
+            }
+        loop NotLoaded)
+
+/// Tokenizer.phonemize of kokoro-onnx: the phonemes of a text in a language ("en-us", "fr-fr"). Raises what went
+/// wrong: the module's failed load, a language eSpeak does not know, or eSpeak's own error.
+let phonemize (text: string) (lang: string) : Async<string> =
+    async {
+        match! espeakAgent.PostAndAsyncReply(fun reply -> Phonemize(text, lang, reply)) with
+        | Ok phonemes -> return phonemes
+        | Error e -> return raise e
     }
 
 // The voice -----------------------------------------------------------------------------------------------------
@@ -645,9 +708,14 @@ let private thisModule: string = jsNative
 [<Emit("new $0('int64', BigInt64Array.from($1, BigInt), [1, $1.length])")>]
 let private idsTensor (tensorClass: obj) (ids: int[]) : obj = jsNative
 
+/// Ends the worker thread with an unhandled rejection of `e`: the main thread's `error` handler then fails every
+/// pending request with it.
+[<Emit("void Promise.reject($0)")>]
+let private crashWith (e: exn) : unit = jsNative
+
 /// The worker's side: loads kokoro-js and its model on the first request (downloading the model into
 /// <tool home>/models the first time), then answers {id, ids, voice, speed} with {id, audio} or {id, error},
-/// one request at a time.
+/// one request at a time (an agent: the next request waits until this one is answered).
 let private serveVoice () =
     let port: obj = workerThreads?parentPort
     let model =
@@ -657,111 +725,201 @@ let private serveVoice () =
              // onnxruntime's warnings (the "UserWarning" lines build.sh filtered out of the Python engine)
              transformers?env?backends?onnx?logLevel <- "error"
              let kokoro = requireFromHome "kokoro-js"
-             kokoro?KokoroTTS?from_pretrained(MODEL, createObj [ "dtype" ==> DTYPE; "device" ==> "cpu" ])
-             |> Promise.map (fun tts -> tts, transformers?Tensor))
-    let queue = ref (Promise.lift ())
-    let handle (msg: obj) =
-        promise {
-            let! tts, tensor = model.Force()
-            let input = idsTensor tensor msg?ids
-            let! audio = tts?generate_from_ids(input, createObj [ "voice" ==> msg?voice; "speed" ==> msg?speed ])
-            let samples: obj = audio?audio
-            port?postMessage(createObj [ "id" ==> msg?id; "audio" ==> samples ], [| samples?buffer |])
+             let pretrained: JS.Promise<obj> =
+                 kokoro?KokoroTTS?from_pretrained(MODEL, createObj [ "dtype" ==> DTYPE; "device" ==> "cpu" ])
+             pretrained.``then``(fun tts -> tts, transformers?Tensor))
+    /// One request answered: its audio, or the text of what went wrong (the model's load failing included: a load
+    /// that throws is tried again on the next request, a load that rejects is not).
+    let answer (msg: obj) : Async<unit> =
+        async {
+            try
+                let! (tts: obj), (tensor: obj) = fromJs (model.Force())
+                let input = idsTensor tensor msg?ids
+                let! (audio: obj) =
+                    fromJs (tts?generate_from_ids(input, createObj [ "voice" ==> msg?voice; "speed" ==> msg?speed ]))
+                let samples: obj = audio?audio
+                port?postMessage(createObj [ "id" ==> msg?id; "audio" ==> samples ], [| samples?buffer |])
+            with e ->
+                try
+                    port?postMessage(createObj [ "id" ==> msg?id; "error" ==> string e ])
+                with unsent ->
+                    crashWith unsent
         }
-        |> Promise.catch (fun e -> port?postMessage(createObj [ "id" ==> msg?id; "error" ==> string e ]))
-    port?on("message", fun (msg: obj) -> queue.Value <- queue.Value |> Promise.bind (fun () -> handle msg))
+    let agent =
+        MailboxProcessor.Start(fun inbox ->
+            let rec loop () =
+                async {
+                    let! msg = inbox.Receive()
+                    do! answer msg
+                    return! loop ()
+                }
+            loop ())
+    port?on("message", fun (msg: obj) -> agent.Post msg)
 
 do
     if not (workerThreads?isMainThread: bool) && not (isNull workerThreads?workerData) && workerThreads?workerData?kokoro = true then
         serveVoice ()
 
-type private VoiceWorker =
-    { worker: obj
-      pending: System.Collections.Generic.Dictionary<int, (float32[] -> unit) * (exn -> unit)>
-      mutable next: int }
+/// Where a request's audio, or the text of what went wrong, is sent.
+type private VoiceReply = AsyncReplyChannel<Result<float32[], string>>
 
-let mutable private voiceWorker: VoiceWorker option = None
+type private VoiceMsg =
+    /// token ids, voice and speed
+    | Generate of int[] * string * float * VoiceReply
+    /// the worker's answer to request `id` (posted from its `message` event)
+    | Reply of id: int * Result<float32[], string>
+    /// the worker thread died of an uncaught error, with this text (posted from its `error` event)
+    | Crashed of string
+    /// end the worker thread, if one was started
+    | Stop of AsyncReplyChannel<unit>
 
-let private voice () : VoiceWorker =
-    match voiceWorker with
-    | Some v -> v
-    | None ->
-        let worker =
-            createNew workerThreads?Worker (createNew url?URL thisModule, createObj [ "workerData" ==> createObj [ "kokoro" ==> true ] ])
-        let v = { worker = worker; pending = System.Collections.Generic.Dictionary(); next = 0 }
-        worker?on("message", fun (msg: obj) ->
-            let id: int = msg?id
-            let ok, (resolve, reject) = v.pending.TryGetValue id
-            if ok then
-                v.pending.Remove id |> ignore
-                if isNull msg?error then resolve msg?audio else reject (exn (string msg?error)))
-        worker?on("error", fun (e: obj) ->
-            for KeyValue(_, (_, reject)) in List.ofSeq v.pending do
-                reject (exn (string e))
-            v.pending.Clear())
-        voiceWorker <- Some v
-        v
+/// The worker thread (started on the first request), the id the next request gets (from 0 for each worker), and the
+/// requests sent to it that are waiting for its answer.
+type private VoiceState =
+    { Worker: obj option
+      Next: int
+      Pending: Map<int, VoiceReply> }
 
-/// Kokoro's raw audio for token ids (pads included).
-let private generate (ids: int[]) (voiceName: string) (speed: float) : JS.Promise<float32[]> =
-    let v = voice ()
-    Promise.create (fun resolve reject ->
-        let id = v.next
-        v.next <- id + 1
-        v.pending[id] <- (resolve, reject)
-        v.worker?postMessage(createObj [ "id" ==> id; "ids" ==> ids; "voice" ==> voiceName; "speed" ==> speed ]))
+let private noWorker = { Worker = None; Next = 0; Pending = Map.empty }
+
+/// The model's worker thread, with its answers and its death posted to the agent. A worker that has died stays the
+/// agent's worker (a request sent to it is never answered); after a release the next request starts a new one.
+let private startWorker (agent: MailboxProcessor<VoiceMsg>) : obj =
+    let worker =
+        createNew workerThreads?Worker (createNew url?URL thisModule, createObj [ "workerData" ==> createObj [ "kokoro" ==> true ] ])
+    worker?on("message", fun (msg: obj) ->
+        let id: int = msg?id
+        agent.Post(Reply(id, (if isNull msg?error then Ok msg?audio else Error(string msg?error)))))
+    worker?on("error", fun (e: obj) -> agent.Post(Crashed(string e)))
+    worker
+
+let private failAll (pending: Map<int, VoiceReply>) (text: string) : Answers =
+    [ for KeyValue(_, reply) in pending -> fun () -> reply.Reply(Error text) ]
+
+/// A request sent to the worker, which is started first if there is none. A worker that started and the id taken
+/// stay in the state even when sending fails; the request then fails with the error's text.
+let private send agent (state: VoiceState) (ids: int[]) (voiceName: string) (speed: float) (reply: VoiceReply) : VoiceState * Answers =
+    match attempt (fun () -> match state.Worker with Some w -> w | None -> startWorker agent) with
+    | Error e -> state, [ fun () -> reply.Reply(Error(string e)) ]
+    | Ok worker ->
+        let id = state.Next
+        let state = { state with Worker = Some worker; Next = (id + 1) ||| 0 }
+        let request = createObj [ "id" ==> id; "ids" ==> ids; "voice" ==> voiceName; "speed" ==> speed ]
+        match attempt (fun () -> worker?postMessage(request) |> ignore) with
+        | Ok() -> { state with Pending = state.Pending.Add(id, reply) }, []
+        | Error e -> state, [ fun () -> reply.Reply(Error(string e)) ]
+
+/// One message: the state it leaves and the answers it owes. Whatever it throws fails the message's own caller (a Stop
+/// that fails still forgets the worker), so the agent does not stop.
+let private handleVoice (agent: MailboxProcessor<VoiceMsg>) (state: VoiceState) (msg: VoiceMsg) : Async<VoiceState * Answers> =
+    async {
+        try
+            match msg with
+            | Generate(ids, voiceName, speed, reply) -> return send agent state ids voiceName speed reply
+            | Reply(id, result) ->
+                match state.Pending.TryFind id with
+                | Some reply -> return { state with Pending = state.Pending.Remove id }, [ fun () -> reply.Reply result ]
+                | None -> return state, []
+            | Crashed text -> return { state with Pending = Map.empty }, failAll state.Pending text
+            | Stop reply ->
+                match state.Worker with
+                | None -> return state, [ fun () -> reply.Reply() ]
+                | Some worker ->
+                    let! (_: obj) = fromJs (worker?terminate())
+                    // Nothing is waiting when the voice is released; anything still waiting fails, as no answer can come.
+                    return noWorker, failAll state.Pending "the voice was released before it answered" @ [ fun () -> reply.Reply() ]
+        with e ->
+            match msg with
+            | Generate(_, _, _, reply) -> return state, [ fun () -> reply.Reply(Error(string e)) ]
+            // Not a failure path for a Stop: Worker.terminate resolves on Node and never rejects.
+            | Stop reply -> return noWorker, failAll state.Pending (string e) @ [ fun () -> reply.Reply() ]
+            | Reply _
+            | Crashed _ -> return state, []
+    }
+
+/// The only holder of the model's worker thread: requests, the worker's answers and its death, and the release, one
+/// at a time. Every request gets one reply: its audio, the worker's error, or the error that killed the worker.
+let private voiceAgent: MailboxProcessor<VoiceMsg> =
+    MailboxProcessor.Start(fun inbox ->
+        let rec loop (state: VoiceState) : Async<unit> =
+            async {
+                let! msg = inbox.Receive()
+                let! next, answers = handleVoice inbox state msg
+                deliver answers
+                return! loop next
+            }
+        loop noWorker)
+
+/// Kokoro's raw audio for token ids (pads included). Raises what went wrong, with the text the worker gave.
+let private generate (ids: int[]) (voiceName: string) (speed: float) : Async<float32[]> =
+    async {
+        match! voiceAgent.PostAndAsyncReply(fun reply -> Generate(ids, voiceName, speed, reply)) with
+        | Ok audio -> return audio
+        | Error text -> return raise (exn text)
+    }
 
 /// Stops the model's worker thread, if it was started.
-let release () : JS.Promise<unit> =
-    match voiceWorker with
-    | None -> Promise.lift ()
-    | Some v ->
-        voiceWorker <- None
-        v.worker?terminate() |> Promise.map ignore
+let release () : Async<unit> =
+    async { return! voiceAgent.PostAndAsyncReply Stop }
 
 let private voiceFile (name: string) : string =
     let req: obj = nodeModule?createRequire(join [ toolHome; "node"; "package.json" ])
     let entry: string = req?resolve("kokoro-js")
     join [ dirname entry; ".."; "voices"; name + ".bin" ]
 
-/// Kokoro._split_phonemes: batches of at most MAX_PHONEMES, split at punctuation.
+/// List.fold where each step is an Async: the steps run one after another, each on the state the one before made.
+let rec private foldA (step: 's -> 'a -> Async<'s>) (state: 's) (items: 'a list) : Async<'s> =
+    async {
+        match items with
+        | [] -> return state
+        | x :: rest ->
+            let! next = step state x
+            return! foldA step next rest
+    }
+
+/// Kokoro._split_phonemes: batches of at most MAX_PHONEMES, split at punctuation. The fold's state is the batches
+/// made so far (the latest first) and the one being filled.
 let private splitPhonemes (phonemes: string) : string list =
-    let batches = ResizeArray<string>()
-    let mutable current = ""
-    for raw in splitRe phonemes (regex "([.,!?;])" "") do
-        let part = raw.Trim()
-        if part <> "" then
-            if (codePoints current).Length + (codePoints part).Length + 1 >= MAX_PHONEMES then
-                batches.Add(current.Trim())
-                current <- part
-            elif ".,!?;".Contains part then
-                current <- current + part
-            else
-                if current <> "" then current <- current + " "
-                current <- current + part
-    if current <> "" then batches.Add(current.Trim())
-    List.ofSeq batches
+    let batches, current =
+        splitRe phonemes (regex "([.,!?;])" "")
+        |> Array.map (fun raw -> raw.Trim())
+        |> Array.filter (fun part -> part <> "")
+        |> Array.fold
+            (fun (batches, current) part ->
+                if (codePoints current).Length + (codePoints part).Length + 1 >= MAX_PHONEMES then
+                    current.Trim() :: batches, part
+                elif ".,!?;".Contains part then
+                    batches, current + part
+                else
+                    batches, (if current <> "" then current + " " else current) + part)
+            ([], "")
+    List.rev (if current <> "" then current.Trim() :: batches else batches)
 
 /// Kokoro.create(phonemes, is_phonemes=True): each batch voiced, its silent edges trimmed, the batches joined.
-let private create (phonemes: string) (voiceName: string) (speed: float) : JS.Promise<float32[]> =
-    promise {
+let private create (phonemes: string) (voiceName: string) (speed: float) : Async<float32[]> =
+    async {
         if not (speed >= 0.5 && speed <= 2.0) then failwith "Speed should be between 0.5 and 2.0"
         if not (exists (voiceFile voiceName)) then failwith $"Voice {voiceName} not found in available voices"
-        let parts = ResizeArray<float32[]>()
-        for batch in splitPhonemes phonemes do
-            let ids =
-                codePoints batch
-                |> Array.truncate MAX_PHONEMES
-                |> Array.choose VOCAB.TryFind
-            let! audio = generate (Array.concat [ [| 0 |]; ids; [| 0 |] ]) voiceName speed
-            // Trim leading and trailing silence for a more natural sound concatenation
-            parts.Add(Wav.trim audio)
-        return Wav.concat (List.ofSeq parts)
+        let! parts =
+            splitPhonemes phonemes
+            |> foldA
+                (fun parts batch ->
+                    async {
+                        let ids =
+                            codePoints batch
+                            |> Array.truncate MAX_PHONEMES
+                            |> Array.choose VOCAB.TryFind
+                        let! audio = generate (Array.concat [ [| 0 |]; ids; [| 0 |] ]) voiceName speed
+                        // Trim leading and trailing silence for a more natural sound concatenation
+                        return Wav.trim audio :: parts
+                    })
+                []
+        return Wav.concat (List.rev parts)
     }
 
 /// Voices a short phrase end to end (setup's check that the voice works).
-let selfTest () : JS.Promise<unit> =
-    promise {
+let selfTest () : Async<unit> =
+    async {
         let! ph = phonemize "Ready." "en-us"
         let! samples = create ph "af_heart" 1.0
         do! release ()
@@ -790,6 +948,23 @@ type private Scene =
       sentences: Sentence list
       /// chapter, toasts, breaks and recap, when present, in that order
       extras: (string * Py.Json) list }
+
+/// The soundtrack as far as it is laid down: its pieces (the latest first), its length in samples, and the phrases
+/// voiced in another language (the latest first), which become phonemes.txt.
+type private Track = { audio: Audio list; pos: int; report: string list }
+
+let private samplesOf (piece: Audio) : int =
+    match piece with
+    | Silence n -> n
+    | Speech s -> s.Length
+
+/// The track with `piece` laid after what is there.
+let private lay (piece: Audio) (t: Track) : Track = { t with audio = piece :: t.audio; pos = t.pos + samplesOf piece }
+
+let private silence (seconds: float) (t: Track) : Track = lay (Silence(Py.roundInt (seconds * float Wav.SR))) t
+
+/// The time of the track's end, in a scene that starts on frame `frame`.
+let private now (frame: int) (t: Track) : float = timeAt frame t.pos
 
 let private num x = Py.Float x
 
@@ -824,16 +999,21 @@ let private getFloat (o: obj) (key: string) (fallback: float) : float =
     | Some v -> float (unbox<float> v)
     | None -> fallback
 
+/// A value that is there and true as Python reads it (Py.truthy).
+let private (|Truthy|_|) (v: obj option) : obj option =
+    match v with
+    | Some x when Py.truthy x -> Some x
+    | _ -> None
+
 /// The soundtrack's samples: the speech pieces with their silences between.
 let private soundtrack (audio: Audio list) : float32[] =
-    let out: float32[] = Array.zeroCreate (audio |> List.sumBy (function Silence n -> n | Speech s -> s.Length))
-    let mutable at = 0
-    for a in audio do
-        match a with
-        | Silence n -> at <- at + n
-        | Speech s ->
-            out?set(s, at) |> ignore
-            at <- at + s.Length
+    // The offsets wrap at 32 bits like Track.pos does (a negative lead or hold makes the sums wrap), and so does the total.
+    let placed, total = audio |> List.mapFold (fun at piece -> (at, piece), (at + samplesOf piece) ||| 0) 0
+    let out: float32[] = Array.zeroCreate total
+    for at, piece in placed do
+        match piece with
+        | Silence _ -> ()
+        | Speech s -> out?set(s, at) |> ignore
     out
 
 [<Emit("Object.assign({}, $0, { thumbnail: $1 })")>]
@@ -850,251 +1030,330 @@ let private briefLength (ws: string) : string =
         if isNil v then "tour" else string v
     else ""
 
-let run (ws: string) : JS.Promise<unit> =
-    requirePackages voicePackages
-    let clip = resolve ws
-    let scriptText = readText (join [ clip; "script.json" ])
-    let script = parseJson scriptText
-    // The same JSON with Python's int/float distinction, for the values copied into timing.json as they are.
-    let marked = Py.parseMarked scriptText
-    let name: obj = script?name
-    if not (jsTypeof name = "string" && test NAME (unbox name)) then
-        fail $"name {Py.repr name} must match {NAME_PATTERN} - it becomes the file name on the server"
-    let name: string = unbox name
-    let voiceName: string option =
-        match get script "voice" with
-        | None -> Some "af_heart"
-        | Some v when Py.truthy v -> Some(unbox v)
-        | Some _ -> None
-    let lang: obj = get script "lang" |> Option.defaultValue (box "en-us")
-    let speed = getFloat script "speed" 1.0
-    let others: obj = get script "voices" |> Option.filter (isNull >> not) |> Option.defaultValue (createObj [])
-    let pronounce: Map<string, obj> =
-        match get script "pronounce" with
-        | Some p when not (isNull p) -> Py.keys p |> Array.map (fun k -> k.Trim(), p?(k)) |> Map.ofArray
-        | _ -> Map.empty
-    let specs = (box (createObj [ "voice" ==> voiceName; "lang" ==> lang ])) :: [ for k in Py.keys others -> others?(k) ]
-    for spec in specs do
-        let lang: obj = spec?lang
-        if Py.truthy spec?voice && not (jsTypeof lang = "string" && KOKORO_LANGS.Contains(unbox lang)) then
-            let can = KOKORO_LANGS |> Set.toList |> List.sort |> String.concat ", "
+/// What `run` reads from the workspace before anything is voiced: script.json's settings, checked, and where the
+/// outputs go.
+type private Settings =
+    { /// the workspace as given (its brief.json says how long the video is meant to be)
+      Ws: string
+      /// script.json, parsed
+      Script: obj
+      /// the same JSON with Python's int/float distinction, for the values copied into timing.json as they are
+      Marked: obj
+      Name: string
+      /// the main voice; None for a silent clip
+      Voice: string option
+      Lang: obj
+      Speed: float
+      /// "voices": the voice and language of each {code:...} phrase
+      Others: obj
+      /// "pronounce": the exact phonemes of a phrase
+      Pronounce: Map<string, obj>
+      Glossary: Glossary.Glossary
+      Build: string
+      Cache: string }
+
+/// The voice and language of a piece of speech: the script's own, or the ones "voices" gives a {code:...} phrase.
+let private specFor (settings: Settings) (code: string option) : string * string =
+    match code with
+    | None -> settings.Voice.Value, unbox settings.Lang
+    | Some code ->
+        match get settings.Others code with
+        | Some spec -> unbox spec?voice, unbox spec?lang
+        | None ->
             fail (
-                $"Kokoro cannot speak {Py.repr lang} (it can: {can}). "
-                + "Narrate in the learner's language, or set \"voice\": null for a captioned silent clip."
+                "{" + code + ":...} needs \"voices\": {\"" + code + "\": {\"voice\": ..., \"lang\": ...}}"
+                + " in script.json"
             )
 
-    let glossary = Glossary.load clip
-    let build = join [ clip; "build" ]
-    let cache = join [ build; "tts-cache" ]
-    mkdirp cache
-
-    let specFor (code: string option) : string * string =
-        match code with
-        | None -> voiceName.Value, unbox lang
-        | Some code ->
-            match get others code with
-            | Some spec -> unbox spec?voice, unbox spec?lang
-            | None ->
-                fail ("{" + code + ":...} needs \"voices\": {\"" + code + "\": {\"voice\": ..., \"lang\": ...}} in script.json")
-
-    let report = ResizeArray<string>()
-
-    let synth (code: string option) (text: string) (where: string) : JS.Promise<float32[]> =
-        promise {
-            let v, l = specFor code
-            let phonemes =
-                pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy |> Option.map (fun p -> string p)
-            let text = if phonemes.IsNone && l.ToLower().StartsWith "en" then voiced text else text
+/// The samples of a piece of speech, and the line it adds to phonemes.txt when it is in another language.
+let private synth (settings: Settings) (code: string option) (text: string) (where: string) =
+    async {
+        let v, l = specFor settings code
+        let phonemes =
+            settings.Pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy |> Option.map (fun p -> string p)
+        let text = if phonemes.IsNone && l.ToLower().StartsWith "en" then voiced text else text
+        let! line =
             match code with
             | Some c ->
-                let! ph =
-                    match phonemes with
-                    | Some p -> Promise.lift p
-                    | None -> phonemize text l
-                let source = if phonemes.IsSome then "pinned" else "auto"
-                report.Add $"{where}\t{c}\t{text}\t{ph}\t{source}"
-            | None -> ()
-            // The key names the engine too, so pieces the Python engine (kokoro-onnx, fp16) cached are not mixed in.
-            let key =
-                (sha1Hex (toJson [| box "kokoro-js 1.2.1 fp32"; box v; box l; box speed; box (defaultArg phonemes text) |]))
-                    .Substring(0, 16)
-            let path = join [ cache; key + ".wav" ]
-            if not (exists path) then
-                let! ph =
-                    match phonemes with
-                    | Some p -> Promise.lift p
-                    | None -> phonemize text l
-                let! samples = create ph v speed
-                Wav.write (path + ".part") samples
-                rename (path + ".part") path
-            return Wav.read path
-        }
+                async {
+                    let! ph =
+                        match phonemes with
+                        | Some p -> async.Return p
+                        | None -> phonemize text l
+                    let source = if phonemes.IsSome then "pinned" else "auto"
+                    return Some $"{where}\t{c}\t{text}\t{ph}\t{source}"
+                }
+            | None -> async.Return None
+        // The key names the engine too, so pieces the Python engine (kokoro-onnx, fp16) cached are not mixed in.
+        let key =
+            let named = [| box "kokoro-js 1.2.1 fp32"; box v; box l; box settings.Speed; box (defaultArg phonemes text) |]
+            (sha1Hex (toJson named)).Substring(0, 16)
+        let path = join [ settings.Cache; key + ".wav" ]
+        if not (exists path) then
+            let! ph =
+                match phonemes with
+                | Some p -> async.Return p
+                | None -> phonemize text l
+            let! samples = create ph v settings.Speed
+            Wav.write (path + ".part") samples
+            rename (path + ".part") path
+        return Wav.read path, line
+    }
 
-    let audio = ResizeArray<Audio>()
-    let pos = ref 0 // the samples so far
-    let frame = ref 0 // the frame the current scene starts on
-    let silence (seconds: float) =
-        let n = Py.roundInt (seconds * float Wav.SR)
-        audio.Add(Silence n)
-        pos.Value <- pos.Value + n
-    let now () = timeAt frame.Value pos.Value
+/// One scene's turn: the track and the scenes timed so far (the latest first) in, the same with this scene out.
+/// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
+/// with silence up to a whole frame.
+let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track, finished: Scene list) (si, sc: obj) =
+    async {
+        let id: obj = sc?id
+        if finished |> List.exists (fun f -> toJson f.id = toJson id) then fail $"duplicate scene id {Py.repr id}"
+        let startFrame = track.pos / FRAME // every scene ends on a whole frame, and the next starts there
+        let track = silence (getFloat sc "lead" 0.4) track
+        // Terms the glossary knows (engine/glossary.json, <repo>/.codebase-video/glossary.json) are said its way:
+        // "JSON" becomes [JSON](jason) here, so the caption keeps the term and the voice gets the word.
+        let say =
+            get sc "say" |> Option.filter (isNull >> not) |> Option.map unbox<string> |> Option.defaultValue ""
+            |> Glossary.apply settings.Glossary
 
-    promise {
-        let scenes = ResizeArray<Scene>()
-        let seen = System.Collections.Generic.HashSet<string>()
-        let sceneObjs: obj[] = script?scenes
-        let markedScenes: obj[] = marked?scenes
-        for si in 0 .. sceneObjs.Length - 1 do
-            let sc = sceneObjs[si]
-            let id: obj = sc?id
-            if not (seen.Add(toJson id)) then fail $"duplicate scene id {Py.repr id}"
-            let startFrame = frame.Value
-            silence (getFloat sc "lead" 0.4)
-            let lines = ResizeArray<Sentence>()
-            let sceneBreaks = ResizeArray<Break>()
-            // Terms the glossary knows (engine/glossary.json, <repo>/.codebase-video/glossary.json) are said its way:
-            // "JSON" becomes [JSON](jason) here, so the caption keeps the term and the voice gets the word.
-            let say =
-                get sc "say" |> Option.filter (isNull >> not) |> Option.map unbox<string> |> Option.defaultValue ""
-                |> Glossary.apply glossary
-            for i, s in List.indexed (sentences say) do
-                if i > 0 then silence GAP
-                let sentenceStart = now ()
-                let parts = ResizeArray<Part>()
+        // One part of a sentence, voiced (or held for reading, in a silent clip) after the silence that its
+        // neighbours ask for: the larger of the previous part's rest and the gap between voices.
+        let voicePart (i: int) (track: Track, parts: Part list, gap: float) (k, (code, text: string, rest: float)) =
+            async {
+                let track = if k > 0 then silence (max gap PART_GAP) track else track
+                let partStart = now startFrame track
+                let! track =
+                    if settings.Voice.IsSome then
+                        async {
+                            let! samples, line = synth settings code (spoken text) $"{Py.str id}[{i}]"
+                            let track =
+                                match line with
+                                | Some l -> { track with report = l :: track.report }
+                                | None -> track
+                            return lay (Speech samples) track
+                        }
+                    else
+                        async.Return(silence (readingTime (shown text)) track)
+                let part =
+                    { Part.text = shown text
+                      spoken = heard text
+                      lang = (match code with Some c -> Py.Str c | None -> Py.ofJs settings.Lang)
+                      start = partStart
+                      finish = now startFrame track }
+                return track, part :: parts, rest
+            }
+
+        // One sentence: its parts, then the silences it asks for ([pause], [think]) after it.
+        let sentence (track: Track, lines: Sentence list, sceneBreaks: Break list) (i: int, s: string) =
+            async {
+                let track = if i > 0 then silence GAP track else track
+                let sentenceStart = now startFrame track
                 let after = breaks s
                 let s = (subEmpty s BREAK).Trim()
                 // Each stretch between two [rest] marks is voiced on its own, with the rest's silence after it.
                 let voicedPieces =
                     [ for stretch, rest in rests s do
                           let ps = pieces stretch
-                          for n, (code, text) in List.indexed ps -> code, text, (if n = ps.Length - 1 then rest else 0.0) ]
-                let mutable gap = 0.0
-                for k, (code, text, rest) in List.indexed voicedPieces do
-                    if k > 0 then silence (max gap PART_GAP)
-                    gap <- rest
-                    let partStart = now ()
-                    if voiceName.IsSome then
-                        let! samples = synth code (spoken text) $"{Py.str id}[{i}]"
-                        audio.Add(Speech samples)
-                        pos.Value <- pos.Value + samples.Length
-                    else
-                        silence (readingTime (shown text))
-                    parts.Add
-                        { Part.text = shown text
-                          spoken = heard text
-                          lang = (match code with Some c -> Py.Str c | None -> Py.ofJs lang)
-                          start = partStart
-                          finish = now () }
-                lines.Add
+                          for n, (code, text) in List.indexed ps ->
+                              code, text, (if n = ps.Length - 1 then rest else 0.0) ]
+                let! track, parts, _ = foldA (voicePart i) (track, [], 0.0) (List.indexed voicedPieces)
+                let line =
                     { Sentence.text = shown s
                       spoken = heard s
                       start = sentenceStart
-                      finish = now ()
-                      parts = List.ofSeq parts }
-                for kind, secs in after do
-                    let breakStart = now ()
-                    silence secs
-                    sceneBreaks.Add { kind = kind; sentence = i; start = breakStart; finish = now () }
-            silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.Count > 0 then 0.9 else 0.0))
-            // End on a whole frame (and never on the frame the scene started on).
-            let over = pos.Value % FRAME
-            if over <> 0 || pos.Value = startFrame * FRAME then
-                audio.Add(Silence(FRAME - over))
-                pos.Value <- pos.Value + FRAME - over
-            frame.Value <- pos.Value / FRAME
-            let msc = markedScenes[si]
-            let passthrough key =
-                match get sc key with
-                | Some v when Py.truthy v -> [ key, Py.ofJs msc?(key) ]
-                | _ -> []
-            let breakJson (b: Break) =
-                Py.Obj [ "kind", Py.Str b.kind; "sentence", Py.Int(float b.sentence); "start", num b.start; "end", num b.finish ]
-            scenes.Add
-                { id = id
-                  idJson = Py.ofJs msc?id
-                  start = float startFrame / float FPS
-                  finish = float frame.Value / float FPS
-                  sentences = List.ofSeq lines
-                  extras =
-                    passthrough "chapter" // a long video's chapter title, on its "-why" bridge scene
-                    @ passthrough "toasts" // pop-up badges ("kind", "at" phrase), drawn by the frame
-                    @ (if sceneBreaks.Count > 0 then [ "breaks", Py.List [ for b in sceneBreaks -> breakJson b ] ] else []) // [pause]/[think] silences; the frame counts down a think
-                    @ passthrough "recap" // a chapter's closing "So far" lines
-                    @ passthrough "path" // the parts of the shared map a chapter's flow touches, on its bridge scene
-                    @ passthrough "inside" } // the part of the shared map this scene goes inside
+                      finish = now startFrame track
+                      parts = List.rev parts }
+                let silences, track =
+                    after
+                    |> List.mapFold
+                        (fun track (kind, secs) ->
+                            let breakStart = now startFrame track
+                            let track = silence secs track
+                            let pause: Break =
+                                { kind = kind; sentence = i; start = breakStart; finish = now startFrame track }
+                            pause, track)
+                        track
+                return track, line :: lines, List.rev silences @ sceneBreaks
+            }
 
-        do! release ()
-        let duration = float frame.Value / float FPS
-        Wav.write (join [ build; "narration.wav" ]) (soundtrack (List.ofSeq audio))
-
-        let scenes = List.ofSeq scenes
-        let posterId: obj =
-            match get script "poster" with
-            | Some p when Py.truthy p -> p
-            | _ -> (if scenes.Length > 1 then scenes[1] else scenes[0]).id
-        let poster =
-            match scenes |> List.tryFind (fun s -> toJson s.id = toJson posterId) with
-            | None -> fail $"poster scene {Py.repr posterId} not found"
-            | Some ps when ps.sentences.IsEmpty -> ps.finish - 0.1
-            | Some ps -> (List.last ps.sentences).finish
-
-        let timing =
-            Py.Obj(
-                [ "name", Py.Str name
-                  "title", (match get script "title" with Some v -> Py.ofJs v | None -> Py.Str "")
-                  "voiced", Py.Bool voiceName.IsSome
-                  // "captions": true in script.json draws each sentence at the bottom of the picture as it is spoken
-                  // (for players that start muted or cannot load the separate .vtt file). Off unless asked for.
-                  "captions", Py.Bool (match get script "captions" with Some v -> Py.truthy v | None -> false)
-                  "duration", num duration
-                  "poster", num (Py.round poster 3)
-                  "scenes", Py.List(List.map sceneJson scenes) ]
-                @ (match get script "card" with
-                   | Some c when Py.truthy c ->
-                       // long videos: {"course", "lesson", "sub"} for the opening title card. "thumbnail" becomes the
-                       // video's length ("5:08") when the first frame is to be drawn as a thumbnail (title, red
-                       // border, play button): asked for with "thumbnail": true, and the default for a short video,
-                       // the length meant for a README. false otherwise.
-                       let asked: obj = c?thumbnail
-                       let on = if isNil asked then briefLength ws = "short" else Py.truthy asked
-                       let total = int (System.Math.Round duration)
-                       let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
-                       [ "card", Py.ofJs (withThumbnail marked?card (if on then box label else box false)) ]
-                   | _ -> [])
-                // "kind": "progress" (a video about how the code changed): the frame lights a chapter's path
-                // as a set of parts, not as a flow along arrows
-                @ (match get script "kind" with
-                   | Some k when Py.truthy k -> [ "kind", Py.ofJs k ]
-                   | _ -> [])
-                // long videos: the shared map (parts on a grid, edges, kinds), drawn by the frame and by K.map
-                @ (match get script "map" with
-                   | Some m when Py.truthy m -> [ "map", Py.ofJs m ]
-                   | _ -> [])
-            )
-        writeText (join [ build; "timing.json" ]) (Py.dumpsIndented 2 timing)
-        writeText (join [ build; "timing.js" ]) ("window.TIMING = " + Py.dumps timing + ";\n")
-
-        let cues =
-            [ yield "WEBVTT"
-              yield ""
-              for s in scenes do
-                  for c in s.sentences do
-                      yield $"{vttTime c.start} --> {vttTime c.finish}"
-                      yield c.text
-                      yield "" ]
-        writeText (join [ build; "captions.vtt" ]) (String.concat "\n" cues)
-        writeText
-            (join [ build; "phonemes.txt" ])
-            ("where\tvoice\tphrase\tphonemes\tsource\n"
-             + String.concat "\n" report
-             + (if report.Count > 0 then "\n" else ""))
-
-        let words = scenes |> List.sumBy (fun s -> s.sentences |> List.sumBy (fun c -> Py.wordCount c.text))
-        printfn "%s" $"{name}: {Py.toFixed duration 1}s, {scenes.Length} scenes, {words} words, poster at {Py.toFixed poster 1}s"
-        for s in scenes do
-            printfn
-                "%s"
-                $"  {(Py.str s.id).PadRight 14} {(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}  ({s.sentences.Length} sentences)"
-        if report.Count > 0 then
-            printfn "%s" $"  {report.Count} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+        let! track, lines, sceneBreaks = foldA sentence (track, [], []) (List.indexed (sentences say))
+        let track = silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)) track
+        // End on a whole frame (and never on the frame the scene started on).
+        let over = track.pos % FRAME
+        let track = if over <> 0 || track.pos = startFrame * FRAME then lay (Silence(FRAME - over)) track else track
+        let endFrame = track.pos / FRAME
+        let msc = markedScenes[si]
+        let passthrough key =
+            match get sc key with
+            | Truthy _ -> [ key, Py.ofJs msc?(key) ]
+            | _ -> []
+        let breakJson (b: Break) =
+            Py.Obj
+                [ "kind", Py.Str b.kind
+                  "sentence", Py.Int(float b.sentence)
+                  "start", num b.start
+                  "end", num b.finish ]
+        // [pause]/[think] silences; the frame counts down a think
+        let breaksJson =
+            if sceneBreaks.IsEmpty then [] else [ "breaks", Py.List [ for b in List.rev sceneBreaks -> breakJson b ] ]
+        let timed =
+            { id = id
+              idJson = Py.ofJs msc?id
+              start = float startFrame / float FPS
+              finish = float endFrame / float FPS
+              sentences = List.rev lines
+              extras =
+                passthrough "chapter" // a long video's chapter title, on its "-why" bridge scene
+                @ passthrough "toasts" // pop-up badges ("kind", "at" phrase), drawn by the frame
+                @ breaksJson
+                @ passthrough "recap" // a chapter's closing "So far" lines
+                @ passthrough "path" // the parts of the shared map a chapter's flow touches, on its bridge scene
+                @ passthrough "inside" } // the part of the shared map this scene goes inside
+        return track, timed :: finished
     }
+
+/// The outputs, once every scene is voiced and the voice is released: narration.wav, timing.json and timing.js,
+/// captions.vtt and phonemes.txt, then the summary on stdout. One synchronous pass (no Async, whose steps can give the
+/// event loop a turn): the summary is printed whole, and the command exits right after it.
+let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list) : unit =
+    let duration = float (track.pos / FRAME) / float FPS
+    Wav.write (join [ settings.Build; "narration.wav" ]) (soundtrack (List.rev track.audio))
+
+    let posterId: obj =
+        match get settings.Script "poster" with
+        | Truthy p -> p
+        | _ -> (if scenes.Length > 1 then scenes[1] else scenes[0]).id
+    let poster =
+        match scenes |> List.tryFind (fun s -> toJson s.id = toJson posterId) with
+        | None -> fail $"poster scene {Py.repr posterId} not found"
+        | Some ps when ps.sentences.IsEmpty -> ps.finish - 0.1
+        | Some ps -> (List.last ps.sentences).finish
+
+    let timing =
+        Py.Obj(
+            [ "name", Py.Str settings.Name
+              "title", (match get settings.Script "title" with Some v -> Py.ofJs v | None -> Py.Str "")
+              "voiced", Py.Bool settings.Voice.IsSome
+              // "captions": true in script.json draws each sentence at the bottom of the picture as it is spoken
+              // (for players that start muted or cannot load the separate .vtt file). Off unless asked for.
+              "captions", Py.Bool (match get settings.Script "captions" with Some v -> Py.truthy v | None -> false)
+              "duration", num duration
+              "poster", num (Py.round poster 3)
+              "scenes", Py.List(List.map sceneJson scenes) ]
+            @ (match get settings.Script "card" with
+               | Truthy c ->
+                   // long videos: {"course", "lesson", "sub"} for the opening title card. "thumbnail" becomes the
+                   // video's length ("5:08") when the first frame is to be drawn as a thumbnail (title, red
+                   // border, play button): asked for with "thumbnail": true, and the default for a short video,
+                   // the length meant for a README. false otherwise.
+                   let asked: obj = c?thumbnail
+                   let on = if isNil asked then briefLength settings.Ws = "short" else Py.truthy asked
+                   let total = int (System.Math.Round duration)
+                   let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
+                   [ "card", Py.ofJs (withThumbnail settings.Marked?card (if on then box label else box false)) ]
+               | _ -> [])
+            // "kind": "progress" (a video about how the code changed): the frame lights a chapter's path
+            // as a set of parts, not as a flow along arrows
+            @ (match get settings.Script "kind" with
+               | Truthy k -> [ "kind", Py.ofJs k ]
+               | _ -> [])
+            // long videos: the shared map (parts on a grid, edges, kinds), drawn by the frame and by K.map
+            @ (match get settings.Script "map" with
+               | Truthy m -> [ "map", Py.ofJs m ]
+               | _ -> [])
+        )
+    writeText (join [ settings.Build; "timing.json" ]) (Py.dumpsIndented 2 timing)
+    writeText (join [ settings.Build; "timing.js" ]) ("window.TIMING = " + Py.dumps timing + ";\n")
+
+    let cues =
+        [ yield "WEBVTT"
+          yield ""
+          for s in scenes do
+              for c in s.sentences do
+                  yield $"{vttTime c.start} --> {vttTime c.finish}"
+                  yield c.text
+                  yield "" ]
+    writeText (join [ settings.Build; "captions.vtt" ]) (String.concat "\n" cues)
+    writeText
+        (join [ settings.Build; "phonemes.txt" ])
+        ("where\tvoice\tphrase\tphonemes\tsource\n"
+         + String.concat "\n" (List.rev track.report)
+         + (if track.report.IsEmpty then "" else "\n"))
+
+    let words = scenes |> List.sumBy (fun s -> s.sentences |> List.sumBy (fun c -> Py.wordCount c.text))
+    let at = Py.toFixed poster 1
+    printfn "%s" $"{settings.Name}: {Py.toFixed duration 1}s, {scenes.Length} scenes, {words} words, poster at {at}s"
+    scenes
+    |> List.iter (fun s ->
+        let times = $"{(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}"
+        printfn "%s" $"  {(Py.str s.id).PadRight 14} {times}  ({s.sentences.Length} sentences)")
+    if not track.report.IsEmpty then
+        printfn "%s" $"  {track.report.Length} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+
+/// The scenes voiced one after another, then the voice released and the outputs written.
+let private narrate (settings: Settings) : Async<Result<unit, string>> =
+    async {
+        let sceneObjs: obj[] = settings.Script?scenes
+        let markedScenes: obj[] = settings.Marked?scenes
+        let scenes = [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
+        let emptyTrack: Track = { audio = []; pos = 0; report = [] }
+        let! track, finished = foldA (voiceScene settings markedScenes) (emptyTrack, []) scenes
+        do! release ()
+        writeOutputs settings track (List.rev finished)
+        return Ok()
+    }
+
+/// Voices the workspace, or the setup hint when the voice is not installed. Reading and checking script.json happen
+/// as `run` is called, before the Async starts: what throws there reaches the caller at once.
+let run (ws: string) : Async<Result<unit, string>> =
+    match requirePackages voicePackages with
+    | Error hint -> async { return Error hint }
+    | Ok() ->
+        let clip = resolve ws
+        let scriptText = readText (join [ clip; "script.json" ])
+        let script = parseJson scriptText
+        // The same JSON with Python's int/float distinction, for the values copied into timing.json as they are.
+        let marked = Py.parseMarked scriptText
+        let name: obj = script?name
+        if not (jsTypeof name = "string" && test NAME (unbox name)) then
+            fail $"name {Py.repr name} must match {NAME_PATTERN} - it becomes the file name on the server"
+        let name: string = unbox name
+        let voiceName: string option =
+            match get script "voice" with
+            | None -> Some "af_heart"
+            | Truthy v -> Some(unbox v)
+            | Some _ -> None
+        let lang: obj = get script "lang" |> Option.defaultValue (box "en-us")
+        let speed = getFloat script "speed" 1.0
+        let others: obj = get script "voices" |> Option.filter (isNull >> not) |> Option.defaultValue (createObj [])
+        let pronounce: Map<string, obj> =
+            match get script "pronounce" with
+            | Some p when not (isNull p) -> Py.keys p |> Array.map (fun k -> k.Trim(), p?(k)) |> Map.ofArray
+            | _ -> Map.empty
+        let specs =
+            box (createObj [ "voice" ==> voiceName; "lang" ==> lang ]) :: [ for k in Py.keys others -> others?(k) ]
+        for spec in specs do
+            let lang: obj = spec?lang
+            if Py.truthy spec?voice && not (jsTypeof lang = "string" && KOKORO_LANGS.Contains(unbox lang)) then
+                let can = KOKORO_LANGS |> Set.toList |> List.sort |> String.concat ", "
+                fail (
+                    $"Kokoro cannot speak {Py.repr lang} (it can: {can}). "
+                    + "Narrate in the learner's language, or set \"voice\": null for a captioned silent clip."
+                )
+
+        let glossary = Glossary.load clip
+        let build = join [ clip; "build" ]
+        let cache = join [ build; "tts-cache" ]
+        mkdirp cache
+        narrate
+            { Ws = ws
+              Script = script
+              Marked = marked
+              Name = name
+              Voice = voiceName
+              Lang = lang
+              Speed = speed
+              Others = others
+              Pronounce = pronounce
+              Glossary = glossary
+              Build = build
+              Cache = cache }
