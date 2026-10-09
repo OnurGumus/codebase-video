@@ -1,0 +1,8 @@
+# Files that differ between two recordings of the same build, and how compare compares them instead.
+# <path pattern relative to the recording, * matches anything><TAB><method>   (methods: see compare.py)
+#
+# The rendered video is exact (every command runs with WORKERS=1). The gallery's 4-worker render
+# (gallery.video4.*) is not listed here: compare.py checks it against the 1-worker render frame by frame.
+
+# pptxgenjs gives every section of presentation.xml a random GUID; the rest of the file is identical.
+*.present.d/*.pptx.d/ppt/presentation.xml	strip:id="\{[0-9a-fA-F-]+\}"
