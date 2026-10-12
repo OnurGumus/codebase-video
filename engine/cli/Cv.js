@@ -14,7 +14,7 @@ import { run as run_5 } from "./Present.js";
 import { run as run_6 } from "./Scan.js";
 import { run as run_7 } from "./ScanReport.js";
 import { run as run_8 } from "./Fill.js";
-import { run as run_9 } from "./History.js";
+import { describe as describe_1, run as run_9 } from "./History.js";
 import { run as run_10 } from "./ApplyFixes.js";
 
 export function usage() {
@@ -89,6 +89,7 @@ export function upgradeClip(ws) {
 }
 
 export function main() {
+    let matchValue_1, patternInput;
     let matchResult, rest, step, wsArg;
     if (!isEmpty(argv)) {
         if (head(argv) === "setup") {
@@ -193,7 +194,9 @@ export function main() {
                     break;
                 }
                 case "history": {
-                    finish(singleton.Return(run_9(ws, rest)));
+                    finish(singleton.Return((matchValue_1 = run_9(ws, rest), (matchValue_1.tag === 1) ? ((patternInput = describe_1(matchValue_1.fields[0]), (iterate((s) => {
+                        eprint(s);
+                    }, patternInput[1]), patternInput[0]))) : matchValue_1.fields[0])));
                     break;
                 }
                 case "fix": {

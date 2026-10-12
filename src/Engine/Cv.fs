@@ -120,7 +120,17 @@ let main () =
         | "scan" -> finish (ensureTiming ws |> andThen (fun () -> Scan.run ws rest))
         | "report" -> finish (async.Return(ScanReport.run ws rest))
         | "fill" -> finish (async.Return(Fill.run ws))
-        | "history" -> finish (async.Return(History.run ws rest))
+        | "history" ->
+            finish (
+                async.Return(
+                    match History.run ws rest with
+                    | Ok code -> code
+                    | Error failure ->
+                        let code, lines = History.describe failure
+                        lines |> List.iter eprint
+                        code
+                )
+            )
         | "fix" -> finish (async.Return(ApplyFixes.run ws rest))
         | _ -> usage ()
     | _ -> usage ()
