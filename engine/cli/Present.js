@@ -101,7 +101,7 @@ export class Failure extends Union {
 }
 
 export function Failure_$reflection() {
-    return union_type("Present.Failure", [], Failure, () => [[["Item", string_type]], [["name", string_type]], [["exitCode", int32_type]], [["reason", string_type]], [["slide", int32_type]]]);
+    return union_type("Present.Failure", [], Failure, () => [[["given", string_type]], [["name", string_type]], [["code", int32_type]], [["reason", string_type]], [["slide", int32_type]]]);
 }
 
 class Options extends Record {

@@ -1048,6 +1048,7 @@ type Failure =
     | UnknownLanguage of lang: obj
     /// a {code:...} phrase whose code "voices" does not give
     | UnknownPhraseLanguage of code: string
+    /// two scenes share an id
     | DuplicateSceneId of id: obj
     /// "poster" (or the default, the 2nd scene) names no scene
     | PosterNotFound of id: obj

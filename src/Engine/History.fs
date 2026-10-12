@@ -139,14 +139,17 @@ type Failure =
     | LastVideoOffRange of id: string * file: string
     /// brief.json has no "repo"
     | NoRepo
+    /// the repo named in brief.json is not a git repository
     | NotARepository of repo: string
     /// the range starts where it ends
     | EmptyRange of since: string * until: string * short: string
+    /// since is not an ancestor of until
     | NotAncestor of since: string * until: string
     /// a shallow clone whose edge the range reaches
     | ShallowEdge of short: string
     /// a shallow clone, and the range is the whole history
     | ShallowNoFirstCommit
+    /// no commit falls in the range
     | NoCommits of since: string * until: string
     /// "--done" before "history" has written build/history.json
     | NoHistoryFile
@@ -183,7 +186,6 @@ let describe (failure: Failure) : int * string list =
     | NoHistoryFile -> 1, [ "history --done: build/history.json is missing; run \"history\" first" ]
 
 /// Ok when nothing failed, else the failure.
-let private unless (failed: bool) (failure: Failure) : Result<unit, Failure> = if failed then Error failure else Ok()
 
 /// Where the range ends: the commit of `until`.
 let private resolveUntil (repo: string) (reference: string) : Result<string, Failure> =
@@ -217,7 +219,7 @@ let private resolveSince (repo: string) (given: string option) (until: string) :
         | None ->
             // A default start is looked up in tags and in the recorded end of the last video. A shallow clone may
             // lack either, and would then quietly choose another start.
-            do! unless (isShallow repo) ShallowNoDefaultStart
+            do! isShallow repo |> Result.requireFalse ShallowNoDefaultStart
             let file = join [ repo; ".codebase-video"; "progress.json" ]
             let! recorded, notes =
                 if not (exists file) then Ok(None, [])
@@ -330,8 +332,8 @@ let private count (n: int) (one: string) : string = if n = 1 then $"1 {one}" els
 let private write (ws: string) : Result<int, Failure> =
     result {
         let brief = readJson (join [ ws; "brief.json" ])
-        let! repo = if isNil brief?repo then Error NoRepo else Ok(string brief?repo)
-        do! unless (fst (git repo [ "rev-parse"; "--git-dir" ]) <> 0) (NotARepository repo)
+        let! repo = if isNil brief?repo then Error NoRepo else Ok(unbox<string> brief?repo)
+        do! fst (git repo [ "rev-parse"; "--git-dir" ]) = 0 |> Result.requireTrue (NotARepository repo)
         let people = strings brief?focus |> List.contains "people"
         let untilRef: string = if isNil brief?until then "HEAD" else brief?until
         let! until = resolveUntil repo untilRef
@@ -356,9 +358,9 @@ let private write (ws: string) : Result<int, Failure> =
             let inRange = (gitOut repo ([ "rev-list" ] @ range)).Split '\n' |> Array.filter ((<>) "")
             match inRange |> Array.tryFind edge.Contains with
             | Some sha -> return! Error(ShallowEdge(shortOf repo sha))
-            | None -> do! unless start.Commit.IsNone ShallowNoFirstCommit
+            | None -> do! start.Commit.IsNone |> Result.requireFalse ShallowNoFirstCommit
         let all = readCommits repo range
-        do! unless all.IsEmpty (NoCommits(sinceRef, untilRef))
+        do! all |> Result.requireNotEmpty (NoCommits(sinceRef, untilRef))
 
         // What is left out of the numbers: lock files, generated files, and the brief's own globs.
         let touched = all |> List.collect (fun c -> c.Files |> List.map (fun (p, _, _) -> p)) |> List.distinct
@@ -624,7 +626,7 @@ let private write (ws: string) : Result<int, Failure> =
 let private done' (ws: string) : Result<int, Failure> =
     result {
         let file = join [ ws; "build"; "history.json" ]
-        do! unless (not (exists file)) NoHistoryFile
+        do! exists file |> Result.requireTrue NoHistoryFile
         let history = readJson file
         let brief = readJson (join [ ws; "brief.json" ])
         let repo: string = brief?repo

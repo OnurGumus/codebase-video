@@ -88,11 +88,11 @@ let private srt (scenes: Scene list) : string =
 /// the lines for stderr.
 type Failure =
     /// an argument that is neither --serve nor --clips
-    | UnknownOption of string
+    | UnknownOption of given: string
     /// a tool home set up before the slide writer was added; `name` is the deck's, out/<name>.pptx
     | SlideWriterMissing of name: string
     /// the slide pictures could not be drawn; the renderer has said why
-    | RenderFailed of exitCode: int
+    | RenderFailed of code: int
     /// --clips without a video to cut them from, and why there is none
     | NoVideo of reason: string
     /// ffmpeg could not cut a slide's clip from the video

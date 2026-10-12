@@ -31,6 +31,7 @@ open Node
 type CliFailure =
     /// no step, or one the engine does not have
     | Usage
+    /// the workspace directory does not exist
     | NoWorkspace of path: string
     /// a step that needs setup, before setup has run; the hint says how to run it
     | NotSetUp of hint: string
@@ -145,7 +146,7 @@ let private needsSetup (step: string) : bool =
 /// that need it) and an up-to-date clip.html (for all but new-long, which writes one).
 let private prepare (ws: string) (step: string) : Result<unit, CliFailure> =
     result {
-        do! if isDir ws then Ok() else Error(NoWorkspace ws)
+        do! isDir ws |> Result.requireTrue (NoWorkspace ws)
         mkdirp (join [ ws; "build" ])
         mkdirp (join [ ws; "out" ])
         do! if needsSetup step then Setup.requireReady () |> Result.mapError NotSetUp else Ok()
@@ -171,12 +172,12 @@ let main () =
         | Error failure -> finish (AsyncResult.error (Cli failure))
         | Ok() ->
             match step with
-            | "narrate" -> finish (Narrate.run ws |> AsyncResult.mapError Narrate |> AsyncResult.map (fun () -> 0))
+            | "narrate" -> finish (Narrate.run ws |> andThen (fun () -> AsyncResult.ok 0))
             | "check" -> finish (AsyncResult.ok (Check.run ws rest))
             | "stills"
             | "sheet"
             | "serve" -> finish (ensureTiming ws |> andThen (fun () -> coded (Render.run ws step rest)))
-            | "new-long" -> finish (async.Return(newLong ws |> Result.mapError Cli))
+            | "new-long" -> finish (newLong ws |> Result.mapError Cli |> AsyncResult.ofResult)
             | "chapters" -> finish (AsyncResult.ok (Video.chapters ws))
             | "video" -> finish (ensureTiming ws |> andThen (fun () -> coded (Video.run ws rest)))
             | "present" -> finish (ensureTiming ws |> andThen (fun () -> Present.run ws rest |> AsyncResult.mapError Present))
@@ -184,7 +185,7 @@ let main () =
             | "scan" -> finish (ensureTiming ws |> andThen (fun () -> coded (Scan.run ws rest)))
             | "report" -> finish (AsyncResult.ok (ScanReport.run ws rest))
             | "fill" -> finish (AsyncResult.ok (Fill.run ws))
-            | "history" -> finish (async.Return(History.run ws rest |> Result.mapError History))
+            | "history" -> finish (History.run ws rest |> Result.mapError History |> AsyncResult.ofResult)
             | "fix" -> finish (AsyncResult.ok (ApplyFixes.run ws rest))
             | _ -> finish (AsyncResult.error (Cli Usage))
     | _ -> finish (AsyncResult.error (Cli Usage))

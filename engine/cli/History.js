@@ -8,10 +8,10 @@ import { dirname, toJsonIndented, writeText, mkdirp, readText, path as path_1, c
 import { printf, toConsole, concat, join, split, substring, replace } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { last as last_1, reverse, tryFind, map, item, equalsWith, truncate } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
-import { map as map_2, append as append_1, empty as empty_1, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { map as map_2, append as append_1, isEmpty as isEmpty_1, empty as empty_1, singleton as singleton_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { op_UnaryNegation_Int32, parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
-import { value as value_3, defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { value as value_6, defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { List_groupBy, List_countBy, List_distinctBy, List_distinct } from "./fable_modules/fable-library-js.5.19.0/Seq2.js";
 
 const LIST_ALL = 300;
@@ -222,15 +222,6 @@ export function describe(failure) {
     }
 }
 
-function unless(failed, failure) {
-    if (failed) {
-        return new FSharpResult$2(/* Error */ 1, [failure]);
-    }
-    else {
-        return new FSharpResult$2(/* Ok */ 0, [undefined]);
-    }
-}
-
 function resolveUntil(repo, reference) {
     if (isDate(reference)) {
         const matchValue = gitOut(repo, ofArray(["rev-list", "-1", concat("--before=", reference, " 23:59:59"), "HEAD"]));
@@ -270,7 +261,7 @@ function resolveSince(repo, given, until) {
     let sha_3, _arg_1, recorded, notes, tagBefore, matchValue_3, matchValue_4, date_1, matchValue_5, tag_3, sha_4;
     const before = (date) => gitOut(repo, ofArray(["rev-list", "-1", concat("--before=", date, " 23:59:59"), until]));
     if (given == null) {
-        const input_2 = unless(isShallow(repo), Failure.ShallowNoDefaultStart);
+        const input_2 = !isShallow(repo) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [Failure.ShallowNoDefaultStart]));
         if (input_2.tag === 1) {
             return new FSharpResult$2(/* Error */ 1, [input_2.fields[0]]);
         }
@@ -430,13 +421,13 @@ function count(n, one) {
 function write(ws) {
     let array_1, array_3, touched, asked, unmatched, globs, gen, ignored, kept, left, status, of$0027, sum, areas, mostChanged, tagsOf, tags, matchValue_6, since_6, tagged, publishedBranch, matchValue_7, unpublished, array_8, partial, listed, saidSubject, saidBody, sinceCommit, untilDate, sinceDate, notes, keptFiles, patternInput_2, totalRemoved, totalAdded, patternInput_3, leftRemoved, leftAdded, pathsOf, json, build, chosen, pathsLine, md, arg_2, arg_3, arg_4;
     const brief = readJson(join_1(ofArray([ws, "brief.json"])));
-    const input_13 = ((brief.repo == null)) ? (new FSharpResult$2(/* Error */ 1, [Failure.NoRepo])) : (new FSharpResult$2(/* Ok */ 0, [toString(brief.repo)]));
+    const input_13 = ((brief.repo == null)) ? (new FSharpResult$2(/* Error */ 1, [Failure.NoRepo])) : (new FSharpResult$2(/* Ok */ 0, [brief.repo]));
     if (input_13.tag === 1) {
         return new FSharpResult$2(/* Error */ 1, [input_13.fields[0]]);
     }
     else {
         const repo = input_13.fields[0];
-        const input_11 = unless(git(repo, ofArray(["rev-parse", "--git-dir"]))[0] !== 0, new Failure(/* NotARepository */ 8, [repo]));
+        const input_11 = (git(repo, ofArray(["rev-parse", "--git-dir"]))[0] === 0) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* NotARepository */ 8, [repo])]));
         if (input_11.tag === 1) {
             return new FSharpResult$2(/* Error */ 1, [input_11.fields[0]]);
         }
@@ -510,9 +501,9 @@ function write(ws) {
                             }) : empty_2({
                                 Compare: (x_3, y_3) => (comparePrimitives(x_3, y_3) | 0),
                             }));
-                            const matchValue_4 = tryFind((value_1) => FSharpSet__Contains(edge, value_1), (array_3 = split(gitOut(repo, append(singleton("rev-list"), range)), ["\n"], undefined, 0), array_3.filter((y_4) => ("" !== y_4))));
+                            const matchValue_4 = tryFind((value_3) => FSharpSet__Contains(edge, value_3), (array_3 = split(gitOut(repo, append(singleton("rev-list"), range)), ["\n"], undefined, 0), array_3.filter((y_4) => ("" !== y_4))));
                             if (matchValue_4 == null) {
-                                const input = unless(start.Commit == null, Failure.ShallowNoFirstCommit);
+                                const input = !(start.Commit == null) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [Failure.ShallowNoFirstCommit]));
                                 input_3 = ((input.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
                             }
                             else {
@@ -527,7 +518,7 @@ function write(ws) {
                         }
                         else {
                             const all = readCommits(repo, range);
-                            const input_1 = unless(isEmpty(all), new Failure(/* NoCommits */ 13, [sinceRef, untilRef]));
+                            const input_1 = isEmpty_1(all) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* NoCommits */ 13, [sinceRef, untilRef])])) : (new FSharpResult$2(/* Ok */ 0, [undefined]));
                             if (input_1.tag === 1) {
                                 return new FSharpResult$2(/* Error */ 1, [input_1.fields[0]]);
                             }
@@ -727,7 +718,7 @@ function write(ws) {
                                     return ofArray_1((array_6 = split(gitOut(repo, ofArray(["tag", "--merged", sha_1])), ["\n"], undefined, 0), array_6.filter((y_20) => ("" !== y_20))), {
                                         Compare: (x_23, y_21) => (comparePrimitives(x_23, y_21) | 0),
                                     });
-                                }), (tags = sortBy((tupledArg_19) => [tupledArg_19[2], tupledArg_19[0]], map_1((t) => [t, shortOf(repo, value_3(commitOf(repo, t))), dateOf(repo, value_3(commitOf(repo, t)))], toList_1((matchValue_6 = start.Commit, (matchValue_6 == null) ? tagsOf(until) : ((since_6 = matchValue_6, difference(tagsOf(until), tagsOf(since_6))))))), {
+                                }), (tags = sortBy((tupledArg_19) => [tupledArg_19[2], tupledArg_19[0]], map_1((t) => [t, shortOf(repo, value_6(commitOf(repo, t))), dateOf(repo, value_6(commitOf(repo, t)))], toList_1((matchValue_6 = start.Commit, (matchValue_6 == null) ? tagsOf(until) : ((since_6 = matchValue_6, difference(tagsOf(until), tagsOf(since_6))))))), {
                                     Compare: (x_24, y_22) => (compareArrays(x_24, y_22) | 0),
                                 }), (tagged = ofList(map_1((tupledArg_20) => tupledArg_20[1], tags), {
                                     Compare: (x_25, y_23) => (comparePrimitives(x_25, y_23) | 0),
@@ -857,7 +848,7 @@ function write(ws) {
 function done$0027(ws) {
     let history, brief, out, until, arg;
     const file = join_1(ofArray([ws, "build", "history.json"]));
-    const input = unless(!exists(file), Failure.NoHistoryFile);
+    const input = exists(file) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [Failure.NoHistoryFile]));
     if (input.tag === 1) {
         return new FSharpResult$2(/* Error */ 1, [input.fields[0]]);
     }

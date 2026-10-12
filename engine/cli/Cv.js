@@ -239,7 +239,7 @@ function newLong(ws) {
 }
 
 export function main() {
-    let input_5, input, value_1_4, input_11, value_1_6, value_1_9, value_1_11, input_18, value_1_13;
+    let value_1_4, x_1, input_1, value_1_7, value_1_10, value_1_12, x_5, input_8, value_1_15;
     let matchResult, rest, step, wsArg;
     if (!isEmpty(argv)) {
         if (head(argv) === "setup") {
@@ -277,17 +277,7 @@ export function main() {
             if (matchValue.tag === 0) {
                 switch (step) {
                     case "narrate": {
-                        finish((input_5 = ((input = run(ws), singleton_1.Bind(input, (x$0027) => {
-                            let value_2;
-                            const input_2 = x$0027;
-                            value_2 = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Narrate */ 1, [input_2.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_2.fields[0]])));
-                            return singleton_1.Return(value_2);
-                        }))), singleton_1.Bind(input_5, (x$0027_1) => {
-                            let value_4;
-                            const input_7 = x$0027_1;
-                            value_4 = ((input_7.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_7.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [0])));
-                            return singleton_1.Return(value_4);
-                        })));
+                        finish(andThen(() => singleton_1.Return(new FSharpResult$2(/* Ok */ 0, [0])), run(ws)));
                         break;
                     }
                     case "check": {
@@ -301,11 +291,11 @@ export function main() {
                         break;
                     }
                     case "new-long": {
-                        finish(singleton_1.Return((input_11 = newLong(ws), (input_11.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Cli */ 0, [input_11.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_11.fields[0]])))));
+                        finish((x_1 = ((input_1 = newLong(ws), (input_1.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Cli */ 0, [input_1.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_1.fields[0]])))), singleton_1.Return(x_1)));
                         break;
                     }
                     case "chapters": {
-                        finish((value_1_6 = (new FSharpResult$2(/* Ok */ 0, [chapters(ws)])), singleton_1.Return(value_1_6)));
+                        finish((value_1_7 = (new FSharpResult$2(/* Ok */ 0, [chapters(ws)])), singleton_1.Return(value_1_7)));
                         break;
                     }
                     case "video": {
@@ -314,11 +304,11 @@ export function main() {
                     }
                     case "present": {
                         finish(andThen(() => {
-                            const input_12 = run_5(ws, rest);
-                            return singleton_1.Bind(input_12, (x$0027_2) => {
+                            const input_2 = run_5(ws, rest);
+                            return singleton_1.Bind(input_2, (x$0027) => {
                                 let value_10;
-                                const input_14 = x$0027_2;
-                                value_10 = ((input_14.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Present */ 3, [input_14.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_14.fields[0]])));
+                                const input_4 = x$0027;
+                                value_10 = ((input_4.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Present */ 3, [input_4.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_4.fields[0]])));
                                 return singleton_1.Return(value_10);
                             });
                         }, ensureTiming(ws)));
@@ -333,19 +323,19 @@ export function main() {
                         break;
                     }
                     case "report": {
-                        finish((value_1_9 = (new FSharpResult$2(/* Ok */ 0, [run_7(ws, rest)])), singleton_1.Return(value_1_9)));
+                        finish((value_1_10 = (new FSharpResult$2(/* Ok */ 0, [run_7(ws, rest)])), singleton_1.Return(value_1_10)));
                         break;
                     }
                     case "fill": {
-                        finish((value_1_11 = (new FSharpResult$2(/* Ok */ 0, [run_8(ws)])), singleton_1.Return(value_1_11)));
+                        finish((value_1_12 = (new FSharpResult$2(/* Ok */ 0, [run_8(ws)])), singleton_1.Return(value_1_12)));
                         break;
                     }
                     case "history": {
-                        finish(singleton_1.Return((input_18 = run_9(ws, rest), (input_18.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* History */ 2, [input_18.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_18.fields[0]])))));
+                        finish((x_5 = ((input_8 = run_9(ws, rest), (input_8.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* History */ 2, [input_8.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_8.fields[0]])))), singleton_1.Return(x_5)));
                         break;
                     }
                     case "fix": {
-                        finish((value_1_13 = (new FSharpResult$2(/* Ok */ 0, [run_10(ws, rest)])), singleton_1.Return(value_1_13)));
+                        finish((value_1_15 = (new FSharpResult$2(/* Ok */ 0, [run_10(ws, rest)])), singleton_1.Return(value_1_15)));
                         break;
                     }
                     default:
