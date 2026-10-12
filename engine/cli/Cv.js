@@ -1,95 +1,245 @@
 
-import { argv, engineDir, copyFile, mkdirp, isDir, resolve, writeText, readText, join, exists, exit, eprint } from "./Node.js";
+import { toString, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
+import { union_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { printf, toConsole, substring, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { tail, head, isEmpty, ofArray, iterate, singleton } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { run, describe as describe_1, Failure_$reflection as Failure_$reflection_1 } from "./Narrate.js";
+import { run as run_9, describe as describe_2, Failure_$reflection as Failure_$reflection_2 } from "./History.js";
+import { run as run_5, describe as describe_3, Failure_$reflection as Failure_$reflection_3 } from "./Present.js";
 import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
-import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
-import { run, describe } from "./Narrate.js";
-import { tail, head, isEmpty, ofArray, iterate } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { printf, toConsole, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { requireReady, run as run_1 } from "./Setup.js";
+import { argv, resolve, engineDir, copyFile, mkdirp, isDir, writeText, readText, join, exists, exit, eprint } from "./Node.js";
+import { singleton as singleton_1 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
+import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
+import { run as run_1, requireReady } from "./Setup.js";
 import { run as run_2 } from "./Check.js";
 import { run as run_3 } from "./Render.js";
 import { run as run_4, chapters } from "./Video.js";
-import { run as run_5 } from "./Present.js";
 import { run as run_6 } from "./Scan.js";
 import { run as run_7 } from "./ScanReport.js";
 import { run as run_8 } from "./Fill.js";
-import { describe as describe_1, run as run_9 } from "./History.js";
 import { run as run_10 } from "./ApplyFixes.js";
 
-export function usage() {
-    eprint("usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|present|scan|report|fill|fix|history [...]");
-    return exit(2);
+/**
+ * Why a command could not start, or new-long would not write.
+ */
+export class CliFailure extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Usage", "NoWorkspace", "NotSetUp", "OldKit", "ClipExists"];
+    }
+    static Usage = new CliFailure(0, []);
+    static OldKit = new CliFailure(3, []);
+}
+
+export function CliFailure_$reflection() {
+    return union_type("Cv.CliFailure", [], CliFailure, () => [[], [["path", string_type]], [["hint", string_type]], [], [["path", string_type]]]);
+}
+
+function describeCli(failure) {
+    switch (failure.tag) {
+        case 1:
+            return [2, singleton(concat("no such workspace: ", failure.fields[0]))];
+        case 2:
+            return [2, singleton(failure.fields[0])];
+        case 3:
+            return [2, singleton("clip.html loads /engine/stage-kit.js, which is gone: load build/timing.js, then <script type=\"module\" src=\"/engine/web/Main.js\">, and put your own script in a type=\"module\" script after it")];
+        case 4:
+            return [1, singleton(concat(failure.fields[0], " exists; not overwriting"))];
+        default:
+            return [2, singleton("usage: node engine/cli/Cv.js setup | <workspace> narrate|check|stills|sheet|serve|new-long|chapters|video|all|present|scan|report|fill|fix|history [...]")];
+    }
 }
 
 /**
- * Runs a step to its end, then exits with its code; an exception is printed and exits with 1. The engine's one
- * Async.StartAsPromise: every step below is an Async.
+ * Why a command ended early, whichever part found it.
+ */
+export class Failure extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["Cli", "Narrate", "History", "Present"];
+    }
+}
+
+export function Failure_$reflection() {
+    return union_type("Cv.Failure", [], Failure, () => [[["Item", CliFailure_$reflection()]], [["Item", Failure_$reflection_1()]], [["Item", Failure_$reflection_2()]], [["Item", Failure_$reflection_3()]]]);
+}
+
+/**
+ * The exit code of a failure and the lines it prints on stderr.
+ */
+export function describe(failure) {
+    switch (failure.tag) {
+        case 1:
+            return describe_1(failure.fields[0]);
+        case 2:
+            return describe_2(failure.fields[0]);
+        case 3:
+            return describe_3(failure.fields[0]);
+        default:
+            return describeCli(failure.fields[0]);
+    }
+}
+
+/**
+ * Runs a step to its end, then exits with its code; a failure prints its lines and exits with its code; an exception
+ * is printed and exits with 1. The engine's one Async.StartAsPromise, and the one place the process exits: every
+ * step below is an Async.
  */
 export function finish(step) {
-    startAsPromise(step).then(exit).catch((e) => {
+    startAsPromise(step).then((outcome) => {
+        if (outcome.tag === 1) {
+            const patternInput = describe(outcome.fields[0]);
+            iterate((s) => {
+                eprint(s);
+            }, patternInput[1]);
+            return exit(patternInput[0]);
+        }
+        else {
+            return exit(outcome.fields[0]);
+        }
+    }).catch((e) => {
         eprint(toString(e));
         return exit(1);
     });
 }
 
-function narrated(narration) {
-    return singleton.Delay(() => singleton.Bind(narration, (_arg) => {
-        if (_arg.tag === 1) {
-            const patternInput = describe(_arg.fields[0]);
-            iterate((s) => {
-                eprint(s);
-            }, patternInput[1]);
-            exit(patternInput[0]);
-            return singleton.Zero();
-        }
-        else {
-            return singleton.Zero();
-        }
-    }));
-}
-
+/**
+ * The narration, unless build/timing.json is there already. Narrate.run is called here, at once, so that it reads
+ * script.json before anything runs (a bad one throws from `run` itself).
+ */
 export function ensureTiming(ws) {
     if (exists(join(ofArray([ws, "build", "timing.json"])))) {
-        return singleton.Return(undefined);
+        return singleton_1.Return(new FSharpResult$2(/* Ok */ 0, [undefined]));
     }
     else {
-        return narrated(run(ws));
+        return run(ws);
     }
 }
 
 function andThen(next, first) {
-    return singleton.Delay(() => singleton.Bind(first, () => singleton.ReturnFrom(next())));
+    return singleton_1.Delay(() => {
+        const asyncResult_1 = singleton_1.Bind(first, (x$0027) => {
+            let value;
+            const input_2 = x$0027;
+            value = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Narrate */ 1, [input_2.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_2.fields[0]])));
+            return singleton_1.Return(value);
+        });
+        return singleton_1.Bind(asyncResult_1, (input_1_2) => {
+            const input_6 = input_1_2;
+            if (input_6.tag === 1) {
+                return singleton_1.Return(new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]));
+            }
+            else {
+                return next();
+            }
+        });
+    });
+}
+
+function coded(step) {
+    return singleton_1.Bind(step, (x$0027) => singleton_1.Return(new FSharpResult$2(/* Ok */ 0, [x$0027])));
 }
 
 /**
  * Workspaces started before the kit moved to F# carry a clip.html that loads /engine/stage.js, /engine/stage-kit.js
  * and the frame as an inline script. A long-video clip.html is the template copied verbatim, so its script block is
- * swapped for the new one (the old file is kept as build/clip.html.old-kit) and nothing else changes.
+ * swapped for the new one (the old file is kept as build/clip.html.old-kit) and nothing else changes; the note that
+ * it was upgraded is printed as it is. Any other clip.html that loads the old kit is an Error.
  */
 export function upgradeClip(ws) {
     const clip = join(ofArray([ws, "clip.html"]));
     if (exists(clip)) {
         const html = readText(clip);
         const start = html.indexOf("<script src=\"build/timing.js\"></script>") | 0;
-        const stop = html.lastIndexOf("</body>") | 0;
+        const bodyEnd = html.lastIndexOf("</body>") | 0;
         if (html.indexOf("/engine/stage-kit.js") >= 0) {
-            if (((html.indexOf("id=\"modules\"") >= 0) && (start >= 0)) && (stop > start)) {
+            if (((html.indexOf("id=\"modules\"") >= 0) && (start >= 0)) && (bodyEnd > start)) {
                 writeText(join(ofArray([ws, "build", "clip.html.old-kit"])), html);
                 const block = "<!-- The frame (chapters, cards, progress bar, toasts, modules) is engine/web/Main.js, compiled from src/Kit. -->\n<script src=\"build/timing.js\"></script>\n<script type=\"module\" src=\"/engine/web/Main.js\"></script>\n";
-                writeText(clip, (substring(html, 0, start) + block) + substring(html, stop));
+                writeText(clip, (substring(html, 0, start) + block) + substring(html, bodyEnd));
                 eprint("clip.html: upgraded to the F# kit (engine/web/Main.js); the old file is build/clip.html.old-kit");
+                return new FSharpResult$2(/* Ok */ 0, [undefined]);
             }
             else {
-                eprint("clip.html loads /engine/stage-kit.js, which is gone: load build/timing.js, then <script type=\"module\" src=\"/engine/web/Main.js\">, and put your own script in a type=\"module\" script after it");
-                exit(2);
+                return new FSharpResult$2(/* Error */ 1, [CliFailure.OldKit]);
+            }
+        }
+        else {
+            return new FSharpResult$2(/* Ok */ 0, [undefined]);
+        }
+    }
+    else {
+        return new FSharpResult$2(/* Ok */ 0, [undefined]);
+    }
+}
+
+function needsSetup(step) {
+    switch (step) {
+        case "narrate":
+        case "check":
+        case "new-long":
+        case "fill":
+        case "fix":
+        case "history":
+            return false;
+        default:
+            return true;
+    }
+}
+
+function prepare(ws, step) {
+    const input_6 = isDir(ws) ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [new CliFailure(/* NoWorkspace */ 1, [ws])]));
+    if (input_6.tag === 1) {
+        return new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]);
+    }
+    else {
+        mkdirp(join(ofArray([ws, "build"])));
+        mkdirp(join(ofArray([ws, "out"])));
+        let input_4;
+        if (needsSetup(step)) {
+            const input_1 = requireReady();
+            input_4 = ((input_1.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new CliFailure(/* NotSetUp */ 2, [input_1.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_1.fields[0]])));
+        }
+        else {
+            input_4 = (new FSharpResult$2(/* Ok */ 0, [undefined]));
+        }
+        if (input_4.tag === 1) {
+            return new FSharpResult$2(/* Error */ 1, [input_4.fields[0]]);
+        }
+        else {
+            const input_2 = (step !== "new-long") ? upgradeClip(ws) : (new FSharpResult$2(/* Ok */ 0, [undefined]));
+            if (input_2.tag === 1) {
+                return new FSharpResult$2(/* Error */ 1, [input_2.fields[0]]);
+            }
+            else {
+                return new FSharpResult$2(/* Ok */ 0, [undefined]);
             }
         }
     }
 }
 
+function newLong(ws) {
+    const dst = join(ofArray([ws, "clip.html"]));
+    if (exists(dst)) {
+        return new FSharpResult$2(/* Error */ 1, [new CliFailure(/* ClipExists */ 4, [dst])]);
+    }
+    else {
+        copyFile(join(ofArray([engineDir, "templates", "long", "clip.html"])), dst);
+        toConsole(printf("%s (write script.json and one <key>.js per module; see KIT.md)"))(dst);
+        return new FSharpResult$2(/* Ok */ 0, [0]);
+    }
+}
+
 export function main() {
-    let matchValue_1, patternInput;
+    let input_5, input, value_1_4, input_11, value_1_6, value_1_9, value_1_11, input_18, value_1_13;
     let matchResult, rest, step, wsArg;
     if (!isEmpty(argv)) {
         if (head(argv) === "setup") {
@@ -118,98 +268,97 @@ export function main() {
     }
     switch (matchResult) {
         case 0: {
-            finish(run_1());
+            finish(coded(run_1()));
             break;
         }
         case 1: {
             const ws = resolve(wsArg);
-            if (!isDir(ws)) {
-                eprint(concat("no such workspace: ", ws));
-                exit(2);
-            }
-            mkdirp(join(ofArray([ws, "build"])));
-            mkdirp(join(ofArray([ws, "out"])));
-            if ((((((step !== "narrate") && (step !== "check")) && (step !== "new-long")) && (step !== "fill")) && (step !== "fix")) && (step !== "history")) {
-                const matchValue = requireReady();
-                if (matchValue.tag === 1) {
-                    eprint(matchValue.fields[0]);
-                    exit(2);
-                }
-            }
-            if (step !== "new-long") {
-                upgradeClip(ws);
-            }
-            switch (step) {
-                case "narrate": {
-                    finish(andThen(() => singleton.Return(0), narrated(run(ws))));
-                    break;
-                }
-                case "check": {
-                    finish(singleton.Return(run_2(ws, rest)));
-                    break;
-                }
-                case "stills":
-                case "sheet":
-                case "serve": {
-                    finish(andThen(() => run_3(ws, step, rest), ensureTiming(ws)));
-                    break;
-                }
-                case "new-long": {
-                    const dst = join(ofArray([ws, "clip.html"]));
-                    if (exists(dst)) {
-                        eprint(concat(dst, " exists; not overwriting"));
-                        exit(1);
+            const matchValue = prepare(ws, step);
+            if (matchValue.tag === 0) {
+                switch (step) {
+                    case "narrate": {
+                        finish((input_5 = ((input = run(ws), singleton_1.Bind(input, (x$0027) => {
+                            let value_2;
+                            const input_2 = x$0027;
+                            value_2 = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Narrate */ 1, [input_2.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_2.fields[0]])));
+                            return singleton_1.Return(value_2);
+                        }))), singleton_1.Bind(input_5, (x$0027_1) => {
+                            let value_4;
+                            const input_7 = x$0027_1;
+                            value_4 = ((input_7.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_7.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [0])));
+                            return singleton_1.Return(value_4);
+                        })));
+                        break;
                     }
-                    copyFile(join(ofArray([engineDir, "templates", "long", "clip.html"])), dst);
-                    toConsole(printf("%s (write script.json and one <key>.js per module; see KIT.md)"))(dst);
-                    exit(0);
-                    break;
+                    case "check": {
+                        finish((value_1_4 = (new FSharpResult$2(/* Ok */ 0, [run_2(ws, rest)])), singleton_1.Return(value_1_4)));
+                        break;
+                    }
+                    case "stills":
+                    case "sheet":
+                    case "serve": {
+                        finish(andThen(() => coded(run_3(ws, step, rest)), ensureTiming(ws)));
+                        break;
+                    }
+                    case "new-long": {
+                        finish(singleton_1.Return((input_11 = newLong(ws), (input_11.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Cli */ 0, [input_11.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_11.fields[0]])))));
+                        break;
+                    }
+                    case "chapters": {
+                        finish((value_1_6 = (new FSharpResult$2(/* Ok */ 0, [chapters(ws)])), singleton_1.Return(value_1_6)));
+                        break;
+                    }
+                    case "video": {
+                        finish(andThen(() => coded(run_4(ws, rest)), ensureTiming(ws)));
+                        break;
+                    }
+                    case "present": {
+                        finish(andThen(() => {
+                            const input_12 = run_5(ws, rest);
+                            return singleton_1.Bind(input_12, (x$0027_2) => {
+                                let value_10;
+                                const input_14 = x$0027_2;
+                                value_10 = ((input_14.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* Present */ 3, [input_14.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_14.fields[0]])));
+                                return singleton_1.Return(value_10);
+                            });
+                        }, ensureTiming(ws)));
+                        break;
+                    }
+                    case "all": {
+                        finish(andThen(() => coded(run_4(ws, rest)), run(ws)));
+                        break;
+                    }
+                    case "scan": {
+                        finish(andThen(() => coded(run_6(ws, rest)), ensureTiming(ws)));
+                        break;
+                    }
+                    case "report": {
+                        finish((value_1_9 = (new FSharpResult$2(/* Ok */ 0, [run_7(ws, rest)])), singleton_1.Return(value_1_9)));
+                        break;
+                    }
+                    case "fill": {
+                        finish((value_1_11 = (new FSharpResult$2(/* Ok */ 0, [run_8(ws)])), singleton_1.Return(value_1_11)));
+                        break;
+                    }
+                    case "history": {
+                        finish(singleton_1.Return((input_18 = run_9(ws, rest), (input_18.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* History */ 2, [input_18.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_18.fields[0]])))));
+                        break;
+                    }
+                    case "fix": {
+                        finish((value_1_13 = (new FSharpResult$2(/* Ok */ 0, [run_10(ws, rest)])), singleton_1.Return(value_1_13)));
+                        break;
+                    }
+                    default:
+                        finish(singleton_1.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Cli */ 0, [CliFailure.Usage])])));
                 }
-                case "chapters": {
-                    finish(singleton.Return(chapters(ws)));
-                    break;
-                }
-                case "video": {
-                    finish(andThen(() => run_4(ws, rest), ensureTiming(ws)));
-                    break;
-                }
-                case "present": {
-                    finish(andThen(() => run_5(ws, rest), ensureTiming(ws)));
-                    break;
-                }
-                case "all": {
-                    finish(andThen(() => run_4(ws, rest), narrated(run(ws))));
-                    break;
-                }
-                case "scan": {
-                    finish(andThen(() => run_6(ws, rest), ensureTiming(ws)));
-                    break;
-                }
-                case "report": {
-                    finish(singleton.Return(run_7(ws, rest)));
-                    break;
-                }
-                case "fill": {
-                    finish(singleton.Return(run_8(ws)));
-                    break;
-                }
-                case "history": {
-                    finish(singleton.Return((matchValue_1 = run_9(ws, rest), (matchValue_1.tag === 1) ? ((patternInput = describe_1(matchValue_1.fields[0]), (iterate((s) => {
-                        eprint(s);
-                    }, patternInput[1]), patternInput[0]))) : matchValue_1.fields[0])));
-                    break;
-                }
-                case "fix": {
-                    finish(singleton.Return(run_10(ws, rest)));
-                    break;
-                }
-                default:
-                    usage();
+            }
+            else {
+                finish(singleton_1.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Cli */ 0, [matchValue.fields[0]])])));
             }
             break;
         }
         case 2: {
-            usage();
+            finish(singleton_1.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Cli */ 0, [CliFailure.Usage])])));
             break;
         }
     }

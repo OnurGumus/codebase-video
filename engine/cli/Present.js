@@ -10,7 +10,7 @@ import { replace, substring, concat, join, padLeft } from "./fable_modules/fable
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { option_type, float64_type, record_type, bool_type, union_type, int32_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
-import { mkdirp, remove, writeText, readJson, resolve, writeBytes, fromJs, requireFromHome, readBytes, run as run_1, mtime, exists, eprint, engineDir, join as join_1 } from "./Node.js";
+import { mkdirp, remove, eprint, writeText, readJson, resolve, writeBytes, fromJs, requireFromHome, readBytes, run as run_1, mtime, exists, engineDir, join as join_1 } from "./Node.js";
 import { ServeFor, startServer, shots, toFixed } from "./Render.js";
 import { traverseResultM } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/List.fs.js";
 import { fromContinuations, ignore } from "./fable_modules/fable-library-js.5.19.0/Async.js";
@@ -85,7 +85,11 @@ ${s.Text}
 `), collect_1((sc) => sc.Sentences, scenes)));
 }
 
-class Failure extends Union {
+/**
+ * Why the export ended early: each case carries the values its message names. `describe` gives the exit code and
+ * the lines for stderr.
+ */
+export class Failure extends Union {
     constructor(tag, fields) {
         super();
         this.tag = tag;
@@ -94,11 +98,10 @@ class Failure extends Union {
     cases() {
         return ["UnknownOption", "SlideWriterMissing", "RenderFailed", "NoVideo", "ClipFailed"];
     }
-    static SlideWriterMissing = new Failure(1, []);
 }
 
-function Failure_$reflection() {
-    return union_type("Present.Failure", [], Failure, () => [[["Item", string_type]], [], [["exitCode", int32_type]], [["reason", string_type]], [["slide", int32_type]]]);
+export function Failure_$reflection() {
+    return union_type("Present.Failure", [], Failure, () => [[["Item", string_type]], [["name", string_type]], [["exitCode", int32_type]], [["reason", string_type]], [["slide", int32_type]]]);
 }
 
 class Options extends Record {
@@ -134,27 +137,21 @@ function optionsOf(args) {
     }, new FSharpResult$2(/* Ok */ 0, [new Options(false, false)]), args);
 }
 
-function exitCode(name, failure) {
-    const cv = join_1(ofArray([engineDir, "cli", "Cv.js"]));
+/**
+ * The exit code of a failure and the lines it prints on stderr (none for RenderFailed: the renderer has said why).
+ */
+export function describe(failure) {
     switch (failure.tag) {
-        case 1: {
-            eprint(`no ${name}.pptx: the slide writer is not installed yet. Run: node ${cv} setup`);
-            return 2;
-        }
+        case 1:
+            return [2, singleton(`no ${failure.fields[0]}.pptx: the slide writer is not installed yet. Run: node ${join_1(ofArray([engineDir, "cli", "Cv.js"]))} setup`)];
         case 2:
-            return failure.fields[0] | 0;
-        case 3: {
-            eprint(concat("--clips cuts each slide\'s clip from the video, and there is none: ", failure.fields[0]));
-            return 2;
-        }
-        case 4: {
-            eprint(`ffmpeg could not cut the clip of slide ${failure.fields[0]}`);
-            return 1;
-        }
-        default: {
-            eprint(concat("present: no option ", failure.fields[0], " (there are --serve and --clips)"));
-            return 2;
-        }
+            return [failure.fields[0], empty()];
+        case 3:
+            return [2, singleton(concat("--clips cuts each slide\'s clip from the video, and there is none: ", failure.fields[0]))];
+        case 4:
+            return [1, singleton(`ffmpeg could not cut the clip of slide ${failure.fields[0]}`)];
+        default:
+            return [2, singleton(concat("present: no option ", failure.fields[0], " (there are --serve and --clips)"))];
     }
 }
 
@@ -336,12 +333,12 @@ function autoplay(file, slides) {
     });
 }
 
-function slideWriter() {
+function slideWriter(name) {
     if (forAll(packageInstalled, ofArray(["pptxgenjs", "jszip"]))) {
         return new FSharpResult$2(/* Ok */ 0, [undefined]);
     }
     else {
-        return new FSharpResult$2(/* Error */ 1, [Failure.SlideWriterMissing]);
+        return new FSharpResult$2(/* Error */ 1, [new Failure(/* SlideWriterMissing */ 1, [name])]);
     }
 }
 
@@ -368,6 +365,9 @@ function written(file) {
     console.log(file);
 }
 
+/**
+ * The export: 0 once the files are written (with --serve, it serves until Ctrl+C); a failure returns as its value.
+ */
 export function run(ws, args) {
     const ws_1 = resolve(ws);
     const timing = readJson(join_1(ofArray([ws_1, "build", "timing.json"])));
@@ -377,17 +377,17 @@ export function run(ws, args) {
     const out = (ext) => join_1(ofArray([ws_1, "out", `${name}.${ext}`]));
     const dir = join_1(ofArray([ws_1, "build", "present"]));
     const stills = mapIndexed((i, step) => (new Slide(i + 1, step, join_1(ofArray([dir, concat("slide-", padLeft(int32ToString(i + 1), 3, "0"), ".jpg")])), undefined)), cut(timing.duration, scenes));
-    const input_46 = singleton_2.Delay(() => {
-        let asyncResult_6;
+    return singleton_2.Delay(() => {
+        let asyncResult_7;
         const value_1 = optionsOf(args);
-        asyncResult_6 = singleton_2.Return(value_1);
-        return singleton_2.Bind(asyncResult_6, (input_1_9) => {
-            const input_44 = input_1_9;
-            if (input_44.tag === 1) {
-                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_44.fields[0]]));
+        asyncResult_7 = singleton_2.Return(value_1);
+        return singleton_2.Bind(asyncResult_7, (input_1_10) => {
+            const input_47 = input_1_10;
+            if (input_47.tag === 1) {
+                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_47.fields[0]]));
             }
             else {
-                const options = input_44.fields[0];
+                const options = input_47.fields[0];
                 writeText(out("script.md"), script(title, map_1((s) => s.Step, stills)));
                 written(out("script.md"));
                 writeText(out("srt"), srt(scenes));
@@ -400,16 +400,16 @@ export function run(ws, args) {
                 else {
                     console.log(input_1.fields[0]);
                 }
-                let asyncResult_5;
-                const value_1_1 = slideWriter();
-                asyncResult_5 = singleton_2.Return(value_1_1);
-                return singleton_2.Bind(asyncResult_5, (input_1_8) => {
-                    const input_41 = input_1_8;
-                    if (input_41.tag === 1) {
-                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_41.fields[0]]));
+                let asyncResult_6;
+                const value_1_1 = slideWriter(name);
+                asyncResult_6 = singleton_2.Return(value_1_1);
+                return singleton_2.Bind(asyncResult_6, (input_1_9) => {
+                    const input_44 = input_1_9;
+                    if (input_44.tag === 1) {
+                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_44.fields[0]]));
                     }
                     else {
-                        let asyncResult_4;
+                        let asyncResult_5;
                         let value_1_2;
                         if (options.Clips) {
                             let input_5;
@@ -420,48 +420,48 @@ export function run(ws, args) {
                         else {
                             value_1_2 = (new FSharpResult$2(/* Ok */ 0, [undefined]));
                         }
-                        asyncResult_4 = singleton_2.Return(value_1_2);
-                        return singleton_2.Bind(asyncResult_4, (input_1_7) => {
-                            const input_38 = input_1_7;
-                            if (input_38.tag === 1) {
-                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_38.fields[0]]));
+                        asyncResult_5 = singleton_2.Return(value_1_2);
+                        return singleton_2.Bind(asyncResult_5, (input_1_8) => {
+                            const input_41 = input_1_8;
+                            if (input_41.tag === 1) {
+                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_41.fields[0]]));
                             }
                             else {
                                 remove(dir);
                                 mkdirp(dir);
-                                const asyncResult_3 = shoot(ws_1, stills);
-                                return singleton_2.Bind(asyncResult_3, (input_1_6) => {
+                                const asyncResult_4 = shoot(ws_1, stills);
+                                return singleton_2.Bind(asyncResult_4, (input_1_7) => {
                                     let input_7;
-                                    const input_35 = input_1_6;
-                                    if (input_35.tag === 1) {
-                                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_35.fields[0]]));
+                                    const input_38 = input_1_7;
+                                    if (input_38.tag === 1) {
+                                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_38.fields[0]]));
                                     }
                                     else {
-                                        let asyncResult_2;
-                                        const value_1_3 = defaultArg((input_7 = input_38.fields[0], (input_7 == null) ? undefined : withClips(input_7, stills)), new FSharpResult$2(/* Ok */ 0, [stills]));
-                                        asyncResult_2 = singleton_2.Return(value_1_3);
-                                        return singleton_2.Bind(asyncResult_2, (input_1_5) => {
-                                            const input_32 = input_1_5;
-                                            if (input_32.tag === 1) {
-                                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_32.fields[0]]));
+                                        let asyncResult_3;
+                                        const value_1_3 = defaultArg((input_7 = input_41.fields[0], (input_7 == null) ? undefined : withClips(input_7, stills)), new FSharpResult$2(/* Ok */ 0, [stills]));
+                                        asyncResult_3 = singleton_2.Return(value_1_3);
+                                        return singleton_2.Bind(asyncResult_3, (input_1_6) => {
+                                            const input_35 = input_1_6;
+                                            if (input_35.tag === 1) {
+                                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_35.fields[0]]));
                                             }
                                             else {
-                                                const slides = input_32.fields[0];
-                                                let asyncResult_1;
+                                                const slides = input_35.fields[0];
+                                                let asyncResult_2;
                                                 const input_8 = pptx(title, slides, out("pptx"));
-                                                asyncResult_1 = singleton_2.Bind(input_8, (x$0027) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027])));
-                                                return singleton_2.Bind(asyncResult_1, (input_1_4) => {
-                                                    const input_29 = input_1_4;
-                                                    if (input_29.tag === 1) {
-                                                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_29.fields[0]]));
+                                                asyncResult_2 = singleton_2.Bind(input_8, (x$0027) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027])));
+                                                return singleton_2.Bind(asyncResult_2, (input_1_5) => {
+                                                    const input_32 = input_1_5;
+                                                    if (input_32.tag === 1) {
+                                                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_32.fields[0]]));
                                                     }
                                                     else {
-                                                        let computation1;
+                                                        let computation1_1;
                                                         if (options.Clips) {
                                                             let x_3;
                                                             const input_11 = autoplay(out("pptx"), slides);
                                                             x_3 = singleton_2.Bind(input_11, (x$0027_1) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027_1])));
-                                                            computation1 = singleton_2.Bind(x_3, (x$0027_2) => {
+                                                            computation1_1 = singleton_2.Bind(x_3, (x$0027_2) => {
                                                                 let value_10;
                                                                 const input_15 = x$0027_2;
                                                                 value_10 = ((input_15.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_15.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
@@ -470,16 +470,17 @@ export function run(ws, args) {
                                                         }
                                                         else {
                                                             const value_12 = ResultCE_ResultBuilder__Zero(ResultCE_result);
-                                                            computation1 = singleton_2.Return(value_12);
+                                                            computation1_1 = singleton_2.Return(value_12);
                                                         }
-                                                        const computation2 = singleton_2.Delay(() => {
+                                                        const computation2_1 = singleton_2.Delay(() => {
                                                             const clips = length(filter((s_1) => (s_1.Clip != null), slides)) | 0;
                                                             console.log(`${out("pptx")}   (${length(slides)} slides${options.Clips ? (`, ${clips} with clips`) : ""})`);
+                                                            let computation1;
                                                             if (options.Serve) {
                                                                 let x_5;
                                                                 const input_18 = serve(ws_1);
                                                                 x_5 = singleton_2.Bind(input_18, (x$0027_3) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027_3])));
-                                                                return singleton_2.Bind(x_5, (x$0027_4) => {
+                                                                computation1 = singleton_2.Bind(x_5, (x$0027_4) => {
                                                                     let value_15;
                                                                     const input_22 = x$0027_4;
                                                                     value_15 = ((input_22.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_22.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
@@ -488,16 +489,26 @@ export function run(ws, args) {
                                                             }
                                                             else {
                                                                 const value_17 = ResultCE_ResultBuilder__Zero(ResultCE_result);
-                                                                return singleton_2.Return(value_17);
+                                                                computation1 = singleton_2.Return(value_17);
                                                             }
+                                                            const computation2 = singleton_2.Delay(() => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [0])));
+                                                            return singleton_2.Bind(computation1, (input_1_3) => {
+                                                                const input_26 = input_1_3;
+                                                                if (input_26.tag === 1) {
+                                                                    return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_26.fields[0]]));
+                                                                }
+                                                                else {
+                                                                    return computation2;
+                                                                }
+                                                            });
                                                         });
-                                                        return singleton_2.Bind(computation1, (input_1_3) => {
-                                                            const input_26 = input_1_3;
-                                                            if (input_26.tag === 1) {
-                                                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_26.fields[0]]));
+                                                        return singleton_2.Bind(computation1_1, (input_1_4) => {
+                                                            const input_29 = input_1_4;
+                                                            if (input_29.tag === 1) {
+                                                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_29.fields[0]]));
                                                             }
                                                             else {
-                                                                return computation2;
+                                                                return computation2_1;
                                                             }
                                                         });
                                                     }
@@ -512,12 +523,6 @@ export function run(ws, args) {
                 });
             }
         });
-    });
-    return singleton_2.Bind(input_46, (x$0027_5) => {
-        let value_32;
-        const _arg_8 = x$0027_5;
-        value_32 = ((_arg_8.tag === 1) ? exitCode(name, _arg_8.fields[0]) : 0);
-        return singleton_2.Return(value_32);
     });
 }
 
