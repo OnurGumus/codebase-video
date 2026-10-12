@@ -2,13 +2,13 @@
 import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, deliver, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
+import { defaultArg, value as value_9, ofNullable } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { disposeSafe, getEnumerator, int32ToString, Exception, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
-import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { parallel, fromContinuations } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
@@ -46,10 +46,18 @@ export function findChrome() {
  * them any more.
  */
 export function releaseChrome(browser) {
-    const p = browser.process();
-    if (!Operators_IsNull(p)) {
-        p.stdout.unref();
-        p.stderr.unref();
+    const unref = (s) => {
+        if (!Operators_IsNull(s)) {
+            s.unref();
+        }
+    };
+    const matchValue = ofNullable(browser.process());
+    if (matchValue == null) {
+    }
+    else {
+        const p = value_9(matchValue);
+        unref(p.stdout);
+        unref(p.stderr);
     }
 }
 

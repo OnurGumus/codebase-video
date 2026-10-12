@@ -509,9 +509,10 @@ let private present (frame: float -> unit) =
 /// on a fresh page: every element gets new paint properties, is painted again and is rasterized whole.
 let private fromScratch () =
     let body = document.body
+    let shown = body?style?display
     body?style?display <- "none"
     body.getBoundingClientRect () |> ignore
-    body?style?display <- ""
+    body?style?display <- shown
 
 /// Installs the frame: window.DURATION, window.render (render plus captions, then drawn from scratch: see fromScratch)
 /// and window.ready, which the renderer awaits right after load.

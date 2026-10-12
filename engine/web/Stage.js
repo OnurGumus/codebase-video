@@ -699,9 +699,10 @@ function present(frame) {
 
 function fromScratch() {
     const body = document.body;
+    const shown = body.style.display;
     body.style.display = "none";
     body.getBoundingClientRect();
-    body.style.display = "";
+    body.style.display = shown;
 }
 
 /**

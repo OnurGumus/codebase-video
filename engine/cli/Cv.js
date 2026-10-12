@@ -89,13 +89,13 @@ export function describe(failure) {
 }
 
 /**
- * Runs a step to its end, then ends with its code; a failure prints its lines and exits with its code; an exception
- * is printed and exits with 1. The engine's one Async.StartAsPromise, and the one place that ends the process: every
- * step below is an Async. A step that returns does not call process.exit: the process ends by itself once the event
- * loop is empty, so stdout reaches a slow pipe whole and V8 is torn down before its threads are joined (process.exit
- * joins them first and, rarely, hangs there for good: nodejs/node#64274). A failure exits at once, because a failure
- * in the middle of voicing leaves the voice Worker running; so does an exception, which can also leave Chrome or the
- * page server running.
+ * Runs a step to its end, then ends with its code; an Error prints its lines and exits with its code; an exception
+ * is printed and exits with 1. The engine's one Async.StartAsPromise, and the one caller of process.exit: every
+ * step below is an Async. A step that returns Ok (whatever its code) only sets process.exitCode: the process ends by
+ * itself once the event loop is empty, so stdout reaches a slow pipe whole and V8 is torn down before its threads are
+ * joined (process.exit joins them first and, rarely, hangs there for good: nodejs/node#64274). An Error exits at once,
+ * because a failure in the middle of voicing leaves the voice Worker running; so does an exception, which can also
+ * leave Chrome or the page server running.
  */
 export function finish(step) {
     startAsPromise(step).then((outcome) => {

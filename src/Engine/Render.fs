@@ -58,10 +58,12 @@ let findChrome () : string option =
 /// seconds; puppeteer keeps reading both, so they would keep the process alive after the step. Nothing is read from
 /// them any more.
 let releaseChrome (browser: obj) : unit =
-    let p: obj = browser?``process`` ()
-    if not (isNull p) then
-        p?stdout?unref () |> ignore
-        p?stderr?unref () |> ignore
+    let unref (s: obj) = if not (isNull s) then s?unref () |> ignore
+    match Option.ofObj (browser?``process`` () : obj) with
+    | Some p ->
+        unref p?stdout
+        unref p?stderr
+    | None -> ()
 
 // Static server ------------------------------------------------------------------------------------------------
 
