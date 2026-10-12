@@ -132,6 +132,7 @@ let run (ws: string) (args: string list) : Async<int> =
             JS.console.log $"\n{count} frames, {errors.Length} page errors -> {out}"
             errors |> List.iter (fun l -> JS.console.log ("  " + l))
             do! fromJs (browser?close ())
+            releaseChrome browser
             server.Close()
             return 0
     }

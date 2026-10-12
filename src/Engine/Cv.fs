@@ -68,14 +68,18 @@ let describe (failure: Failure) : int * string list =
     | History f -> History.describe f
     | Present f -> Present.describe f
 
-/// Runs a step to its end, then exits with its code; a failure prints its lines and exits with its code; an exception
-/// is printed and exits with 1. The engine's one Async.StartAsPromise, and the one place the process exits: every
-/// step below is an Async.
+/// Runs a step to its end, then ends with its code; a failure prints its lines and exits with its code; an exception
+/// is printed and exits with 1. The engine's one Async.StartAsPromise, and the one place that ends the process: every
+/// step below is an Async. A step that returns does not call process.exit: the process ends by itself once the event
+/// loop is empty, so stdout reaches a slow pipe whole and V8 is torn down before its threads are joined (process.exit
+/// joins them first and, rarely, hangs there for good: nodejs/node#64274). A failure exits at once, because a failure
+/// in the middle of voicing leaves the voice Worker running; so does an exception, which can also leave Chrome or the
+/// page server running.
 let finish (step: Async<Result<int, Failure>>) : unit =
     (Async.StartAsPromise step)
         .``then``(fun outcome ->
             match outcome with
-            | Ok code -> exit code
+            | Ok code -> setExitCode code
             | Error failure ->
                 let code, lines = describe failure
                 lines |> List.iter eprint

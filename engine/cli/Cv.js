@@ -7,7 +7,7 @@ import { run, describe as describe_1, Failure_$reflection as Failure_$reflection
 import { run as run_9, describe as describe_2, Failure_$reflection as Failure_$reflection_2 } from "./History.js";
 import { run as run_5, describe as describe_3, Failure_$reflection as Failure_$reflection_3 } from "./Present.js";
 import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
-import { argv, resolve, engineDir, copyFile, mkdirp, isDir, writeText, readText, join, exists, exit, eprint } from "./Node.js";
+import { argv, resolve, engineDir, copyFile, mkdirp, isDir, writeText, readText, join, exists, setExitCode, exit, eprint } from "./Node.js";
 import { singleton as singleton_1 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { run as run_1, requireReady } from "./Setup.js";
@@ -89,9 +89,13 @@ export function describe(failure) {
 }
 
 /**
- * Runs a step to its end, then exits with its code; a failure prints its lines and exits with its code; an exception
- * is printed and exits with 1. The engine's one Async.StartAsPromise, and the one place the process exits: every
- * step below is an Async.
+ * Runs a step to its end, then ends with its code; a failure prints its lines and exits with its code; an exception
+ * is printed and exits with 1. The engine's one Async.StartAsPromise, and the one place that ends the process: every
+ * step below is an Async. A step that returns does not call process.exit: the process ends by itself once the event
+ * loop is empty, so stdout reaches a slow pipe whole and V8 is torn down before its threads are joined (process.exit
+ * joins them first and, rarely, hangs there for good: nodejs/node#64274). A failure exits at once, because a failure
+ * in the middle of voicing leaves the voice Worker running; so does an exception, which can also leave Chrome or the
+ * page server running.
  */
 export function finish(step) {
     startAsPromise(step).then((outcome) => {
@@ -100,14 +104,14 @@ export function finish(step) {
             iterate((s) => {
                 eprint(s);
             }, patternInput[1]);
-            return exit(patternInput[0]);
+            exit(patternInput[0]);
         }
         else {
-            return exit(outcome.fields[0]);
+            setExitCode(outcome.fields[0]);
         }
     }).catch((e) => {
         eprint(toString(e));
-        return exit(1);
+        exit(1);
     });
 }
 

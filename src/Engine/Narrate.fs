@@ -694,7 +694,7 @@ let modelFile () = join [ modelDir (); "onnx-community"; "Kokoro-82M-v1.0-ONNX";
 
 // The model runs in a worker thread (this same module, started with workerData {kokoro: true}). onnxruntime-node
 // aborts the process ("libc++abi: ... mutex lock failed") when process.exit() is called while it is loaded in the
-// main thread, even after the session is disposed, and Cv.js always exits with process.exit().
+// main thread, even after the session is disposed, and Cv.js exits with process.exit() when a step fails.
 
 let private workerThreads: obj = importAll "node:worker_threads"
 
@@ -1249,7 +1249,7 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
 
 /// The outputs, once every scene is voiced and the voice is released: narration.wav, timing.json and timing.js,
 /// captions.vtt and phonemes.txt, then the summary on stdout. One synchronous pass (no Async, whose steps can give the
-/// event loop a turn): the summary is printed whole, and the command exits right after it. A poster that names no
+/// event loop a turn): the summary is printed whole, and the command ends right after it. A poster that names no
 /// scene stops it after narration.wav, before the other outputs.
 let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list) : Result<unit, Failure> =
     result {

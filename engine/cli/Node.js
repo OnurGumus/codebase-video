@@ -103,6 +103,13 @@ export function exit(code) {
     return (process).exit(code);
 }
 
+/**
+ * The status the process ends with once its event loop is empty (process.exitCode); it does not end it.
+ */
+export function setExitCode(code) {
+    (process).exitCode = code;
+}
+
 export function cwd() {
     return (process).cwd();
 }

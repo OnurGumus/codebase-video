@@ -54,6 +54,15 @@ let findChrome () : string option =
     | Some c -> Some c
     | None -> chromePaths |> List.tryFind exists
 
+/// After browser.close(): Chrome's crash handler and updater inherit its stdout and stderr and can outlive it by many
+/// seconds; puppeteer keeps reading both, so they would keep the process alive after the step. Nothing is read from
+/// them any more.
+let releaseChrome (browser: obj) : unit =
+    let p: obj = browser?``process`` ()
+    if not (isNull p) then
+        p?stdout?unref () |> ignore
+        p?stderr?unref () |> ignore
+
 // Static server ------------------------------------------------------------------------------------------------
 
 /// Who the server is for. The scan's server (scan.mjs) differs on purpose: it answers 404 for .wav (no audio is
@@ -560,6 +569,7 @@ let private withChrome (clip: string) (job: Session -> obj -> Async<int>) : Asyn
             let! first = session.OpenPage()
             let! code = job session first
             do! fromJs (browser?close ())
+            releaseChrome browser
             server.Close()
             let! failed = session.IsFailed()
             return (if code <> 0 then code elif failed then 1 else 0)

@@ -1,6 +1,7 @@
 
 import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, deliver, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
+import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
@@ -14,7 +15,6 @@ import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { empty as empty_1, singleton as singleton_2, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
-import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 
 export function toFixed(digits, x) {
@@ -37,6 +37,19 @@ export function findChrome() {
     }
     else {
         return matchValue;
+    }
+}
+
+/**
+ * After browser.close(): Chrome's crash handler and updater inherit its stdout and stderr and can outlive it by many
+ * seconds; puppeteer keeps reading both, so they would keep the process alive after the step. Nothing is read from
+ * them any more.
+ */
+export function releaseChrome(browser) {
+    const p = browser.process();
+    if (!Operators_IsNull(p)) {
+        p.stdout.unref();
+        p.stderr.unref();
     }
 }
 
@@ -637,6 +650,7 @@ function withChrome(clip, job) {
                 return singleton.Bind(Session__OpenPage(session), (_arg_2) => singleton.Bind(job(session, _arg_2), (_arg_3) => {
                     const code = _arg_3 | 0;
                     return singleton.Bind(fromJs(browser.close()), () => {
+                        releaseChrome(browser);
                         server.Close();
                         return singleton.Bind(Session__IsFailed(session), (_arg_5) => singleton.Return((code !== 0) ? code : (_arg_5 ? 1 : 0)));
                     });

@@ -185,8 +185,6 @@ let describe (failure: Failure) : int * string list =
     | NoCommits(since, until) -> 1, [ $"history: no commits between {since} and {until}" ]
     | NoHistoryFile -> 1, [ "history --done: build/history.json is missing; run \"history\" first" ]
 
-/// Ok when nothing failed, else the failure.
-
 /// Where the range ends: the commit of `until`.
 let private resolveUntil (repo: string) (reference: string) : Result<string, Failure> =
     if isDate reference then

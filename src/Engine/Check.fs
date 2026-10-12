@@ -34,8 +34,8 @@ open Node
 module Py =
 
     // ── output ─────────────────────────────────────────────────────────────────────────────────────────────
-    // Output is buffered and written with writeSync at the end: Cv.js calls process.exit right after a step, and
-    // on macOS an async write to a pipe (a long `report timeline`) would be cut off by that exit.
+    // Output is buffered and written with writeSync at the end: Cv.js calls process.exit right after a step that
+    // fails, and on macOS an async write to a pipe (a long `report timeline`) would be cut off by that exit.
 
     [<Emit("Buffer.from($0, 'utf8')")>]
     let private utf8 (s: string) : obj = jsNative
