@@ -55,6 +55,7 @@ module Narrate
 
 open Fable.Core
 open Fable.Core.JsInterop
+open FsToolkit.ErrorHandling
 open Node
 
 // Python compatibility ------------------------------------------------------------------------------------------
@@ -244,11 +245,6 @@ module Py =
     /// len(s.split()): the words of a text.
     [<Emit("$0.split(/\\s+/).filter(w => w).length")>]
     let wordCount (s: string) : int = jsNative
-
-/// sys.exit(message): the message on stderr, exit status 1.
-let private fail (message: string) : 'a =
-    eprint message
-    exit 1
 
 // Regular expressions (JS RegExp, written to match Python's re here) -------------------------------------------
 
@@ -877,6 +873,17 @@ let rec private foldA (step: 's -> 'a -> Async<'s>) (state: 's) (items: 'a list)
             return! foldA step next rest
     }
 
+/// foldA where a step can fail: the first Error ends the fold, and no later step runs.
+let rec private foldAR (step: 's -> 'a -> Async<Result<'s, 'e>>) (state: 's) (items: 'a list) : Async<Result<'s, 'e>> =
+    async {
+        match items with
+        | [] -> return Ok state
+        | x :: rest ->
+            match! step state x with
+            | Ok next -> return! foldAR step next rest
+            | Error e -> return Error e
+    }
+
 /// Kokoro._split_phonemes: batches of at most MAX_PHONEMES, split at punctuation. The fold's state is the batches
 /// made so far (the latest first) and the one being filled.
 let private splitPhonemes (phonemes: string) : string list =
@@ -1030,6 +1037,38 @@ let private briefLength (ws: string) : string =
         if isNil v then "tour" else string v
     else ""
 
+/// Why narrating stopped: each case carries the values its message names. `describe` gives the exit code and the
+/// lines for stderr.
+type Failure =
+    /// the voice packages are missing; the hint says how to install them
+    | VoiceNotInstalled of hint: string
+    /// script.json's "name" is not a file name the server takes
+    | BadName of name: obj
+    /// a voice's "lang" is not one Kokoro speaks
+    | UnknownLanguage of lang: obj
+    /// a {code:...} phrase whose code "voices" does not give
+    | UnknownPhraseLanguage of code: string
+    | DuplicateSceneId of id: obj
+    /// "poster" (or the default, the 2nd scene) names no scene
+    | PosterNotFound of id: obj
+
+/// The exit code of a failure and the lines it prints on stderr.
+let describe (failure: Failure) : int * string list =
+    match failure with
+    | VoiceNotInstalled hint -> 2, [ hint ]
+    | BadName name -> 1, [ $"name {Py.repr name} must match {NAME_PATTERN} - it becomes the file name on the server" ]
+    | UnknownLanguage lang ->
+        let can = KOKORO_LANGS |> Set.toList |> List.sort |> String.concat ", "
+        1,
+        [ $"Kokoro cannot speak {Py.repr lang} (it can: {can}). "
+          + "Narrate in the learner's language, or set \"voice\": null for a captioned silent clip." ]
+    | UnknownPhraseLanguage code ->
+        1,
+        [ "{" + code + ":...} needs \"voices\": {\"" + code + "\": {\"voice\": ..., \"lang\": ...}}"
+          + " in script.json" ]
+    | DuplicateSceneId id -> 1, [ $"duplicate scene id {Py.repr id}" ]
+    | PosterNotFound id -> 1, [ $"poster scene {Py.repr id} not found" ]
+
 /// What `run` reads from the workspace before anything is voiced: script.json's settings, checked, and where the
 /// outputs go.
 type private Settings =
@@ -1053,22 +1092,18 @@ type private Settings =
       Cache: string }
 
 /// The voice and language of a piece of speech: the script's own, or the ones "voices" gives a {code:...} phrase.
-let private specFor (settings: Settings) (code: string option) : string * string =
+let private specFor (settings: Settings) (code: string option) : Result<string * string, Failure> =
     match code with
-    | None -> settings.Voice.Value, unbox settings.Lang
+    | None -> Ok(settings.Voice.Value, unbox settings.Lang)
     | Some code ->
         match get settings.Others code with
-        | Some spec -> unbox spec?voice, unbox spec?lang
-        | None ->
-            fail (
-                "{" + code + ":...} needs \"voices\": {\"" + code + "\": {\"voice\": ..., \"lang\": ...}}"
-                + " in script.json"
-            )
+        | Some spec -> Ok(unbox spec?voice, unbox spec?lang)
+        | None -> Error(UnknownPhraseLanguage code)
 
 /// The samples of a piece of speech, and the line it adds to phonemes.txt when it is in another language.
 let private synth (settings: Settings) (code: string option) (text: string) (where: string) =
-    async {
-        let v, l = specFor settings code
+    asyncResult {
+        let! v, l = specFor settings code
         let phonemes =
             settings.Pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy |> Option.map (fun p -> string p)
         let text = if phonemes.IsNone && l.ToLower().StartsWith "en" then voiced text else text
@@ -1104,9 +1139,9 @@ let private synth (settings: Settings) (code: string option) (text: string) (whe
 /// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
 /// with silence up to a whole frame.
 let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track, finished: Scene list) (si, sc: obj) =
-    async {
+    asyncResult {
         let id: obj = sc?id
-        if finished |> List.exists (fun f -> toJson f.id = toJson id) then fail $"duplicate scene id {Py.repr id}"
+        do! finished |> List.exists (fun f -> toJson f.id = toJson id) |> Result.requireFalse (DuplicateSceneId id)
         let startFrame = track.pos / FRAME // every scene ends on a whole frame, and the next starts there
         let track = silence (getFloat sc "lead" 0.4) track
         // Terms the glossary knows (engine/glossary.json, <repo>/.codebase-video/glossary.json) are said its way:
@@ -1118,12 +1153,12 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
         // One part of a sentence, voiced (or held for reading, in a silent clip) after the silence that its
         // neighbours ask for: the larger of the previous part's rest and the gap between voices.
         let voicePart (i: int) (track: Track, parts: Part list, gap: float) (k, (code, text: string, rest: float)) =
-            async {
+            asyncResult {
                 let track = if k > 0 then silence (max gap PART_GAP) track else track
                 let partStart = now startFrame track
                 let! track =
                     if settings.Voice.IsSome then
-                        async {
+                        asyncResult {
                             let! samples, line = synth settings code (spoken text) $"{Py.str id}[{i}]"
                             let track =
                                 match line with
@@ -1132,7 +1167,7 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
                             return lay (Speech samples) track
                         }
                     else
-                        async.Return(silence (readingTime (shown text)) track)
+                        AsyncResult.ok (silence (readingTime (shown text)) track)
                 let part =
                     { Part.text = shown text
                       spoken = heard text
@@ -1144,7 +1179,7 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
 
         // One sentence: its parts, then the silences it asks for ([pause], [think]) after it.
         let sentence (track: Track, lines: Sentence list, sceneBreaks: Break list) (i: int, s: string) =
-            async {
+            asyncResult {
                 let track = if i > 0 then silence GAP track else track
                 let sentenceStart = now startFrame track
                 let after = breaks s
@@ -1155,7 +1190,7 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
                           let ps = pieces stretch
                           for n, (code, text) in List.indexed ps ->
                               code, text, (if n = ps.Length - 1 then rest else 0.0) ]
-                let! track, parts, _ = foldA (voicePart i) (track, [], 0.0) (List.indexed voicedPieces)
+                let! track, parts, _ = foldAR (voicePart i) (track, [], 0.0) (List.indexed voicedPieces)
                 let line =
                     { Sentence.text = shown s
                       spoken = heard s
@@ -1175,7 +1210,7 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
                 return track, line :: lines, List.rev silences @ sceneBreaks
             }
 
-        let! track, lines, sceneBreaks = foldA sentence (track, [], []) (List.indexed (sentences say))
+        let! track, lines, sceneBreaks = foldAR sentence (track, [], []) (List.indexed (sentences say))
         let track = silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)) track
         // End on a whole frame (and never on the frame the scene started on).
         let over = track.pos % FRAME
@@ -1213,147 +1248,159 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
 
 /// The outputs, once every scene is voiced and the voice is released: narration.wav, timing.json and timing.js,
 /// captions.vtt and phonemes.txt, then the summary on stdout. One synchronous pass (no Async, whose steps can give the
-/// event loop a turn): the summary is printed whole, and the command exits right after it.
-let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list) : unit =
-    let duration = float (track.pos / FRAME) / float FPS
-    Wav.write (join [ settings.Build; "narration.wav" ]) (soundtrack (List.rev track.audio))
+/// event loop a turn): the summary is printed whole, and the command exits right after it. A poster that names no
+/// scene stops it after narration.wav, before the other outputs.
+let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list) : Result<unit, Failure> =
+    result {
+        let duration = float (track.pos / FRAME) / float FPS
+        Wav.write (join [ settings.Build; "narration.wav" ]) (soundtrack (List.rev track.audio))
 
-    let posterId: obj =
-        match get settings.Script "poster" with
-        | Truthy p -> p
-        | _ -> (if scenes.Length > 1 then scenes[1] else scenes[0]).id
-    let poster =
-        match scenes |> List.tryFind (fun s -> toJson s.id = toJson posterId) with
-        | None -> fail $"poster scene {Py.repr posterId} not found"
-        | Some ps when ps.sentences.IsEmpty -> ps.finish - 0.1
-        | Some ps -> (List.last ps.sentences).finish
+        let posterId: obj =
+            match get settings.Script "poster" with
+            | Truthy p -> p
+            | _ -> (if scenes.Length > 1 then scenes[1] else scenes[0]).id
+        let! poster =
+            match scenes |> List.tryFind (fun s -> toJson s.id = toJson posterId) with
+            | None -> Error(PosterNotFound posterId)
+            | Some ps when ps.sentences.IsEmpty -> Ok(ps.finish - 0.1)
+            | Some ps -> Ok((List.last ps.sentences).finish)
 
-    let timing =
-        Py.Obj(
-            [ "name", Py.Str settings.Name
-              "title", (match get settings.Script "title" with Some v -> Py.ofJs v | None -> Py.Str "")
-              "voiced", Py.Bool settings.Voice.IsSome
-              // "captions": true in script.json draws each sentence at the bottom of the picture as it is spoken
-              // (for players that start muted or cannot load the separate .vtt file). Off unless asked for.
-              "captions", Py.Bool (match get settings.Script "captions" with Some v -> Py.truthy v | None -> false)
-              "duration", num duration
-              "poster", num (Py.round poster 3)
-              "scenes", Py.List(List.map sceneJson scenes) ]
-            @ (match get settings.Script "card" with
-               | Truthy c ->
-                   // long videos: {"course", "lesson", "sub"} for the opening title card. "thumbnail" becomes the
-                   // video's length ("5:08") when the first frame is to be drawn as a thumbnail (title, red
-                   // border, play button): asked for with "thumbnail": true, and the default for a short video,
-                   // the length meant for a README. false otherwise.
-                   let asked: obj = c?thumbnail
-                   let on = if isNil asked then briefLength settings.Ws = "short" else Py.truthy asked
-                   let total = int (System.Math.Round duration)
-                   let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
-                   [ "card", Py.ofJs (withThumbnail settings.Marked?card (if on then box label else box false)) ]
-               | _ -> [])
-            // "kind": "progress" (a video about how the code changed): the frame lights a chapter's path
-            // as a set of parts, not as a flow along arrows
-            @ (match get settings.Script "kind" with
-               | Truthy k -> [ "kind", Py.ofJs k ]
-               | _ -> [])
-            // long videos: the shared map (parts on a grid, edges, kinds), drawn by the frame and by K.map
-            @ (match get settings.Script "map" with
-               | Truthy m -> [ "map", Py.ofJs m ]
-               | _ -> [])
-        )
-    writeText (join [ settings.Build; "timing.json" ]) (Py.dumpsIndented 2 timing)
-    writeText (join [ settings.Build; "timing.js" ]) ("window.TIMING = " + Py.dumps timing + ";\n")
+        let timing =
+            Py.Obj(
+                [ "name", Py.Str settings.Name
+                  "title", (match get settings.Script "title" with Some v -> Py.ofJs v | None -> Py.Str "")
+                  "voiced", Py.Bool settings.Voice.IsSome
+                  // "captions": true in script.json draws each sentence at the bottom of the picture as it is spoken
+                  // (for players that start muted or cannot load the separate .vtt file). Off unless asked for.
+                  "captions", Py.Bool (match get settings.Script "captions" with Some v -> Py.truthy v | None -> false)
+                  "duration", num duration
+                  "poster", num (Py.round poster 3)
+                  "scenes", Py.List(List.map sceneJson scenes) ]
+                @ (match get settings.Script "card" with
+                   | Truthy c ->
+                       // long videos: {"course", "lesson", "sub"} for the opening title card. "thumbnail" becomes the
+                       // video's length ("5:08") when the first frame is to be drawn as a thumbnail (title, red
+                       // border, play button): asked for with "thumbnail": true, and the default for a short video,
+                       // the length meant for a README. false otherwise.
+                       let asked: obj = c?thumbnail
+                       let on = if isNil asked then briefLength settings.Ws = "short" else Py.truthy asked
+                       let total = int (System.Math.Round duration)
+                       let label = $"{total / 60}:{(string (total % 60)).PadLeft(2, '0')}"
+                       [ "card", Py.ofJs (withThumbnail settings.Marked?card (if on then box label else box false)) ]
+                   | _ -> [])
+                // "kind": "progress" (a video about how the code changed): the frame lights a chapter's path
+                // as a set of parts, not as a flow along arrows
+                @ (match get settings.Script "kind" with
+                   | Truthy k -> [ "kind", Py.ofJs k ]
+                   | _ -> [])
+                // long videos: the shared map (parts on a grid, edges, kinds), drawn by the frame and by K.map
+                @ (match get settings.Script "map" with
+                   | Truthy m -> [ "map", Py.ofJs m ]
+                   | _ -> [])
+            )
+        writeText (join [ settings.Build; "timing.json" ]) (Py.dumpsIndented 2 timing)
+        writeText (join [ settings.Build; "timing.js" ]) ("window.TIMING = " + Py.dumps timing + ";\n")
 
-    let cues =
-        [ yield "WEBVTT"
-          yield ""
-          for s in scenes do
-              for c in s.sentences do
-                  yield $"{vttTime c.start} --> {vttTime c.finish}"
-                  yield c.text
-                  yield "" ]
-    writeText (join [ settings.Build; "captions.vtt" ]) (String.concat "\n" cues)
-    writeText
-        (join [ settings.Build; "phonemes.txt" ])
-        ("where\tvoice\tphrase\tphonemes\tsource\n"
-         + String.concat "\n" (List.rev track.report)
-         + (if track.report.IsEmpty then "" else "\n"))
+        let cues =
+            [ yield "WEBVTT"
+              yield ""
+              for s in scenes do
+                  for c in s.sentences do
+                      yield $"{vttTime c.start} --> {vttTime c.finish}"
+                      yield c.text
+                      yield "" ]
+        writeText (join [ settings.Build; "captions.vtt" ]) (String.concat "\n" cues)
+        writeText
+            (join [ settings.Build; "phonemes.txt" ])
+            ("where\tvoice\tphrase\tphonemes\tsource\n"
+             + String.concat "\n" (List.rev track.report)
+             + (if track.report.IsEmpty then "" else "\n"))
 
-    let words = scenes |> List.sumBy (fun s -> s.sentences |> List.sumBy (fun c -> Py.wordCount c.text))
-    let at = Py.toFixed poster 1
-    printfn "%s" $"{settings.Name}: {Py.toFixed duration 1}s, {scenes.Length} scenes, {words} words, poster at {at}s"
-    scenes
-    |> List.iter (fun s ->
-        let times = $"{(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}"
-        printfn "%s" $"  {(Py.str s.id).PadRight 14} {times}  ({s.sentences.Length} sentences)")
-    if not track.report.IsEmpty then
-        printfn "%s" $"  {track.report.Length} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+        let words = scenes |> List.sumBy (fun s -> s.sentences |> List.sumBy (fun c -> Py.wordCount c.text))
+        let at = Py.toFixed poster 1
+        printfn "%s" $"{settings.Name}: {Py.toFixed duration 1}s, {scenes.Length} scenes, {words} words, poster at {at}s"
+        scenes
+        |> List.iter (fun s ->
+            let times = $"{(Py.toFixed s.start 1).PadLeft 6} - {(Py.toFixed s.finish 1).PadLeft 6}"
+            printfn "%s" $"  {(Py.str s.id).PadRight 14} {times}  ({s.sentences.Length} sentences)")
+        if not track.report.IsEmpty then
+            printfn "%s" $"  {track.report.Length} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+    }
 
-/// The scenes voiced one after another, then the voice released and the outputs written.
-let private narrate (settings: Settings) : Async<Result<unit, string>> =
-    async {
+/// The scenes voiced one after another, then the voice released and the outputs written. A failure while voicing
+/// ends it there: no later scene is voiced, and nothing is released or written.
+let private narrate (settings: Settings) : Async<Result<unit, Failure>> =
+    asyncResult {
         let sceneObjs: obj[] = settings.Script?scenes
         let markedScenes: obj[] = settings.Marked?scenes
         let scenes = [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
         let emptyTrack: Track = { audio = []; pos = 0; report = [] }
-        let! track, finished = foldA (voiceScene settings markedScenes) (emptyTrack, []) scenes
+        let! track, finished = foldAR (voiceScene settings markedScenes) (emptyTrack, []) scenes
         do! release ()
-        writeOutputs settings track (List.rev finished)
-        return Ok()
+        do! writeOutputs settings track (List.rev finished)
     }
 
-/// Voices the workspace, or the setup hint when the voice is not installed. Reading and checking script.json happen
-/// as `run` is called, before the Async starts: what throws there reaches the caller at once.
-let run (ws: string) : Async<Result<unit, string>> =
+/// script.json's "name", when it is a file name the server takes.
+let private (|ServerName|_|) (name: obj) : string option =
+    if jsTypeof name = "string" && test NAME (unbox name) then Some(unbox name) else None
+
+/// The "lang" of the first voice (the main one, then those of "voices") that Kokoro cannot speak; a silent voice
+/// ("voice": null) speaks no language.
+let private unspoken (specs: obj list) : obj option =
+    specs
+    |> List.tryPick (fun spec ->
+        let lang: obj = spec?lang
+        if Py.truthy spec?voice && not (jsTypeof lang = "string" && KOKORO_LANGS.Contains(unbox lang)) then
+            Some lang
+        else
+            None)
+
+/// Voices the workspace. Reading and checking script.json happen as `run` is called, before the Async starts: what
+/// throws there reaches the caller at once, and a failed check (the voice not installed, the name, a language) is
+/// the Error the Async returns, before any work is done.
+let run (ws: string) : Async<Result<unit, Failure>> =
     match requirePackages voicePackages with
-    | Error hint -> async { return Error hint }
+    | Error hint -> async.Return(Error(VoiceNotInstalled hint))
     | Ok() ->
         let clip = resolve ws
         let scriptText = readText (join [ clip; "script.json" ])
         let script = parseJson scriptText
         // The same JSON with Python's int/float distinction, for the values copied into timing.json as they are.
         let marked = Py.parseMarked scriptText
-        let name: obj = script?name
-        if not (jsTypeof name = "string" && test NAME (unbox name)) then
-            fail $"name {Py.repr name} must match {NAME_PATTERN} - it becomes the file name on the server"
-        let name: string = unbox name
-        let voiceName: string option =
-            match get script "voice" with
-            | None -> Some "af_heart"
-            | Truthy v -> Some(unbox v)
-            | Some _ -> None
-        let lang: obj = get script "lang" |> Option.defaultValue (box "en-us")
-        let speed = getFloat script "speed" 1.0
-        let others: obj = get script "voices" |> Option.filter (isNull >> not) |> Option.defaultValue (createObj [])
-        let pronounce: Map<string, obj> =
-            match get script "pronounce" with
-            | Some p when not (isNull p) -> Py.keys p |> Array.map (fun k -> k.Trim(), p?(k)) |> Map.ofArray
-            | _ -> Map.empty
-        let specs =
-            box (createObj [ "voice" ==> voiceName; "lang" ==> lang ]) :: [ for k in Py.keys others -> others?(k) ]
-        for spec in specs do
-            let lang: obj = spec?lang
-            if Py.truthy spec?voice && not (jsTypeof lang = "string" && KOKORO_LANGS.Contains(unbox lang)) then
-                let can = KOKORO_LANGS |> Set.toList |> List.sort |> String.concat ", "
-                fail (
-                    $"Kokoro cannot speak {Py.repr lang} (it can: {can}). "
-                    + "Narrate in the learner's language, or set \"voice\": null for a captioned silent clip."
-                )
-
-        let glossary = Glossary.load clip
-        let build = join [ clip; "build" ]
-        let cache = join [ build; "tts-cache" ]
-        mkdirp cache
-        narrate
-            { Ws = ws
-              Script = script
-              Marked = marked
-              Name = name
-              Voice = voiceName
-              Lang = lang
-              Speed = speed
-              Others = others
-              Pronounce = pronounce
-              Glossary = glossary
-              Build = build
-              Cache = cache }
+        match script?name with
+        | ServerName name ->
+            let voiceName: string option =
+                match get script "voice" with
+                | None -> Some "af_heart"
+                | Truthy v -> Some(unbox v)
+                | Some _ -> None
+            let lang: obj = get script "lang" |> Option.defaultValue (box "en-us")
+            let speed = getFloat script "speed" 1.0
+            let others: obj = get script "voices" |> Option.filter (isNull >> not) |> Option.defaultValue (createObj [])
+            let pronounce: Map<string, obj> =
+                match get script "pronounce" with
+                | Some p when not (isNull p) -> Py.keys p |> Array.map (fun k -> k.Trim(), p?(k)) |> Map.ofArray
+                | _ -> Map.empty
+            let specs =
+                box (createObj [ "voice" ==> voiceName; "lang" ==> lang ]) :: [ for k in Py.keys others -> others?(k) ]
+            match unspoken specs with
+            | Some lang -> async.Return(Error(UnknownLanguage lang))
+            | None ->
+                let glossary = Glossary.load clip
+                let build = join [ clip; "build" ]
+                let cache = join [ build; "tts-cache" ]
+                mkdirp cache
+                narrate
+                    { Ws = ws
+                      Script = script
+                      Marked = marked
+                      Name = name
+                      Voice = voiceName
+                      Lang = lang
+                      Speed = speed
+                      Others = others
+                      Pronounce = pronounce
+                      Glossary = glossary
+                      Build = build
+                      Cache = cache }
+        | name -> async.Return(Error(BadName name))

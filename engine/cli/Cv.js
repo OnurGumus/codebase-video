@@ -3,8 +3,8 @@ import { argv, engineDir, copyFile, mkdirp, isDir, resolve, writeText, readText,
 import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
-import { tail, head, isEmpty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { run } from "./Narrate.js";
+import { run, describe } from "./Narrate.js";
+import { tail, head, isEmpty, ofArray, iterate } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { printf, toConsole, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { requireReady, run as run_1 } from "./Setup.js";
 import { run as run_2 } from "./Check.js";
@@ -36,8 +36,11 @@ export function finish(step) {
 function narrated(narration) {
     return singleton.Delay(() => singleton.Bind(narration, (_arg) => {
         if (_arg.tag === 1) {
-            eprint(_arg.fields[0]);
-            exit(2);
+            const patternInput = describe(_arg.fields[0]);
+            iterate((s) => {
+                eprint(s);
+            }, patternInput[1]);
+            exit(patternInput[0]);
             return singleton.Zero();
         }
         else {

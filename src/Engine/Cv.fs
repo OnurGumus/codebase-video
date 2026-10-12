@@ -40,16 +40,16 @@ let finish (step: Async<int>) : unit =
             exit 1)
     |> ignore
 
-/// Narrate.run's result: the setup hint (the voice is not installed) ends the command with status 2. The narration is
-/// made by the caller, so that Narrate.run reads script.json at once (a bad one throws from `run` itself, before
-/// anything runs).
-let private narrated (narration: Async<Result<unit, string>>) : Async<unit> =
+/// Narrate.run's result: a failure prints its lines and ends the command with its code. The narration is made by the
+/// caller, so that Narrate.run reads script.json at once (a bad one throws from `run` itself, before anything runs).
+let private narrated (narration: Async<Result<unit, Narrate.Failure>>) : Async<unit> =
     async {
         match! narration with
         | Ok() -> ()
-        | Error hint ->
-            eprint hint
-            exit 2
+        | Error failure ->
+            let code, lines = Narrate.describe failure
+            lines |> List.iter eprint
+            exit code
     }
 
 let ensureTiming (ws: string) : Async<unit> =
