@@ -501,14 +501,28 @@ let private present (frame: float -> unit) =
     listenForKeys (box document) (fun c -> agent.Post(Do c))
     document.body.addEventListener ("click", (fun _ -> agent.Post(Do Next)))
 
-/// Installs the frame: window.DURATION, window.render (render plus captions) and window.ready, which the
-/// renderer awaits right after load.
+/// Chrome keeps state from one drawn frame to the next that the DOM does not show, so the same DOM can come out with
+/// different pixels depending on the frames drawn before it: an element whose opacity returns to 1 keeps its opacity
+/// layer (Blink's deferred opacity update), a move under 0.01 px or a scale change under 1e-4 is not rasterized again,
+/// and a tile is rasterized again only where something changed, which draws curves and blurs a little differently.
+/// Dropping the layout tree (display: none and a forced layout, then back) makes the next paint start from nothing, as
+/// on a fresh page: every element gets new paint properties, is painted again and is rasterized whole.
+let private fromScratch () =
+    let body = document.body
+    body?style?display <- "none"
+    body.getBoundingClientRect () |> ignore
+    body?style?display <- ""
+
+/// Installs the frame: window.DURATION, window.render (render plus captions, then drawn from scratch: see fromScratch)
+/// and window.ready, which the renderer awaits right after load.
 let play (render: float -> unit) =
     let frame (t: float) =
         render t
         captions t
     globalSet "DURATION" timing.duration
-    globalSet "render" frame
+    globalSet "render" (fun (t: float) ->
+        frame t
+        fromScratch ())
     let ready: JS.Promise<bool> =
         document?fonts?ready?``then`` (fun () ->
             frame 0.0

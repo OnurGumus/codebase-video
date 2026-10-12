@@ -697,9 +697,16 @@ function present(frame) {
     });
 }
 
+function fromScratch() {
+    const body = document.body;
+    body.style.display = "none";
+    body.getBoundingClientRect();
+    body.style.display = "";
+}
+
 /**
- * Installs the frame: window.DURATION, window.render (render plus captions) and window.ready, which the
- * renderer awaits right after load.
+ * Installs the frame: window.DURATION, window.render (render plus captions, then drawn from scratch: see fromScratch)
+ * and window.ready, which the renderer awaits right after load.
  */
 export function play(render) {
     const frame = (t) => {
@@ -707,7 +714,10 @@ export function play(render) {
         captions(t);
     };
     window["DURATION"] = timing.duration;
-    window["render"] = frame;
+    window["render"] = ((t_1) => {
+        frame(t_1);
+        fromScratch();
+    });
     const ready = document.fonts.ready.then(() => {
         frame(0);
         return true;
@@ -732,9 +742,9 @@ export function play(render) {
                 });
                 const t0 = performance.now();
                 const tick = (_arg) => {
-                    const t_1 = timing.voiced ? a.currentTime : (((performance.now()) - t0) / 1000);
-                    frame(min(t_1, timing.duration));
-                    if (t_1 < timing.duration) {
+                    const t_2 = timing.voiced ? a.currentTime : (((performance.now()) - t0) / 1000);
+                    frame(min(t_2, timing.duration));
+                    if (t_2 < timing.duration) {
                         requestAnimationFrame(tick);
                     }
                 };
