@@ -15,14 +15,11 @@ command again) is a problem of its own: compare names it, whatever else it found
 
 compare.py video4 <recording dir>
 Checks the gallery's 4-worker render of a recording against its 1-worker render (gallery.video4.ref.mp4): the same
-number of frames, the same audio, and every video frame at least MIN_PSNR (48) dB from its counterpart. Only the
-frames whose frame checksums differ are decoded. It prints how many frames differ, the largest difference in any
-channel (of 255) and the lowest PSNR, then each frame under the limit with its index; exit 1 when there is one.
-compare (the first form) runs this check on the new recording too.
-
-Why PSNR and not an exact match: the kit draws every frame from scratch, so the 4-worker render is expected to match
-the 1-worker one frame for frame; the 48 dB limit is kept as a backstop that still tolerates a stray antialiasing
-difference. A frame drawn at the wrong time, or without an element, is below 48 dB.
+number of frames, the same audio and the same video frames, by frame checksum. The kit draws every frame from
+scratch, so a frame does not depend on which page drew it or on the frames that page drew before. When frames
+differ, only those are decoded, to say how much: each run of differing frames is printed with its indexes, the
+largest difference in any channel (of 255) and the lowest PSNR; exit 1 when there is one. compare (the first form)
+runs this check on the new recording too.
 """
 import fnmatch
 import os
@@ -31,8 +28,6 @@ import struct
 import subprocess
 import sys
 import tempfile
-
-MIN_PSNR = 48.0  # dB per frame, 4 workers against 1 worker; expected to match exactly
 
 
 def wav_format(path):
@@ -167,21 +162,18 @@ def check_video4(rec):
     if a.get("audio") != b.get("audio"):
         problems.append("gallery.video4: the audio frames differ from the 1-worker render")
     differing = [i for i, (x, y) in enumerate(zip(a["video"], b["video"])) if x != y]
+    lines = [f"gallery.video4: {len(a['video'])} frames, {len(differing)} differ from the 1-worker render"]
+    if not differing:
+        return lines, problems
     try:
         stats = frame_stats(ref, other, differing)
     except ValueError as err:
-        return [], problems + [f"gallery.video4: {err}"]
-    peak = max((d for d, _ in stats.values()), default=0)
-    over_one = sum(1 for d, _ in stats.values() if d > 1)
-    lowest = min((p for _, p in stats.values()), default=float("inf"))
-    lines = [f"gallery.video4: {len(a['video'])} frames, {len(differing)} differ in frame checksum from the 1-worker render "
-             f"({over_one} of them by more than 1 level), largest difference in any channel {peak} of 255, "
-             f"lowest PSNR {lowest:.1f} dB (limit {MIN_PSNR:g})"]
-    for i in differing:
-        d, p = stats[i]
-        if p < MIN_PSNR:
-            problems.append(f"gallery.video4: frame {i} is {p:.1f} dB from the 1-worker frame (limit {MIN_PSNR:g}), "
-                            f"largest difference in a channel {d} of 255")
+        return lines, problems + [f"gallery.video4: {err}"]
+    for first, last in ranges(differing):
+        run = [stats[i] for i in range(first, last + 1)]
+        where = f"frame {first} differs" if first == last else f"frames {first}-{last} differ"
+        problems.append(f"gallery.video4: {where} from the 1-worker render: largest difference in a channel "
+                        f"{max(d for d, _ in run)} of 255, lowest PSNR {min(p for _, p in run):.1f} dB")
     return lines, problems
 
 

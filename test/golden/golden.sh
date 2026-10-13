@@ -45,9 +45,8 @@
 #                            when the step needed more than one attempt, as it would include the failed one)
 # Files in unstable.txt are compared by the method written beside each (see compare.py).
 #
-# Every engine command runs with WORKERS=1: one render page draws all frames in the same order every time, which makes
-# every output byte-for-byte repeatable. (The kit draws every frame from scratch, so the default 4 pages are expected
-# to give the same frames as one page too; video4 below checks that.)
+# Every engine command runs with WORKERS=1: one render page draws all frames in the same order every time. (The kit
+# draws every frame from scratch, so the default 4 pages give the same frames as one page; video4 below checks that.)
 # The one exception is the gallery's extra step video4: `video --full` with WORKERS=4 (the engine's default) on a copy
 # of the workspace, so that the parallel scheduling is exercised too. Its files are
 #   gallery.video4.out            the log (exact; the sizes of the ls -la lines masked)
@@ -55,10 +54,9 @@
 #   gallery.video4.mp4, .framemd5 the 4-worker mp4 and its frame checksums (NOT in the exact diff)
 #   gallery.video4.tolerance      compare.py video4's report (NOT in the exact diff)
 #   gallery.video4.render-seconds the wall time (never compared)
-# compare.py checks the 4-worker frames against the 1-worker ones: same number of frames, same audio, every frame at
-# least 48 dB (PSNR) from its 1-worker counterpart; it names the frames under the limit by index and reports the
-# largest per-channel difference. (The kit draws every frame from scratch, so the two are expected to match frame for
-# frame; the 48 dB limit is kept as a backstop.)
+# compare.py checks the 4-worker frames against the 1-worker ones by frame checksum: the same number of frames, the
+# same audio and the same pictures. It names the frames that differ by index, with how much they differ. (The mp4
+# itself is left out of the exact diff: the frames are what the check is about, not how the encoder packed them.)
 #
 # A retry is part of the result. When Chrome goes away or hangs mid-run (TargetCloseError, a protocol timeout ...), a
 # command is run again, twice at most, so that record can finish on a busy machine. The log kept is the last
@@ -105,17 +103,20 @@ now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 
 # ---- the log of one command ---------------------------------------------------------------------------------
 
-# Elapsed time becomes X; so do the dates of ls -la lines (the video step lists its files).
+# Elapsed time becomes X; so do the dates of ls -la lines (the video step lists its files). A date is "Oct  9 12:00"
+# or " 9 Oct 12:00" depending on the locale, and "Oct 13  2025" when it is not within the last six months: the day
+# and the year are padded with spaces, so all the spaces around a date go with it, and every date leaves " X ".
 normalise() {
   sed -E \
     -e 's/(rendered [0-9]+ frames in )[0-9.]+s/\1Xs/' \
-    -e '/^[-dl][-rwxsStT@+.]{9,}/ s/ (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) +[0-9]+ +([0-9]{2}:[0-9]{2}|[0-9]{4}) / X /' \
-    -e '/^[-dl][-rwxsStT@+.]{9,}/ s/ [0-9]+ (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ([0-9]{2}:[0-9]{2}|[0-9]{4}) / X /'
+    -e '/^[-dl][-rwxsStT@+.]{9,}/ s/ +(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) +[0-9]+ +([0-9]{2}:[0-9]{2}|[0-9]{4}) / X /' \
+    -e '/^[-dl][-rwxsStT@+.]{9,}/ s/ +[0-9]+ (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) +([0-9]{2}:[0-9]{2}|[0-9]{4}) / X /'
 }
 
-# the sizes of the ls -la lines (after normalise has replaced their dates by X)
+# the sizes of the ls -la lines (after normalise has replaced their dates by X), with the spaces ls pads them with to
+# the widest size in the listing
 mask_sizes() {
-  sed -E '/^[-dl][-rwxsStT@+.]{9,}/ s/ [0-9]+ +X / SIZE X /'
+  sed -E '/^[-dl][-rwxsStT@+.]{9,}/ s/ +[0-9]+ X / SIZE X /'
 }
 
 # One stream of a command as recorded: its bytes, with elapsed times and ls dates replaced (and the sizes masked when
@@ -273,10 +274,8 @@ step() {
 }
 
 # The gallery's video again with 4 render pages (the engine's default), on a copy of the workspace so that nothing
-# else is disturbed. Pages that take frames in a different order draw some frames differently (mostly by 1 level of
-# 255, in places by tens, in thin antialiased edges), so this render is not compared exactly: gallery.video4.mp4 and
-# .framemd5 are left out of the exact diff, and compare.py checks every frame against the 1-worker render
-# (gallery.video4.ref.mp4), see above. gallery.video4.out is exact (sizes masked).
+# else is disturbed. compare.py checks its frames against the 1-worker render (gallery.video4.ref.mp4), see above;
+# gallery.video4.out is exact (sizes masked).
 video4() {
   local src=$WS/gallery dst=$WS/gallery4
   rm -rf "${dst:?}"
