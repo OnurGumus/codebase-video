@@ -4,8 +4,8 @@
 ///   - the Kokoro v1.0 model (about 330 MB, downloaded once from Hugging Face into <tool home>/models)
 ///   - puppeteer-core (drives your installed Chrome or Chromium; it does not download a browser)
 ///   - pptxgenjs and jszip (write the .pptx of the `present` step; only that step needs them)
-/// System tools it checks for but does not install: node (18+), npm, ffmpeg (with libx264, libvpx-vp9, libopus) and
-/// Chrome or Chromium. Safe to run again: finished steps are skipped. Port of engine/setup.sh (without Python).
+/// System tools it checks for but does not install: node (22.12+), npm, ffmpeg (with libx264, libvpx-vp9, libopus)
+/// and Chrome or Chromium. Safe to run again: finished steps are skipped. Port of engine/setup.sh (without Python).
 module Setup
 
 open Fable.Core
@@ -61,20 +61,36 @@ let private runIn (dir: string) (cmd: string) (args: string list) : int =
         )
     if isNull r?error then (r?status: int) else 127
 
+/// The oldest Node the engine runs on: puppeteer-core 25 is an ES module, which require() loads from Node 22.12 on
+/// (it also says so in its "engines").
+let private minimumNode = 22, 12
+
+/// The running Node's version as (major, minor), from process.versions.node ("22.12.0").
+let private nodeVersion () : int * int =
+    let parts = (proc?versions?node: string).Split('.')
+    int parts[0], int parts[1]
+
 /// Checks the system tools and installs the packages as `run` is called, before the Async starts; a check that fails
 /// ends setup with the lines that say what is missing and status 2. Then fetches the model and voices a word. Returns
 /// an exit code. (An exception in the checks, e.g. a tool home that cannot be made, is thrown from `run` itself.)
 let run () : Async<int> =
     mkdirp toolHome
     let missing = [ "node"; "npm"; "ffmpeg" ] |> List.filter (hasCommand >> not)
+    let major, minor = minimumNode
     let prepared: Result<string, string list> =
         result {
+            do!
+                nodeVersion () >= minimumNode
+                |> Result.requireTrue
+                    [ $"Node.js {proc?versions?node} is too old: the engine needs Node.js {major}.{minor} or newer"
+                      "  macOS:  brew install node   (or brew upgrade node)"
+                      "  other systems:  the LTS release from https://nodejs.org" ]
             do!
                 missing
                 |> Result.requireEmpty
                     [ "missing system tools: " + String.concat " " missing
                       "  macOS:  brew install node ffmpeg"
-                      "  Debian/Ubuntu:  sudo apt install nodejs npm ffmpeg" ]
+                      $"  Debian/Ubuntu:  sudo apt install ffmpeg; Node.js {major}.{minor} or newer (with npm) from https://nodejs.org" ]
             let _, encoders, _ = runCapture "ffmpeg" [ "-hide_banner"; "-encoders" ]
             do!
                 match [ "libx264"; "libvpx-vp9"; "libopus" ] |> List.tryFind (fun codec -> not (encoders.Contains codec)) with
