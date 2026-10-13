@@ -76,7 +76,7 @@ path with the video's. In CI it is what a person reads before the video goes to 
   Fable; the compiled files ship with the plugin, so only Node is needed to run it.)
 - One-time setup (skips finished steps; downloads about 800 MB the first time):
   `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}" node ${CLAUDE_PLUGIN_ROOT}/engine/cli/Cv.js setup`
-  It needs Node 18+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If something is missing it says
+  It needs Node 22.12+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If something is missing it says
   how to install it: tell the user and stop.
 - Before agreeing the scope, skim the README, docs and top-level source folders and list the codebase's core
   features (e.g. for an event-sourcing library: aggregates, sagas, projections, hosting). Show the list and ask which

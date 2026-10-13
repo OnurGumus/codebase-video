@@ -21,7 +21,7 @@ jobs:
           git diff --cached --stat --exit-code -- engine/cli engine/web
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: the command line starts
         run: |
           node engine/cli/Cv.js 2>&1 | grep -q "usage: node engine/cli/Cv.js"
