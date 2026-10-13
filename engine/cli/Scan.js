@@ -6,7 +6,7 @@ import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.
 import { eprint, toJson, writeText, join, fromJs, requireFromHome, resolve, deliver } from "./Node.js";
 import { iterate, length, filter, toArray, ofArray, tryItem, empty, cons, singleton as singleton_1, reverse } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { defaultArg } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { toFixed, findChrome, ServeFor, startServer } from "./Render.js";
+import { releaseChrome, toFixed, findChrome, ServeFor, startServer } from "./Render.js";
 import { min } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 
@@ -102,6 +102,7 @@ ${_arg_8[1]} frames, ${length(errors)} page errors -> ${out}`);
                                 console.log("  " + l);
                             }, errors);
                             return singleton.Bind(fromJs(browser.close()), () => {
+                                releaseChrome(browser);
                                 server.Close();
                                 return singleton.Return(0);
                             });

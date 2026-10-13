@@ -46,8 +46,8 @@
 # Files in unstable.txt are compared by the method written beside each (see compare.py).
 #
 # Every engine command runs with WORKERS=1: one render page draws all frames in the same order every time, which makes
-# every output byte-for-byte repeatable (with the default 4 pages, which frames a page has drawn before frame N varies
-# from run to run, and some frames come out slightly different).
+# every output byte-for-byte repeatable. (The kit draws every frame from scratch, so the default 4 pages are expected
+# to give the same frames as one page too; video4 below checks that.)
 # The one exception is the gallery's extra step video4: `video --full` with WORKERS=4 (the engine's default) on a copy
 # of the workspace, so that the parallel scheduling is exercised too. Its files are
 #   gallery.video4.out            the log (exact; the sizes of the ls -la lines masked)
@@ -57,8 +57,8 @@
 #   gallery.video4.render-seconds the wall time (never compared)
 # compare.py checks the 4-worker frames against the 1-worker ones: same number of frames, same audio, every frame at
 # least 48 dB (PSNR) from its 1-worker counterpart; it names the frames under the limit by index and reports the
-# largest per-channel difference. (A limit of 1 of 255 per channel cannot hold: some frames come out up to 48 levels
-# different in thin antialiased edges, 933 to 961 of 7106 frames differ at all; the lowest PSNR seen is 52.3 to 52.8 dB.)
+# largest per-channel difference. (The kit draws every frame from scratch, so the two are expected to match frame for
+# frame; the 48 dB limit is kept as a backstop.)
 #
 # A retry is part of the result. When Chrome goes away or hangs mid-run (TargetCloseError, a protocol timeout ...), a
 # command is run again, twice at most, so that record can finish on a busy machine. The log kept is the last

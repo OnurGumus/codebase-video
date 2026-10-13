@@ -20,10 +20,9 @@ frames whose frame checksums differ are decoded. It prints how many frames diffe
 channel (of 255) and the lowest PSNR, then each frame under the limit with its index; exit 1 when there is one.
 compare (the first form) runs this check on the new recording too.
 
-Why PSNR and not "no channel more than 1 of 255 apart": with 4 render pages some frames come out differently from
-the 1-worker render by more than 1 level (the largest seen: 48 of 255 in the mp4, 45 in the lossless frames, in thin
-antialiased edges; the lowest PSNR 52.3 to 52.8 dB, the median 69 dB). A frame drawn at the wrong time, or without an element,
-is below 48 dB.
+Why PSNR and not an exact match: the kit draws every frame from scratch, so the 4-worker render is expected to match
+the 1-worker one frame for frame; the 48 dB limit is kept as a backstop that still tolerates a stray antialiasing
+difference. A frame drawn at the wrong time, or without an element, is below 48 dB.
 """
 import fnmatch
 import os
@@ -33,7 +32,7 @@ import subprocess
 import sys
 import tempfile
 
-MIN_PSNR = 48.0  # dB per frame, 4 workers against 1 worker; the lowest seen is 52.3 to 52.8
+MIN_PSNR = 48.0  # dB per frame, 4 workers against 1 worker; expected to match exactly
 
 
 def wav_format(path):

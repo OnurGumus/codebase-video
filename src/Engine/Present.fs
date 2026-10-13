@@ -84,15 +84,18 @@ let private srt (scenes: Scene list) : string =
 
 // What the step can be asked, and how it can fail ----------------------------------------------------------------
 
-/// Why the export stopped.
-type private Failure =
-    | UnknownOption of string
-    /// a tool home set up before the slide writer was added
-    | SlideWriterMissing
+/// Why the export ended early: each case carries the values its message names. `describe` gives the exit code and
+/// the lines for stderr.
+type Failure =
+    /// an argument that is neither --serve nor --clips
+    | UnknownOption of given: string
+    /// a tool home set up before the slide writer was added; `name` is the deck's, out/<name>.pptx
+    | SlideWriterMissing of name: string
     /// the slide pictures could not be drawn; the renderer has said why
-    | RenderFailed of exitCode: int
+    | RenderFailed of code: int
     /// --clips without a video to cut them from, and why there is none
     | NoVideo of reason: string
+    /// ffmpeg could not cut a slide's clip from the video
     | ClipFailed of slide: int
 
 /// What `present` was asked for: --serve, --clips.
@@ -106,22 +109,16 @@ let private optionsOf (args: string list) : Result<Options, Failure> =
         | other -> Error(UnknownOption other)
     args |> List.fold (fun acc arg -> acc |> Result.bind (fun o -> add o arg)) (Ok { Serve = false; Clips = false })
 
-let private exitCode (name: string) (failure: Failure) : int =
-    let cv = join [ engineDir; "cli"; "Cv.js" ]
+/// The exit code of a failure and the lines it prints on stderr (none for RenderFailed: the renderer has said why).
+let describe (failure: Failure) : int * string list =
     match failure with
-    | UnknownOption o ->
-        eprint $"present: no option {o} (there are --serve and --clips)"
-        2
-    | SlideWriterMissing ->
-        eprint $"no {name}.pptx: the slide writer is not installed yet. Run: node {cv} setup"
-        2
-    | RenderFailed code -> code
-    | NoVideo reason ->
-        eprint $"--clips cuts each slide's clip from the video, and there is none: {reason}"
-        2
-    | ClipFailed n ->
-        eprint $"ffmpeg could not cut the clip of slide {n}"
-        1
+    | UnknownOption o -> 2, [ $"present: no option {o} (there are --serve and --clips)" ]
+    | SlideWriterMissing name ->
+        let cv = join [ engineDir; "cli"; "Cv.js" ]
+        2, [ $"no {name}.pptx: the slide writer is not installed yet. Run: node {cv} setup" ]
+    | RenderFailed code -> code, []
+    | NoVideo reason -> 2, [ $"--clips cuts each slide's clip from the video, and there is none: {reason}" ]
+    | ClipFailed n -> 1, [ $"ffmpeg could not cut the clip of slide {n}" ]
 
 // The slides ------------------------------------------------------------------------------------------------------
 
@@ -239,8 +236,9 @@ let private autoplay (file: string) (slides: Slide list) : Async<unit> =
 
 // The step --------------------------------------------------------------------------------------------------------
 
-let private slideWriter () : Result<unit, Failure> =
-    if [ "pptxgenjs"; "jszip" ] |> List.forall Narrate.packageInstalled then Ok() else Error SlideWriterMissing
+/// The packages that write the deck, installed by setup; `name` is the deck's, for the message.
+let private slideWriter (name: string) : Result<unit, Failure> =
+    if [ "pptxgenjs"; "jszip" ] |> List.forall Narrate.packageInstalled then Ok() else Error(SlideWriterMissing name)
 
 /// Draws each slide's still at its step's hold.
 let private shoot (ws: string) (slides: Slide list) : Async<Result<unit, Failure>> =
@@ -260,7 +258,8 @@ let private serve (ws: string) : Async<unit> =
 
 let private written (file: string) : unit = JS.console.log file
 
-let run (ws: string) (args: string list) : Async<int> =
+/// The export: 0 once the files are written (with --serve, it serves until Ctrl+C); a failure returns as its value.
+let run (ws: string) (args: string list) : Async<Result<int, Failure>> =
     let ws = resolve ws
     let timing = readJson (join [ ws; "build"; "timing.json" ])
     let name: string = timing?name
@@ -285,7 +284,7 @@ let run (ws: string) (args: string list) : Async<int> =
         let video = silent ws name
         video |> Result.either written (fun why -> eprint $"no silent copy: {why}")
 
-        do! slideWriter ()
+        do! slideWriter name
         let! source = if options.Clips then video |> Result.map Some |> Result.mapError NoVideo else Ok None
         remove dir
         mkdirp dir
@@ -296,7 +295,5 @@ let run (ws: string) (args: string list) : Async<int> =
         let clips = slides |> List.filter (fun s -> s.Clip.IsSome) |> List.length
         JS.console.log $"""{out "pptx"}   ({slides.Length} slides{(if options.Clips then $", {clips} with clips" else "")})"""
         if options.Serve then do! serve ws
+        return 0
     }
-    |> Async.map (function
-        | Ok() -> 0
-        | Error failure -> exitCode name failure)

@@ -57,6 +57,8 @@ let argv: string list =
     | _ :: _ :: rest -> rest
     | _ -> []
 let exit (code: int) : 'a = proc?exit(code)
+/// The status the process ends with once its event loop is empty (process.exitCode); it does not end it.
+let setExitCode (code: int) : unit = proc?exitCode <- code
 let cwd () : string = proc?cwd()
 let homedir: string = os?homedir()
 let platform: string = proc?platform
