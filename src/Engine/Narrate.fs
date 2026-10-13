@@ -694,7 +694,7 @@ let modelFile () = join [ modelDir (); "onnx-community"; "Kokoro-82M-v1.0-ONNX";
 
 // The model runs in a worker thread (this same module, started with workerData {kokoro: true}). onnxruntime-node
 // aborts the process ("libc++abi: ... mutex lock failed") when process.exit() is called while it is loaded in the
-// main thread, even after the session is disposed, and Cv.js exits with process.exit() when a step fails.
+// main thread, even after the session is disposed, and Cv.js exits with process.exit() when a step throws.
 
 let private workerThreads: obj = importAll "node:worker_threads"
 
@@ -1329,15 +1329,20 @@ let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list
     }
 
 /// The scenes voiced one after another, then the voice released and the outputs written. A failure while voicing
-/// ends it there: no later scene is voiced, and nothing is released or written.
+/// ends it there: no later scene is voiced and nothing is written, but the voice is released all the same, so that
+/// nothing keeps the process alive once the failure is reported.
 let private narrate (settings: Settings) : Async<Result<unit, Failure>> =
     asyncResult {
         let sceneObjs: obj[] = settings.Script?scenes
         let markedScenes: obj[] = settings.Marked?scenes
         let scenes = [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
         let emptyTrack: Track = { audio = []; pos = 0; report = [] }
-        let! track, finished = foldAR (voiceScene settings markedScenes) (emptyTrack, []) scenes
-        do! release ()
+        let! track, finished =
+            async {
+                let! voiced = foldAR (voiceScene settings markedScenes) (emptyTrack, []) scenes
+                do! release ()
+                return voiced
+            }
         do! writeOutputs settings track (List.rev finished)
     }
 

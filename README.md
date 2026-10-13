@@ -28,11 +28,13 @@ People use it to:
 
 **1. Install three things** (if you do not have them yet):
 
-- [Node.js](https://nodejs.org) (version 18 or newer)
-- [ffmpeg](https://ffmpeg.org)
-- Google Chrome
+- [Node.js](https://nodejs.org) (version 22.12 or newer)
+- [ffmpeg](https://ffmpeg.org), with its x264, VP9 and Opus encoders (Homebrew's ffmpeg has them, and so do the usual
+  Linux packages)
+- Google Chrome (or Chromium)
 
-On a Mac: `brew install node ffmpeg`
+On a Mac: `brew install node ffmpeg`. On Linux, take Node.js from [nodejs.org](https://nodejs.org): the one most
+distributions ship is older than 22.12.
 
 **2. Add the plugin.** Type these two lines in Claude Code:
 
@@ -49,6 +51,9 @@ On a Mac: `brew install node ffmpeg`
 
 Claude asks what the video should cover, how long it should be, and who will watch it. Then it does the work.
 You do not need to stay and watch.
+
+The first time, the plugin sets itself up: it checks that the three things above are there (and says how to install
+any that is missing), then downloads about 800 MB, mostly the voice. This happens only once.
 
 ## What do I get?
 
@@ -102,7 +107,7 @@ full video without redoing anything.
 **Changing a video afterwards is quick.** Only the scenes that changed are drawn again: about a minute for a
 changed picture or sentence in a five-minute video, where drawing the whole video takes about five.
 
-The first time, the plugin downloads a voice (about 800 MB). This happens only once.
+The first time, the plugin downloads about 800 MB, mostly the voice. This happens only once.
 
 ## Is what the video says correct?
 

@@ -13,7 +13,7 @@ lists those defaults in its report.
 - **The full history.** The video covers a range of commits, so the checkout must reach its start. Most CI systems
   fetch only the latest commit; the history step then stops with "this clone is shallow". In GitHub Actions use
   `fetch-depth: 0`.
-- **Node.js 18 or later, ffmpeg** (with libx264, libvpx-vp9 and libopus) **and Chrome or Chromium.** The engine's
+- **Node.js 22.12 or later, ffmpeg** (with libx264, libvpx-vp9 and libopus) **and Chrome or Chromium.** The engine's
   `setup` step checks all three and says what is missing.
 - **The tool home**, where the voice model and the browser driver are installed (about 800 MB, downloaded once).
   Keep it in the job's cache. The skill uses the plugin's own data folder for it,
@@ -110,7 +110,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: ffmpeg and Chrome
         run: |

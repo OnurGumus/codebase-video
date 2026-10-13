@@ -1808,33 +1808,24 @@ function narrate(settings) {
     return singleton_2.Delay(() => {
         const sceneObjs = settings.Script.scenes;
         const markedScenes = settings.Marked.scenes;
-        const asyncResult_1 = foldAR((tupledArg, tupledArg_1) => voiceScene(settings, markedScenes, tupledArg[0], tupledArg[1], tupledArg_1[0], tupledArg_1[1]), [new Track(empty(), 0, empty()), empty()], toList(delay(() => map((si) => [si, item(si, sceneObjs)], rangeDouble(0, 1, sceneObjs.length - 1)))));
-        return singleton_2.Bind(asyncResult_1, (input_1_3) => {
-            const input_11 = input_1_3;
-            if (input_11.tag === 1) {
-                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_11.fields[0]]));
+        const scenes = toList(delay(() => map((si) => [si, item(si, sceneObjs)], rangeDouble(0, 1, sceneObjs.length - 1))));
+        const emptyTrack = new Track(empty(), 0, empty());
+        const asyncResult = singleton_2.Delay(() => singleton_2.Bind(foldAR((tupledArg, tupledArg_1) => voiceScene(settings, markedScenes, tupledArg[0], tupledArg[1], tupledArg_1[0], tupledArg_1[1]), [emptyTrack, empty()], scenes), (_arg) => singleton_2.Bind(release(), () => singleton_2.Return(_arg))));
+        return singleton_2.Bind(asyncResult, (input_1_1) => {
+            const input_6 = input_1_1;
+            if (input_6.tag === 1) {
+                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]));
             }
             else {
-                const _arg = input_11.fields[0];
-                let asyncResult;
-                const input = release();
-                asyncResult = singleton_2.Bind(input, (x$0027) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027])));
-                return singleton_2.Bind(asyncResult, (input_1_2) => {
-                    const input_8 = input_1_2;
-                    if (input_8.tag === 1) {
-                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_8.fields[0]]));
-                    }
-                    else {
-                        let x;
-                        const value_1_2 = writeOutputs(settings, _arg[0], reverse(_arg[1]));
-                        x = singleton_2.Return(value_1_2);
-                        return singleton_2.Bind(x, (x$0027_1) => {
-                            let value_3;
-                            const input_4 = x$0027_1;
-                            value_3 = ((input_4.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_4.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
-                            return singleton_2.Return(value_3);
-                        });
-                    }
+                const _arg_2 = input_6.fields[0];
+                let x;
+                const value_1 = writeOutputs(settings, _arg_2[0], reverse(_arg_2[1]));
+                x = singleton_2.Return(value_1);
+                return singleton_2.Bind(x, (x$0027) => {
+                    let value_2;
+                    const input_2 = x$0027;
+                    value_2 = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_2.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
+                    return singleton_2.Return(value_2);
                 });
             }
         });
