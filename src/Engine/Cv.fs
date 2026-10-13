@@ -68,13 +68,14 @@ let describe (failure: Failure) : int * string list =
     | History f -> History.describe f
     | Present f -> Present.describe f
 
-/// Runs a step to its end, then ends with its code; an Error prints its lines and exits with its code; an exception
+/// Runs a step to its end, then ends with its code; an Error prints its lines and ends with its code; an exception
 /// is printed and exits with 1. The engine's one Async.StartAsPromise, and the one caller of process.exit: every
-/// step below is an Async. A step that returns Ok (whatever its code) only sets process.exitCode: the process ends by
-/// itself once the event loop is empty, so stdout reaches a slow pipe whole and V8 is torn down before its threads are
-/// joined (process.exit joins them first and, rarely, hangs there for good: nodejs/node#64274). An Error exits at once,
-/// because a failure in the middle of voicing leaves the voice Worker running; so does an exception, which can also
-/// leave Chrome or the page server running.
+/// step below is an Async. A step that returns (Ok whatever its code, or Error) only sets process.exitCode: the
+/// process ends by itself once the event loop is empty, so stdout reaches a slow pipe whole and V8 is torn down
+/// before its threads are joined (process.exit joins them first and, rarely, hangs there for good:
+/// nodejs/node#64274). A step leaves nothing running when it returns: Chrome and the page server are closed, and the
+/// voice Worker is released, also when voicing fails. An exception exits at once, as it can leave any of them
+/// running.
 let finish (step: Async<Result<int, Failure>>) : unit =
     (Async.StartAsPromise step)
         .``then``(fun outcome ->
@@ -83,7 +84,7 @@ let finish (step: Async<Result<int, Failure>>) : unit =
             | Error failure ->
                 let code, lines = describe failure
                 lines |> List.iter eprint
-                exit code)
+                setExitCode code)
         .catch(fun e ->
             eprint (string e)
             exit 1)
