@@ -93,7 +93,10 @@ The project then names the command, and nothing else:
 ```
 
 The program gets the text on standard input. In its command line, `{out}` is required and is where the audio goes;
-`{voice}` (the project's `voice` field), `{lang}` and `{speed}` are optional. Each is replaced by a quoted value.
+`{voice}` (the project's `voice` field), `{lang}` and `{speed}` are optional. Write them without quotes, as above:
+each reaches the program as one word whatever it holds, and nothing in it runs. A placeholder inside quotes, such as
+`"{voice}"`, stops `narrate` with a message. The values are also in the program's environment as `CV_OUT`,
+`CV_VOICE`, `CV_LANG` and `CV_SPEED`.
 The program must write a file ffmpeg can read to `{out}`, exit with 0, and finish within 120 seconds. Any audio
 format ffmpeg reads is fine, and it is converted for you.
 

@@ -211,6 +211,9 @@ let private speedRange (provider: Provider) : (float * float * string) option =
     | Azure _ -> Some(0.5, 2.0, "0.5 to 2.0")
     | Kokoro | Command _ -> None
 
+/// A placeholder with a quote character next to it, such as `"{voice}"` or `'{out}'`.
+let private quotedPlaceholder: Regex = Regex(@"[""']\{(voice|lang|speed|out)\}|\{(voice|lang|speed|out)\}[""']")
+
 /// Before any work: the provider's key and the speed it can take.
 let check (choice: Choice) (speed: float) : Result<unit, Failure> =
     result {
@@ -235,6 +238,14 @@ let check (choice: Choice) (speed: float) : Result<unit, Failure> =
                 body.Contains "{out}"
                 |> Result.requireTrue (
                     SettingsBad $"command {name} never says where its audio goes: put {{out}} in its text (voices.json)"
+                )
+            do!
+                not (quotedPlaceholder.IsMatch body)
+                |> Result.requireTrue (
+                    SettingsBad(
+                        $"command {name} puts a placeholder inside quotes: write {{voice}}, {{lang}}, {{speed}} and "
+                        + "{out} without quotes in its text (voices.json); each is already passed as one word"
+                    )
                 )
         | _ -> ()
     }
@@ -273,10 +284,15 @@ let samplesOf (file: string) : Result<float32[], string> =
     finally
         remove dir
 
-/// The command's text with each placeholder replaced, in one pass, by its value in single quotes for `sh`.
-let private fill (body: string) (values: Map<string, string>) : string =
-    let quoted (v: string) = "'" + v.Replace("'", "'\\''") + "'"
-    Regex.Replace(body, @"\{(voice|lang|speed|out)\}", MatchEvaluator(fun m -> quoted values[m.Groups[1].Value]))
+/// The command's text with each placeholder replaced by a quoted reference to its environment variable (`{voice}`
+/// becomes `"$CV_VOICE"`): no value is ever spliced into the command, so none can run as code, inside quotes or not.
+let private fill (body: string) : string =
+    let reference (m: Match) = "\"$CV_" + m.Groups[1].Value.ToUpper() + "\""
+    Regex.Replace(body, @"\{(voice|lang|speed|out)\}", MatchEvaluator reference)
+
+/// The environment of this process with these variables added.
+[<Emit("Object.assign({}, process.env, $0)")>]
+let private withEnv (vars: obj) : obj = jsNative
 
 /// Seconds a command may run: 120, or CODEBASE_VIDEO_VOICE_TIMEOUT (it exists so a test need not wait that long).
 let private commandTimeout () : float =
@@ -297,15 +313,17 @@ type private Ended =
     | Exited of code: int * stderr: string
     | TimedOut of seconds: float * stderr: string
 
-/// Runs `sh -c` on the command, gives it the text on stdin, and waits for it to end or to run out of time (then the
-/// whole process group is killed, or `sleep` would hold the pipes open).
-let private spawnText (command: string) (input: string) (seconds: float) : Async<Ended> =
+/// Runs `sh -c` on the command with these environment variables, gives it the text on stdin, and waits for it to end
+/// or to run out of time (then the whole process group is killed, or `sleep` would hold the pipes open).
+let private spawnText (command: string) (vars: (string * string) list) (input: string) (seconds: float) : Async<Ended> =
     Async.FromContinuations(fun (ok, _, _) ->
-        let child: obj =
-            childProcess?spawn (
-                command,
-                createObj [ "shell" ==> true; "detached" ==> true; "stdio" ==> [| "pipe"; "ignore"; "pipe" |] ]
-            )
+        let options =
+            createObj
+                [ "shell" ==> true
+                  "detached" ==> true
+                  "stdio" ==> [| "pipe"; "ignore"; "pipe" |]
+                  "env" ==> withEnv (createObj (vars |> List.map (fun (k, v) -> k ==> v))) ]
+        let child: obj = childProcess?spawn (command, options)
         let mutable err = ""
         let mutable settled = false
         let mutable timer: obj = null
@@ -336,7 +354,8 @@ let private spawnText (command: string) (input: string) (seconds: float) : Async
         child?stdin?``end`` (input, "utf8") |> ignore)
 
 /// The voice's text spoken by its command: the samples at 24 kHz mono, or why not. The command runs once per call,
-/// with the text on stdin and `{out}` a fresh .wav path (the file may hold any audio ffmpeg reads).
+/// with the text on stdin, the values in CV_VOICE, CV_LANG, CV_SPEED and CV_OUT, and `{out}` a fresh .wav path (the
+/// file may hold any audio ffmpeg reads).
 let speakCommand (voice: Voice) (input: string) : Async<Result<float32[], Failure>> =
     async {
         match voice.Provider with
@@ -344,15 +363,13 @@ let speakCommand (voice: Voice) (input: string) : Async<Result<float32[], Failur
             let dir = tempDir ()
             try
                 let out = join [ dir; "voice.wav" ]
-                let command =
-                    fill
-                        body
-                        (Map [ "voice", voice.Name
-                               "lang", voice.Lang
-                               "speed", string voice.Speed
-                               "out", out ])
+                let vars =
+                    [ "CV_VOICE", voice.Name
+                      "CV_LANG", voice.Lang
+                      "CV_SPEED", string voice.Speed
+                      "CV_OUT", out ]
                 let seconds = commandTimeout ()
-                match! spawnText command input seconds with
+                match! spawnText (fill body) vars input seconds with
                 | TimedOut(s, err) -> return Error(CommandFailed(name, 1, $"timed out after {s} s. {err}".Trim()))
                 | Exited(code, err) when code <> 0 -> return Error(CommandFailed(name, code, err))
                 | Exited _ when not (exists out) || fileSize out = 0.0 ->

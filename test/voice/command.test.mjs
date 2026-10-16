@@ -57,6 +57,41 @@ test("placeholders are shell-quoted", async () => {
   assert.equal(fs.readFileSync(dump, "utf8"), name);
 });
 
+/** Runs the command as narrate would (check, then speak) and as speak alone; true when PWNED was created. */
+const pwned = async (command) => {
+  const marker = path.join(fs.mkdtempSync(path.join(tmp, "probe-")), "PWNED");
+  const voice = voiceFor(command, { name: `$(touch ${marker})` });
+  const c = ok(V.choose(ws, { provider: "command", voice: voice.Name, command: "mine" }));
+  if (V.check(c, 1.0).tag === 0) await run(voice);
+  await run(voice);
+  return fs.existsSync(marker);
+};
+
+test("a repository's voice never runs as code, even inside quotes in the command", async () => {
+  assert.equal(await pwned(`printf %s "{voice}" > {out}.v; ${FF} {out}`), false, "double quotes");
+  assert.equal(await pwned(`printf %s '{voice}' > {out}.v; ${FF} {out}`), false, "single quotes");
+  assert.equal(await pwned(`printf %s {voice} > {out}.v; ${FF} {out}`), false, "no quotes");
+});
+
+test("check refuses a placeholder written inside quotes", () => {
+  for (const command of [`say -v "{voice}" -o {out}`, `say -o '{out}'`, `say -o {out}"x"`]) {
+    voiceFor(command);
+    const c = ok(V.choose(ws, { provider: "command", voice: "v", command: "mine" }));
+    const f = bad(V.check(c, 1.0));
+    assert.equal(f.name, "SettingsBad", command);
+    assert.match(Array.from(V.describe(f)[1]).join("\n"), /without quotes/, command);
+  }
+});
+
+test("the values reach the command as CV_VOICE, CV_LANG, CV_SPEED and CV_OUT", async () => {
+  const dump = path.join(tmp, "env.txt");
+  const command = `printf '%s|%s|%s|%s' "$CV_VOICE" "$CV_LANG" "$CV_SPEED" "$CV_OUT" > ${dump}; ${FF} {out}`;
+  ok(await run(voiceFor(command, { name: "Ava", speed: 1.1 })));
+  const [voice, lang, speed, out] = fs.readFileSync(dump, "utf8").split("|");
+  assert.deepEqual([voice, lang, speed], ["Ava", "en", "1.1"]);
+  assert.match(out, /voice\.wav$/);
+});
+
 test("exit 1 is a CommandFailed with its stderr", async () => {
   const f = bad(await run(voiceFor("echo nope >&2; exit 1")));
   assert.equal(f.name, "CommandFailed");
