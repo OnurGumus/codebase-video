@@ -120,7 +120,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.claude/plugins/data/codebase-video-codebase-video
-          key: codebase-video-home-0.9     # the plugin's version: change it when you update the plugin
+          key: codebase-video-home-0.10     # the plugin's version: change it when you update the plugin
 
       - name: Where the last video ended
         uses: actions/cache@v4
