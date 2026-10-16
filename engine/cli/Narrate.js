@@ -12,7 +12,7 @@ import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp
 import { tryPick, iterate, sumBy, last as last_2, tryFind, item as item_1, length, indexed, sort, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { defaultArg, some, value as value_22 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { FSharpSet__Contains, toList as toList_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { mkdirp, parseJson, readText, resolve, writeText, rename, toJson, sha1Hex, readJson, dirname, requireFromHome, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists } from "./Node.js";
+import { mkdirp, parseJson, readText, resolve, closingOnError, writeText, rename, toJson, sha1Hex, readJson, dirname, requireFromHome, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists } from "./Node.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { FSharpMap__Remove, FSharpMap__Add, empty as empty_2, FSharpMap__TryFind, FSharpMap__ContainsKey, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
@@ -1810,7 +1810,7 @@ function narrate(settings) {
         const markedScenes = settings.Marked.scenes;
         const scenes = toList(delay(() => map((si) => [si, item(si, sceneObjs)], rangeDouble(0, 1, sceneObjs.length - 1))));
         const emptyTrack = new Track(empty(), 0, empty());
-        const asyncResult = singleton_2.Delay(() => singleton_2.Bind(foldAR((tupledArg, tupledArg_1) => voiceScene(settings, markedScenes, tupledArg[0], tupledArg[1], tupledArg_1[0], tupledArg_1[1]), [emptyTrack, empty()], scenes), (_arg) => singleton_2.Bind(release(), () => singleton_2.Return(_arg))));
+        const asyncResult = singleton_2.Delay(() => singleton_2.Bind(closingOnError(release, foldAR((tupledArg, tupledArg_1) => voiceScene(settings, markedScenes, tupledArg[0], tupledArg[1], tupledArg_1[0], tupledArg_1[1]), [emptyTrack, empty()], scenes)), (_arg) => singleton_2.Bind(release(), () => singleton_2.Return(_arg))));
         return singleton_2.Bind(asyncResult, (input_1_1) => {
             const input_6 = input_1_1;
             if (input_6.tag === 1) {

@@ -59,6 +59,26 @@ let argv: string list =
 let exit (code: int) : 'a = proc?exit(code)
 /// The status the process ends with once its event loop is empty (process.exitCode); it does not end it.
 let setExitCode (code: int) : unit = proc?exitCode <- code
+
+/// `body`; when it throws, `cleanup` runs first and the exception then goes on as it was, so that a step that fails
+/// part-way leaves nothing (a server, a browser, the voice Worker) keeping the process alive.
+let closingOnError (cleanup: unit -> Async<unit>) (body: Async<'a>) : Async<'a> =
+    async {
+        try
+            return! body
+        with e ->
+            do! cleanup ()
+            return raise e
+    }
+
+/// A timer that does not keep the process alive by itself.
+[<Emit("setTimeout($0, $1).unref()")>]
+let private unrefTimeout (f: unit -> unit) (ms: int) : unit = jsNative
+
+/// Sets the exit status; the process ends by itself if nothing else keeps it alive, else `exit` ends it after `ms`.
+let exitUnlessDone (code: int) (ms: int) : unit =
+    setExitCode code
+    unrefTimeout (fun () -> exit code) ms
 let cwd () : string = proc?cwd()
 let homedir: string = os?homedir()
 let platform: string = proc?platform

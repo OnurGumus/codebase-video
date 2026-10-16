@@ -69,13 +69,13 @@ let describe (failure: Failure) : int * string list =
     | Present f -> Present.describe f
 
 /// Runs a step to its end, then ends with its code; an Error prints its lines and ends with its code; an exception
-/// is printed and exits with 1. The engine's one Async.StartAsPromise, and the one caller of process.exit: every
+/// is printed and ends with 1. The engine's one Async.StartAsPromise, and the one caller of process.exit: every
 /// step below is an Async. A step that returns (Ok whatever its code, or Error) only sets process.exitCode: the
 /// process ends by itself once the event loop is empty, so stdout reaches a slow pipe whole and V8 is torn down
 /// before its threads are joined (process.exit joins them first and, rarely, hangs there for good:
 /// nodejs/node#64274). A step leaves nothing running when it returns: Chrome and the page server are closed, and the
-/// voice Worker is released, also when voicing fails. An exception exits at once, as it can leave any of them
-/// running.
+/// voice Worker is released, also when voicing fails. An exception can leave any of them running, so it also ends
+/// by itself when nothing is left, and with process.exit a second later when something is.
 let finish (step: Async<Result<int, Failure>>) : unit =
     (Async.StartAsPromise step)
         .``then``(fun outcome ->
@@ -87,7 +87,7 @@ let finish (step: Async<Result<int, Failure>>) : unit =
                 setExitCode code)
         .catch(fun e ->
             eprint (string e)
-            exit 1)
+            exitUnlessDone 1 1000)
     |> ignore
 
 /// The narration, unless build/timing.json is there already. Narrate.run is called here, at once, so that it reads
