@@ -119,10 +119,10 @@ names `voices.json`.
 |---|---|
 | Kokoro (default) | yes, unchanged: a project with no voice settings gives the same video as before |
 | ElevenLabs | tested against its documentation only, not yet live |
-| OpenAI | tested against its documentation only, not yet live |
+| OpenAI | tested live: `gpt-4o-mini-tts`, voice `coral`, a short video narrated and rendered (2026-10-16) |
 | Azure AI Speech | tested against its documentation only, not yet live |
 | Google Cloud Text-to-Speech | tested against its documentation only, not yet live |
-| Command | tested with macOS say |
+| Command | tested with macOS `say`: a full 4-minute video narrated and rendered |
 
 "Against its documentation" means the requests were checked against the provider's published API with a local
 stand-in server. If a service rejects a request, `narrate` stops and prints the service's own message.
