@@ -1,0 +1,13 @@
+{
+  "name": "voice-fixture",
+  "title": "A voice fixture",
+  "voice": "af_heart",
+  "lang": "en-us",
+  "speed": 1.0,
+  "voices": { "fr": { "voice": "ff_siwis", "lang": "fr-fr" } },
+  "pronounce": { "une phrase": "yn fʁˈaz" },
+  "scenes": [
+    { "id": "one", "say": "The first sentence is short. Then {fr:une phrase} is said. That is all." },
+    { "id": "two", "say": "", "hold": 1.0 }
+  ]
+}

@@ -956,9 +956,13 @@ type private Scene =
       /// chapter, toasts, breaks and recap, when present, in that order
       extras: (string * Py.Json) list }
 
-/// The soundtrack as far as it is laid down: its pieces (the latest first), its length in samples, and the phrases
-/// voiced in another language (the latest first), which become phonemes.txt.
-type private Track = { audio: Audio list; pos: int; report: string list }
+/// What a voice other than Kokoro has cost so far: the characters sent, the requests made, the pieces found in the
+/// cache, and the pinned phrases ("pronounce") it was given as written.
+type private Usage = { characters: int; requests: int; cached: int; unpinned: Set<string> }
+
+/// The soundtrack as far as it is laid down: its pieces (the latest first), its length in samples, the phrases
+/// voiced in another language (the latest first), which become phonemes.txt, and the usage of a non-Kokoro voice.
+type private Track = { audio: Audio list; pos: int; report: string list; usage: Usage }
 
 let private samplesOf (piece: Audio) : int =
     match piece with
@@ -1052,6 +1056,8 @@ type Failure =
     | DuplicateSceneId of id: obj
     /// "poster" (or the default, the 2nd scene) names no scene
     | PosterNotFound of id: obj
+    /// the chosen voice (voice.json or script.json) cannot be used, or its provider failed
+    | VoiceFailed of Voice.Failure
 
 /// The exit code of a failure and the lines it prints on stderr.
 let describe (failure: Failure) : int * string list =
@@ -1069,6 +1075,7 @@ let describe (failure: Failure) : int * string list =
           + " in script.json" ]
     | DuplicateSceneId id -> 1, [ $"duplicate scene id {Py.repr id}" ]
     | PosterNotFound id -> 1, [ $"poster scene {Py.repr id} not found" ]
+    | VoiceFailed f -> Voice.describe f
 
 /// What `run` reads from the workspace before anything is voiced: script.json's settings, checked, and where the
 /// outputs go.
@@ -1081,10 +1088,10 @@ type private Settings =
       Marked: obj
       Name: string
       /// the main voice; None for a silent clip
-      Voice: string option
+      Choice: Voice.Choice option
       Lang: obj
       Speed: float
-      /// "voices": the voice and language of each {code:...} phrase
+      /// "voices": the voice and language of each {code:...} phrase, for a Kokoro voice
       Others: obj
       /// "pronounce": the exact phonemes of a phrase
       Pronounce: Map<string, obj>
@@ -1092,19 +1099,39 @@ type private Settings =
       Build: string
       Cache: string }
 
-/// The voice and language of a piece of speech: the script's own, or the ones "voices" gives a {code:...} phrase.
-let private specFor (settings: Settings) (code: string option) : Result<string * string, Failure> =
-    match code with
-    | None -> Ok(settings.Voice.Value, unbox settings.Lang)
-    | Some code ->
+/// The voice of a piece of speech: the script's own, or the one "voices" gives a {code:...} phrase. A Kokoro voice
+/// needs a "voices" entry for the code; another provider says a phrase without one with the main voice, in the
+/// language the code names.
+let private specFor (settings: Settings) (code: string option) : Result<Voice.Voice, Failure> =
+    let choice = settings.Choice.Value
+    let voice (name: string) (lang: string) : Voice.Voice =
+        { Provider = choice.Provider
+          Name = name
+          Model = choice.Model
+          Instructions = choice.Instructions
+          Lang = lang
+          Speed = settings.Speed }
+    match choice.Provider, code with
+    | _, None -> Ok(voice choice.Name (unbox settings.Lang))
+    | Voice.Kokoro, Some code ->
         match get settings.Others code with
-        | Some spec -> Ok(unbox spec?voice, unbox spec?lang)
+        | Some spec -> Ok(voice (unbox spec?voice) (unbox spec?lang))
         | None -> Error(UnknownPhraseLanguage code)
+    | _, Some code ->
+        let name, lang = choice.Others.TryFind code |> Option.defaultValue (choice.Name, code)
+        Ok(voice name lang)
 
-/// The samples of a piece of speech, and the line it adds to phonemes.txt when it is in another language.
-let private synth (settings: Settings) (code: string option) (text: string) (where: string) =
+/// The samples of a piece of speech in a Kokoro voice, and the line it adds to phonemes.txt when it is in another
+/// language.
+let private synthKokoro
+    (settings: Settings)
+    (voice: Voice.Voice)
+    (code: string option)
+    (text: string)
+    (where: string)
+    =
     asyncResult {
-        let! v, l = specFor settings code
+        let v, l = voice.Name, voice.Lang
         let phonemes =
             settings.Pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy |> Option.map (fun p -> string p)
         let text = if phonemes.IsNone && l.ToLower().StartsWith "en" then voiced text else text
@@ -1136,6 +1163,48 @@ let private synth (settings: Settings) (code: string option) (text: string) (whe
         return Wav.read path, line
     }
 
+/// The samples of a piece of speech in a voice other than Kokoro, the line it adds to phonemes.txt when it is in
+/// another language ("-" for its phonemes: the provider makes its own), and the usage with this piece counted. The
+/// text is sent as written (a "pronounce" pin is Kokoro's only), and a piece already voiced comes from the cache.
+let private synthOther
+    (settings: Settings)
+    (usage: Usage)
+    (voice: Voice.Voice)
+    (code: string option)
+    (text: string)
+    (where: string)
+    =
+    asyncResult {
+        let usage =
+            match settings.Pronounce.TryFind(text.Trim()) |> Option.filter Py.truthy with
+            | Some _ -> { usage with unpinned = usage.unpinned.Add(text.Trim()) }
+            | None -> usage
+        let line = code |> Option.map (fun c -> $"{where}\t{c}\t{text}\t-\tprovider")
+        let path = join [ settings.Cache; Voice.pieceKey voice text + ".wav" ]
+        if text.Trim() = "" then
+            return Array.empty<float32>, line, usage
+        elif exists path then
+            return Wav.read path, line, { usage with cached = usage.cached + 1 }
+        else
+            let! samples = VoiceCloud.speak voice text |> AsyncResult.mapError VoiceFailed
+            Wav.write (path + ".part") (Wav.trim samples)
+            rename (path + ".part") path
+            let sent = { usage with characters = usage.characters + text.Length; requests = usage.requests + 1 }
+            return Wav.read path, line, sent
+    }
+
+/// The samples of a piece of speech, the line it adds to phonemes.txt when it is in another language, and the usage
+/// with this piece counted (a Kokoro piece leaves it as it is).
+let private synth (settings: Settings) (usage: Usage) (code: string option) (text: string) (where: string) =
+    asyncResult {
+        let! voice = specFor settings code
+        match voice.Provider with
+        | Voice.Kokoro ->
+            let! samples, line = synthKokoro settings voice code text where
+            return samples, line, usage
+        | _ -> return! synthOther settings usage voice code text where
+    }
+
 /// One scene's turn: the track and the scenes timed so far (the latest first) in, the same with this scene out.
 /// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
 /// with silence up to a whole frame.
@@ -1158,13 +1227,14 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
                 let track = if k > 0 then silence (max gap PART_GAP) track else track
                 let partStart = now startFrame track
                 let! track =
-                    if settings.Voice.IsSome then
+                    if settings.Choice.IsSome then
                         asyncResult {
-                            let! samples, line = synth settings code (spoken text) $"{Py.str id}[{i}]"
+                            let where = $"{Py.str id}[{i}]"
+                            let! samples, line, usage = synth settings track.usage code (spoken text) where
                             let track =
                                 match line with
-                                | Some l -> { track with report = l :: track.report }
-                                | None -> track
+                                | Some l -> { track with report = l :: track.report; usage = usage }
+                                | None -> { track with usage = usage }
                             return lay (Speech samples) track
                         }
                     else
@@ -1247,6 +1317,21 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
         return track, timed :: finished
     }
 
+/// A whole number with commas between thousands: 4812 as "4,812".
+let private grouped (n: int) : string =
+    let rec go (s: string) =
+        if s.Length <= 3 then s else go (s.Substring(0, s.Length - 3)) + "," + s.Substring(s.Length - 3)
+    go (string n)
+
+/// The lines that end `narrate` with a voice other than Kokoro: the pins it did not use, then what it cost.
+let private printUsage (choice: Voice.Choice) (usage: Usage) : unit =
+    let said = Voice.providerName choice.Provider
+    if not usage.unpinned.IsEmpty then
+        printfn "%s" $"{usage.unpinned.Count} pinned pronunciation(s) not used by {said}: the text is sent as written"
+    let model = choice.Model |> Option.map (fun m -> " " + m) |> Option.defaultValue ""
+    let sent = $"{grouped usage.characters} characters in {grouped usage.requests} requests"
+    printfn "%s" $"voice: {said}{model}, {sent}, {grouped usage.cached} pieces from the cache"
+
 /// The outputs, once every scene is voiced and the voice is released: narration.wav, timing.json and timing.js,
 /// captions.vtt and phonemes.txt, then the summary on stdout. One synchronous pass (no Async, whose steps can give the
 /// event loop a turn): the summary is printed whole, and the command ends right after it. A poster that names no
@@ -1270,7 +1355,7 @@ let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list
             Py.Obj(
                 [ "name", Py.Str settings.Name
                   "title", (match get settings.Script "title" with Some v -> Py.ofJs v | None -> Py.Str "")
-                  "voiced", Py.Bool settings.Voice.IsSome
+                  "voiced", Py.Bool settings.Choice.IsSome
                   // "captions": true in script.json draws each sentence at the bottom of the picture as it is spoken
                   // (for players that start muted or cannot load the separate .vtt file). Off unless asked for.
                   "captions", Py.Bool (match get settings.Script "captions" with Some v -> Py.truthy v | None -> false)
@@ -1326,6 +1411,9 @@ let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list
             printfn "%s" $"  {(Py.str s.id).PadRight 14} {times}  ({s.sentences.Length} sentences)")
         if not track.report.IsEmpty then
             printfn "%s" $"  {track.report.Length} phrase(s) in another voice - check build/phonemes.txt against the lesson"
+        match settings.Choice with
+        | Some choice when choice.Provider <> Voice.Kokoro -> printUsage choice track.usage
+        | _ -> ()
     }
 
 /// The scenes voiced one after another, then the voice released and the outputs written. A failure while voicing
@@ -1336,7 +1424,8 @@ let private narrate (settings: Settings) : Async<Result<unit, Failure>> =
         let sceneObjs: obj[] = settings.Script?scenes
         let markedScenes: obj[] = settings.Marked?scenes
         let scenes = [ for si in 0 .. sceneObjs.Length - 1 -> si, sceneObjs[si] ]
-        let emptyTrack: Track = { audio = []; pos = 0; report = [] }
+        let noUsage = { characters = 0; requests = 0; cached = 0; unpinned = Set.empty }
+        let emptyTrack: Track = { audio = []; pos = 0; report = []; usage = noUsage }
         let! track, finished =
             async {
                 let! voiced =
@@ -1362,13 +1451,57 @@ let private unspoken (specs: obj list) : obj option =
         else
             None)
 
-/// Voices the workspace. Reading and checking script.json happen as `run` is called, before the Async starts: what
-/// throws there reaches the caller at once, and a failed check (the voice not installed, the name, a language) is
-/// the Error the Async returns, before any work is done.
+/// Whether script.json's own voice fields apply, by Voice.choose's rule: the script names a provider, or there is no
+/// <repo>/.codebase-video/voice.json.
+let private scriptDecides (clip: string) (script: obj) : bool =
+    let provider: obj = script?provider
+    (jsTypeof provider = "string" && unbox<string> provider <> "") || not (exists (join [ dirname clip; "voice.json" ]))
+
+/// A voice.json's phrase voices as script.json writes "voices", the shape Kokoro's checks and `specFor` read.
+let private voicesObject (others: Map<string, string * string>) : obj =
+    createObj [ for KeyValue(code, (name, lang)) in others -> code ==> createObj [ "voice" ==> name; "lang" ==> lang ] ]
+
+/// Whether a provider other than Kokoro voices the video, so that the Kokoro packages are not needed. False when
+/// script.json cannot be read: `run` then reports the missing packages first, as it always has. A voice setting that
+/// is wrong counts as true, so that `run` reports it.
+let private spokenElsewhere (ws: string) : bool =
+    try
+        match Voice.choose ws (readJson (join [ resolve ws; "script.json" ])) with
+        | Ok(Some choice) -> choice.Provider <> Voice.Kokoro
+        | Ok None -> false
+        | Error _ -> true
+    with _ ->
+        false
+
+/// The video's voice (Voice.choose), checked for its speed, and the phrase voices a Kokoro voice reads. Kokoro with
+/// script.json's own fields keeps its voice and "voices" exactly as script.json gives them (so a "voice" of "" or
+/// false is silent, as it always was); Kokoro from voice.json takes that file's voice and phrase voices.
+let private chosen
+    (ws: string)
+    (script: obj)
+    (speed: float)
+    (voiceName: string option)
+    (others: obj)
+    : Result<Voice.Choice option * obj, Voice.Failure> =
+    result {
+        let! choice = Voice.choose ws script
+        do! choice |> Option.map (fun c -> Voice.check c speed) |> Option.defaultValue (Ok())
+        match choice with
+        | Some c when c.Provider = Voice.Kokoro ->
+            if scriptDecides (resolve ws) script then
+                return voiceName |> Option.map (fun name -> { c with Name = name }), others
+            else
+                return Some c, voicesObject c.Others
+        | other -> return other, others
+    }
+
+/// Voices the workspace. Reading and checking script.json and the voice settings happen as `run` is called, before
+/// the Async starts: what throws there reaches the caller at once, and a failed check (the Kokoro voice not
+/// installed, the name, the chosen voice, a Kokoro language) is the Error the Async returns, before any work is done.
 let run (ws: string) : Async<Result<unit, Failure>> =
     match requirePackages voicePackages with
-    | Error hint -> async.Return(Error(VoiceNotInstalled hint))
-    | Ok() ->
+    | Error hint when not (spokenElsewhere ws) -> async.Return(Error(VoiceNotInstalled hint))
+    | _ ->
         let clip = resolve ws
         let scriptText = readText (join [ clip; "script.json" ])
         let script = parseJson scriptText
@@ -1388,11 +1521,17 @@ let run (ws: string) : Async<Result<unit, Failure>> =
                 match get script "pronounce" with
                 | Some p when not (isNull p) -> Py.keys p |> Array.map (fun k -> k.Trim(), p?(k)) |> Map.ofArray
                 | _ -> Map.empty
+            let voice = chosen ws script speed voiceName others
+            let choice, others = voice |> Result.defaultValue (None, others)
+            let voiceName = choice |> Option.map (fun c -> c.Name)
             let specs =
                 box (createObj [ "voice" ==> voiceName; "lang" ==> lang ]) :: [ for k in Py.keys others -> others?(k) ]
-            match unspoken specs with
-            | Some lang -> async.Return(Error(UnknownLanguage lang))
-            | None ->
+            // Kokoro's languages are checked for a Kokoro voice only (a silent clip's phrase voices are Kokoro's)
+            let specs = if choice |> Option.exists (fun c -> c.Provider <> Voice.Kokoro) then [] else specs
+            match voice, unspoken specs with
+            | Error f, _ -> async.Return(Error(VoiceFailed f))
+            | Ok _, Some lang -> async.Return(Error(UnknownLanguage lang))
+            | Ok _, None ->
                 let glossary = Glossary.load clip
                 let build = join [ clip; "build" ]
                 let cache = join [ build; "tts-cache" ]
@@ -1402,7 +1541,7 @@ let run (ws: string) : Async<Result<unit, Failure>> =
                       Script = script
                       Marked = marked
                       Name = name
-                      Voice = voiceName
+                      Choice = choice
                       Lang = lang
                       Speed = speed
                       Others = others
