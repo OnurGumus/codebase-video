@@ -109,9 +109,13 @@ names `voices.json`.
 
 ## What a cloud voice costs, and who sees the text
 
-- **Cost.** You pay the service, by the character. `narrate` prints the characters it sent and how many pieces came
-  from the cache. A piece already voiced is never sent again: the same text with the same voice, model, language and
-  speed comes from `build/tts-cache`, so a second run sends nothing. A new voice voices everything once more.
+- **Cost.** You pay the service. OpenAI's default model, `gpt-4o-mini-tts`, costs about $0.015 per minute of
+  narration (October 2026; `tts-1` is billed by text instead, $15 per million characters), so a short video is about
+  5 to 8 cents and a tour 10 to 15 cents. ElevenLabs, Azure and Google bill by the character: see their price pages.
+  The Claude tokens a video uses cost far more than its voice. `narrate` prints the characters it sent and how many
+  pieces came from the cache. A piece already voiced is never sent again: the same text with the same voice, model,
+  language and speed comes from `build/tts-cache`, so a second run sends nothing, and a changed sentence sends only
+  that sentence. A new voice voices everything once more.
 - **Privacy.** Kokoro, the default, runs on your computer. A cloud voice sends the narration text to that service:
   the sentences, including code names they say aloud, not the code itself. Your code is never sent. Check the
   service's own terms for what it does with the text.
