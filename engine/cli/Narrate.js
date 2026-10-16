@@ -3,23 +3,25 @@ import { read, write, concat as concat_3, trim as trim_1, roundHalfEven } from "
 import { max, isNegativeInfinity, isPositiveInfinity, parse } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { toConsole, concat as concat_1, trim, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { concat as concat_2, truncate, fold as fold_1, choose, reverse as reverse_1, mapIndexed as mapIndexed_1, map as map_1, item, equalsWith } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { round, disposeSafe, getEnumerator, Lazy, Exception, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { createObj, equals, round, disposeSafe, getEnumerator, Lazy, Exception, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { op_UnaryNegation_Int32, parse as parse_1 } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
-import { empty as empty_1, singleton as singleton_1, collect, append as append_1, delay, toList, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { exists as exists_2, empty as empty_1, singleton as singleton_1, collect, append as append_1, delay, toList, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { option_type, float32_type, class_type, lambda_type, array_type, uint8_type, unit_type, obj_type, record_type, int32_type, union_type, tuple_type, list_type, string_type, float64_type, bool_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { tryPick, iterate, sumBy, last as last_2, tryFind, item as item_1, length, indexed, sort, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { defaultArg, some, value as value_22 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
-import { FSharpSet__Contains, toList as toList_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
+import { toArray as toArray_1, defaultArg, some, value as value_19 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { FSharpSet__Contains, empty as empty_3, FSharpSet__get_Count, FSharpSet__get_IsEmpty, FSharpSet__Add, toList as toList_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
 import { mkdirp, parseJson, readText, resolve, closingOnError, writeText, rename, toJson, sha1Hex, readJson, dirname, requireFromHome, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists } from "./Node.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { FSharpMap__Remove, FSharpMap__Add, empty as empty_2, FSharpMap__TryFind, FSharpMap__ContainsKey, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
 import * as node$003Aworker_threads from "node:worker_threads";
+import { Choice, check, choose as choose_1, Provider, providerName, pieceKey, Voice, Choice_$reflection, describe as describe_1, Failure_$reflection as Failure_$reflection_1 } from "./Voice.js";
 import { load as load_1, apply, Glossary_$reflection } from "./Glossary.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
+import { speak as speak_1 } from "./VoiceCloud.js";
 import { ResultCE_result as ResultCE_result_1, ResultCE_ResultBuilder__Zero as ResultCE_ResultBuilder__Zero_1 } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
 import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 
@@ -439,7 +441,7 @@ function group(m, i) {
 }
 
 function group0(m) {
-    return value_22(group(m, 0));
+    return value_19(group(m, 0));
 }
 
 function matchIndex(m) {
@@ -504,7 +506,7 @@ export function sentences(say) {
     const found = patternInput[0];
     const shielded = toArray(map_2((arg) => group0(arg[1]), found));
     const marked = mapIndexed((n, tupledArg) => {
-        const mark = (ENDS_SENTENCE.test(value_22(group(tupledArg[1], 2)))) ? "\u0001" : "\u0000";
+        const mark = (ENDS_SENTENCE.test(value_19(group(tupledArg[1], 2)))) ? "\u0001" : "\u0000";
         return ((tupledArg[0] + "\u0000") + int32ToString(n)) + mark;
     }, found);
     return reverse(fold((sofar, p) => {
@@ -542,7 +544,7 @@ export function sentences(say) {
                     return sofar;
                 }
         }
-    }, empty(), map_2((raw_1) => (raw_1.replace(SHIELDED, (...a) => ((m_2) => item(parse_1(value_22(group(m_2, 1)), 511, false, 32), shielded))(a))).trim(), filter((raw) => (raw.trim() !== ""), ofArray((join("", marked) + patternInput[1]).split(SENTENCE_SPLIT))))));
+    }, empty(), map_2((raw_1) => (raw_1.replace(SHIELDED, (...a) => ((m_2) => item(parse_1(value_19(group(m_2, 1)), 511, false, 32), shielded))(a))).trim(), filter((raw) => (raw.trim() !== ""), ofArray((join("", marked) + patternInput[1]).split(SENTENCE_SPLIT))))));
 }
 
 /**
@@ -551,7 +553,7 @@ export function sentences(say) {
 export function breaks(s) {
     return toList(delay(() => map((m) => {
         let matchValue;
-        const kind = value_22(group(m, 1));
+        const kind = value_19(group(m, 1));
         return [kind, (matchValue = group(m, 2), (matchValue == null) ? breakDefault(kind) : parse(matchValue))];
     }, Array.from(s.matchAll(BREAK)))));
 }
@@ -568,12 +570,12 @@ export function rests(s) {
 }
 
 export function shown(s) {
-    const s_1 = (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_22(group(m, 1)))(a))).replace(FOREIGN, (...a) => ((m_1) => value_22(group(m_1, 2)))(a));
+    const s_1 = (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_19(group(m, 1)))(a))).replace(FOREIGN, (...a) => ((m_1) => value_19(group(m_1, 2)))(a));
     return s_1.trim();
 }
 
 export function spoken(s) {
-    return (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_22(group(m, 2)))(a))).trim();
+    return (((s.replace(REST, '')).replace(BREAK, '')).replace(PRONOUNCE, (...a) => ((m) => value_19(group(m, 2)))(a))).trim();
 }
 
 /**
@@ -581,7 +583,7 @@ export function spoken(s) {
  * Stage (src/Kit/Stage.fs) times words against this (Stage.word), so "86,400" is found where "eighty-six thousand" is said.
  */
 export function heard(s) {
-    return spoken(s).replace(FOREIGN, (...a) => ((m) => value_22(group(m, 2)))(a));
+    return spoken(s).replace(FOREIGN, (...a) => ((m) => value_19(group(m, 2)))(a));
 }
 
 const LETTER_A = new RegExp("(?<![\\p{L}\\p{N}_\'’])A(?![\\p{L}\\p{N}_\'’])", "gu");
@@ -611,7 +613,7 @@ export function pieces(sentence) {
     return map_2((tupledArg_1) => [tupledArg_1[0], tupledArg_1[1].trim()], filter((tupledArg) => (WORD_CHAR.test(tupledArg[1])), toList(delay(() => append_1(collect((matchValue) => {
         const m = matchValue[1];
         const before = matchValue[0];
-        return append_1((before !== "") ? singleton_1([undefined, before]) : empty_1(), delay(() => singleton_1([group(m, 1), value_22(group(m, 2))])));
+        return append_1((before !== "") ? singleton_1([undefined, before]) : empty_1(), delay(() => singleton_1([group(m, 1), value_19(group(m, 2))])));
     }, patternInput[0]), delay(() => ((tail !== "") ? singleton_1([undefined, tail]) : empty_1())))))));
 }
 
@@ -1112,7 +1114,7 @@ function failAll(pending, text) {
 function send(agent, state, ids, voiceName, speed, reply) {
     const matchValue_1 = attempt(() => {
         const matchValue = state.Worker;
-        return (matchValue == null) ? startWorker(agent) : value_22(matchValue);
+        return (matchValue == null) ? startWorker(agent) : value_19(matchValue);
     });
     if (matchValue_1.tag === 0) {
         const worker = matchValue_1.fields[0];
@@ -1167,7 +1169,7 @@ function handleVoice(agent, state, msg) {
                 const reply_2 = msg.fields[0];
                 const matchValue_1 = state.Worker;
                 if (matchValue_1 != null) {
-                    const worker = value_22(matchValue_1);
+                    const worker = value_19(matchValue_1);
                     return singleton_2.Bind(fromJs(worker.terminate()), (_arg) => singleton_2.Return([noWorker, append(failAll(state.Pending, "the voice was released before it answered"), singleton(() => {
                         reply_2.reply(undefined);
                     }))]));
@@ -1354,17 +1356,32 @@ function Scene_$reflection() {
     return record_type("Narrate.Scene", [], Scene, () => [["id", obj_type], ["idJson", Py_Json_$reflection()], ["start", float64_type], ["finish", float64_type], ["sentences", list_type(Sentence_$reflection())], ["extras", list_type(tuple_type(string_type, Py_Json_$reflection()))]]);
 }
 
+class Usage extends Record {
+    constructor(characters, requests, cached, unpinned) {
+        super();
+        this.characters = (characters | 0);
+        this.requests = (requests | 0);
+        this.cached = (cached | 0);
+        this.unpinned = unpinned;
+    }
+}
+
+function Usage_$reflection() {
+    return record_type("Narrate.Usage", [], Usage, () => [["characters", int32_type], ["requests", int32_type], ["cached", int32_type], ["unpinned", class_type("Microsoft.FSharp.Collections.FSharpSet`1", [string_type])]]);
+}
+
 class Track extends Record {
-    constructor(audio, pos, report) {
+    constructor(audio, pos, report, usage) {
         super();
         this.audio = audio;
         this.pos = (pos | 0);
         this.report = report;
+        this.usage = usage;
     }
 }
 
 function Track_$reflection() {
-    return record_type("Narrate.Track", [], Track, () => [["audio", list_type(Audio_$reflection())], ["pos", int32_type], ["report", list_type(string_type)]]);
+    return record_type("Narrate.Track", [], Track, () => [["audio", list_type(Audio_$reflection())], ["pos", int32_type], ["report", list_type(string_type)], ["usage", Usage_$reflection()]]);
 }
 
 function samplesOf(piece) {
@@ -1377,7 +1394,7 @@ function samplesOf(piece) {
 }
 
 function lay(piece, t) {
-    return new Track(cons(piece, t.audio), t.pos + samplesOf(piece), t.report);
+    return new Track(cons(piece, t.audio), t.pos + samplesOf(piece), t.report, t.usage);
 }
 
 function silence(seconds, t) {
@@ -1412,16 +1429,16 @@ function getFloat(o, key, fallback) {
         return fallback;
     }
     else {
-        return value_22(matchValue);
+        return value_19(matchValue);
     }
 }
 
 function $007CTruthy$007C_$007C(v) {
     let matchResult, x_1;
     if (v != null) {
-        if (Py_truthy(value_22(v))) {
+        if (Py_truthy(value_19(v))) {
             matchResult = 0;
-            x_1 = value_22(v);
+            x_1 = value_19(v);
         }
         else {
             matchResult = 1;
@@ -1484,12 +1501,12 @@ export class Failure extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["VoiceNotInstalled", "BadName", "UnknownLanguage", "UnknownPhraseLanguage", "DuplicateSceneId", "PosterNotFound"];
+        return ["VoiceNotInstalled", "BadName", "UnknownLanguage", "UnknownPhraseLanguage", "DuplicateSceneId", "PosterNotFound", "VoiceFailed"];
     }
 }
 
 export function Failure_$reflection() {
-    return union_type("Narrate.Failure", [], Failure, () => [[["hint", string_type]], [["name", obj_type]], [["lang", obj_type]], [["code", string_type]], [["id", obj_type]], [["id", obj_type]]]);
+    return union_type("Narrate.Failure", [], Failure, () => [[["hint", string_type]], [["name", obj_type]], [["lang", obj_type]], [["code", string_type]], [["id", obj_type]], [["id", obj_type]], [["Item", Failure_$reflection_1()]]]);
 }
 
 /**
@@ -1513,19 +1530,21 @@ export function describe(failure) {
             return [1, singleton(concat_1("duplicate scene id ", Py_repr(failure.fields[0])))];
         case 5:
             return [1, singleton(concat_1("poster scene ", Py_repr(failure.fields[0]), " not found"))];
+        case 6:
+            return describe_1(failure.fields[0]);
         default:
             return [2, singleton(failure.fields[0])];
     }
 }
 
 class Settings extends Record {
-    constructor(Ws, Script, Marked, Name, Voice, Lang, Speed, Others, Pronounce, Glossary, Build, Cache) {
+    constructor(Ws, Script, Marked, Name, Choice, Lang, Speed, Others, Pronounce, Glossary, Build, Cache) {
         super();
         this.Ws = Ws;
         this.Script = Script;
         this.Marked = Marked;
         this.Name = Name;
-        this.Voice = Voice;
+        this.Choice = Choice;
         this.Lang = Lang;
         this.Speed = Speed;
         this.Others = Others;
@@ -1537,124 +1556,189 @@ class Settings extends Record {
 }
 
 function Settings_$reflection() {
-    return record_type("Narrate.Settings", [], Settings, () => [["Ws", string_type], ["Script", obj_type], ["Marked", obj_type], ["Name", string_type], ["Voice", option_type(string_type)], ["Lang", obj_type], ["Speed", float64_type], ["Others", obj_type], ["Pronounce", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, obj_type])], ["Glossary", Glossary_$reflection()], ["Build", string_type], ["Cache", string_type]]);
+    return record_type("Narrate.Settings", [], Settings, () => [["Ws", string_type], ["Script", obj_type], ["Marked", obj_type], ["Name", string_type], ["Choice", option_type(Choice_$reflection())], ["Lang", obj_type], ["Speed", float64_type], ["Others", obj_type], ["Pronounce", class_type("Microsoft.FSharp.Collections.FSharpMap`2", [string_type, obj_type])], ["Glossary", Glossary_$reflection()], ["Build", string_type], ["Cache", string_type]]);
 }
 
 function specFor(settings, code) {
+    const choice = value_19(settings.Choice);
+    const voice = (name, lang) => (new Voice(choice.Provider, name, choice.Model, choice.Instructions, lang, settings.Speed));
     if (code != null) {
-        const code_1 = code;
-        const matchValue = get$(settings.Others, code_1);
-        if (matchValue == null) {
-            return new FSharpResult$2(/* Error */ 1, [new Failure(/* UnknownPhraseLanguage */ 3, [code_1])]);
+        if (choice.Provider.tag === 0) {
+            const code_1 = code;
+            const matchValue_2 = get$(settings.Others, code_1);
+            if (matchValue_2 == null) {
+                return new FSharpResult$2(/* Error */ 1, [new Failure(/* UnknownPhraseLanguage */ 3, [code_1])]);
+            }
+            else {
+                const spec = value_19(matchValue_2);
+                return new FSharpResult$2(/* Ok */ 0, [voice(spec.voice, spec.lang)]);
+            }
         }
         else {
-            const spec = value_22(matchValue);
-            return new FSharpResult$2(/* Ok */ 0, [[spec.voice, spec.lang]]);
+            const code_2 = code;
+            const patternInput = defaultArg(FSharpMap__TryFind(choice.Others, code_2), [choice.Name, code_2]);
+            return new FSharpResult$2(/* Ok */ 0, [voice(patternInput[0], patternInput[1])]);
         }
     }
     else {
-        return new FSharpResult$2(/* Ok */ 0, [[value_22(settings.Voice), settings.Lang]]);
+        return new FSharpResult$2(/* Ok */ 0, [voice(choice.Name, settings.Lang)]);
     }
 }
 
-function synth(settings, code, text, where) {
+function synthKokoro(settings, voice, code, text, where) {
     return singleton_2.Delay(() => {
-        let asyncResult_4;
-        const value_1 = specFor(settings, code);
-        asyncResult_4 = singleton_2.Return(value_1);
-        return singleton_2.Bind(asyncResult_4, (input_1_5) => {
-            const input_24 = input_1_5;
-            if (input_24.tag === 1) {
-                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_24.fields[0]]));
+        const v = voice.Name;
+        const l = voice.Lang;
+        let phonemes;
+        let input_1;
+        const option_1 = FSharpMap__TryFind(settings.Pronounce, text.trim());
+        input_1 = ((option_1 != null) ? (Py_truthy(value_19(option_1)) ? option_1 : undefined) : undefined);
+        phonemes = ((input_1 == null) ? undefined : toString(value_19(input_1)));
+        const text_1 = ((phonemes == null) && l.toLocaleLowerCase().startsWith("en")) ? voiced(text) : text;
+        let asyncResult_3;
+        let input_2;
+        if (code == null) {
+            input_2 = singleton_2.Return(undefined);
+        }
+        else {
+            const c = code;
+            input_2 = singleton_2.Delay(() => {
+                let p_1;
+                return singleton_2.Bind((phonemes == null) ? phonemize(text_1, l) : ((p_1 = phonemes, singleton_2.Return(p_1))), (_arg) => {
+                    const source = (phonemes != null) ? "pinned" : "auto";
+                    return singleton_2.Return(`${where}	${c}	${text_1}	${_arg}	${source}`);
+                });
+            });
+        }
+        asyncResult_3 = singleton_2.Bind(input_2, (x$0027) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027])));
+        return singleton_2.Bind(asyncResult_3, (input_1_4) => {
+            const input_21 = input_1_4;
+            if (input_21.tag === 1) {
+                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_21.fields[0]]));
             }
             else {
-                const _arg = input_24.fields[0];
-                const v = _arg[0];
-                const l = _arg[1];
-                let phonemes;
-                let input_1;
-                const option_1 = FSharpMap__TryFind(settings.Pronounce, text.trim());
-                input_1 = ((option_1 != null) ? (Py_truthy(value_22(option_1)) ? option_1 : undefined) : undefined);
-                phonemes = ((input_1 == null) ? undefined : toString(value_22(input_1)));
-                const text_1 = ((phonemes == null) && l.toLocaleLowerCase().startsWith("en")) ? voiced(text) : text;
-                let asyncResult_3;
-                let input_2;
-                if (code == null) {
-                    input_2 = singleton_2.Return(undefined);
-                }
-                else {
-                    const c = code;
-                    input_2 = singleton_2.Delay(() => {
-                        let p_1;
-                        return singleton_2.Bind((phonemes == null) ? phonemize(text_1, l) : ((p_1 = phonemes, singleton_2.Return(p_1))), (_arg_1) => {
-                            const source = (phonemes != null) ? "pinned" : "auto";
-                            return singleton_2.Return(`${where}	${c}	${text_1}	${_arg_1}	${source}`);
-                        });
-                    });
-                }
-                asyncResult_3 = singleton_2.Bind(input_2, (x$0027) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027])));
-                return singleton_2.Bind(asyncResult_3, (input_1_4) => {
-                    const input_21 = input_1_4;
-                    if (input_21.tag === 1) {
-                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_21.fields[0]]));
+                const path = join_1(ofArray([settings.Cache, substring(sha1Hex(toJson(["kokoro-js 1.2.1 fp32", v, l, settings.Speed, defaultArg(phonemes, text_1)])), 0, 16) + ".wav"]));
+                let computation1;
+                if (!exists(path)) {
+                    let asyncResult_1;
+                    let input_5;
+                    if (phonemes == null) {
+                        input_5 = phonemize(text_1, l);
                     }
                     else {
-                        const path = join_1(ofArray([settings.Cache, substring(sha1Hex(toJson(["kokoro-js 1.2.1 fp32", v, l, settings.Speed, defaultArg(phonemes, text_1)])), 0, 16) + ".wav"]));
-                        let computation1;
-                        if (!exists(path)) {
-                            let asyncResult_1;
-                            let input_5;
-                            if (phonemes == null) {
-                                input_5 = phonemize(text_1, l);
-                            }
-                            else {
-                                const p_2 = phonemes;
-                                input_5 = singleton_2.Return(p_2);
-                            }
-                            asyncResult_1 = singleton_2.Bind(input_5, (x$0027_1) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027_1])));
-                            computation1 = singleton_2.Bind(asyncResult_1, (input_1_2) => {
-                                const input_15 = input_1_2;
-                                if (input_15.tag === 1) {
-                                    return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_15.fields[0]]));
+                        const p_2 = phonemes;
+                        input_5 = singleton_2.Return(p_2);
+                    }
+                    asyncResult_1 = singleton_2.Bind(input_5, (x$0027_1) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027_1])));
+                    computation1 = singleton_2.Bind(asyncResult_1, (input_1_2) => {
+                        const input_15 = input_1_2;
+                        if (input_15.tag === 1) {
+                            return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_15.fields[0]]));
+                        }
+                        else {
+                            let asyncResult;
+                            const input_8 = create(input_15.fields[0], v, settings.Speed);
+                            asyncResult = singleton_2.Bind(input_8, (x$0027_2) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027_2])));
+                            return singleton_2.Bind(asyncResult, (input_1_1) => {
+                                const input_12 = input_1_1;
+                                if (input_12.tag === 1) {
+                                    return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_12.fields[0]]));
                                 }
                                 else {
-                                    let asyncResult;
-                                    const input_8 = create(input_15.fields[0], v, settings.Speed);
-                                    asyncResult = singleton_2.Bind(input_8, (x$0027_2) => singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [x$0027_2])));
-                                    return singleton_2.Bind(asyncResult, (input_1_1) => {
-                                        const input_12 = input_1_1;
-                                        if (input_12.tag === 1) {
-                                            return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_12.fields[0]]));
-                                        }
-                                        else {
-                                            write(path + ".part", input_12.fields[0]);
-                                            rename(path + ".part", path);
-                                            const value_8 = ResultCE_ResultBuilder__Zero(ResultCE_result);
-                                            return singleton_2.Return(value_8);
-                                        }
-                                    });
+                                    write(path + ".part", input_12.fields[0]);
+                                    rename(path + ".part", path);
+                                    const value_6 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+                                    return singleton_2.Return(value_6);
                                 }
                             });
                         }
-                        else {
-                            const value_13 = ResultCE_ResultBuilder__Zero(ResultCE_result);
-                            computation1 = singleton_2.Return(value_13);
-                        }
-                        const computation2 = singleton_2.Delay(() => {
-                            const value_1_6 = new FSharpResult$2(/* Ok */ 0, [[read(path), input_21.fields[0]]]);
-                            return singleton_2.Return(value_1_6);
-                        });
-                        return singleton_2.Bind(computation1, (input_1_3) => {
-                            const input_18 = input_1_3;
-                            if (input_18.tag === 1) {
-                                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_18.fields[0]]));
-                            }
-                            else {
-                                return computation2;
-                            }
-                        });
+                    });
+                }
+                else {
+                    const value_11 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+                    computation1 = singleton_2.Return(value_11);
+                }
+                const computation2 = singleton_2.Delay(() => {
+                    const value_1_6 = new FSharpResult$2(/* Ok */ 0, [[read(path), input_21.fields[0]]]);
+                    return singleton_2.Return(value_1_6);
+                });
+                return singleton_2.Bind(computation1, (input_1_3) => {
+                    const input_18 = input_1_3;
+                    if (input_18.tag === 1) {
+                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_18.fields[0]]));
+                    }
+                    else {
+                        return computation2;
                     }
                 });
+            }
+        });
+    });
+}
+
+function synthOther(settings, usage, voice, code, text, where) {
+    return singleton_2.Delay(() => {
+        let usage_1;
+        let matchValue;
+        const option_1 = FSharpMap__TryFind(settings.Pronounce, text.trim());
+        matchValue = ((option_1 != null) ? (Py_truthy(value_19(option_1)) ? option_1 : undefined) : undefined);
+        usage_1 = ((matchValue == null) ? usage : (new Usage(usage.characters, usage.requests, usage.cached, FSharpSet__Add(usage.unpinned, text.trim()))));
+        let line;
+        const input_1 = code;
+        line = ((input_1 == null) ? undefined : (`${where}	${input_1}	${text}	-	provider`));
+        const path = join_1(ofArray([settings.Cache, pieceKey(voice, text) + ".wav"]));
+        if (text.trim() === "") {
+            return singleton_2.Return(new FSharpResult$2(/* Ok */ 0, [[new Float32Array(0), line, usage_1]]));
+        }
+        else if (exists(path)) {
+            const value_1_2 = new FSharpResult$2(/* Ok */ 0, [[read(path), line, new Usage(usage_1.characters, usage_1.requests, usage_1.cached + 1, usage_1.unpinned)]]);
+            return singleton_2.Return(value_1_2);
+        }
+        else {
+            let x_1;
+            const input_2 = speak_1(voice, text);
+            x_1 = singleton_2.Bind(input_2, (x$0027) => {
+                let value_4;
+                const input_4 = x$0027;
+                value_4 = ((input_4.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* VoiceFailed */ 6, [input_4.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_4.fields[0]])));
+                return singleton_2.Return(value_4);
+            });
+            return singleton_2.Bind(x_1, (x$0027_1) => {
+                let sent;
+                let value_6;
+                const input_8 = x$0027_1;
+                value_6 = ((input_8.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_8.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(write(path + ".part", trim_1(input_8.fields[0])), (rename(path + ".part", path), (sent = (new Usage(usage_1.characters + text.length, usage_1.requests + 1, usage_1.cached, usage_1.unpinned)), [read(path), line, sent])))])));
+                return singleton_2.Return(value_6);
+            });
+        }
+    });
+}
+
+function synth(settings, usage, code, text, where) {
+    return singleton_2.Delay(() => {
+        let asyncResult_1;
+        const value_1 = specFor(settings, code);
+        asyncResult_1 = singleton_2.Return(value_1);
+        return singleton_2.Bind(asyncResult_1, (input_1_1) => {
+            const input_6 = input_1_1;
+            if (input_6.tag === 1) {
+                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]));
+            }
+            else {
+                const voice = input_6.fields[0];
+                if (voice.Provider.tag === 0) {
+                    const x = synthKokoro(settings, voice, code, text, where);
+                    return singleton_2.Bind(x, (x$0027) => {
+                        let _arg_1;
+                        let value_2;
+                        const input_2 = x$0027;
+                        value_2 = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_2.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_1 = input_2.fields[0], [_arg_1[0], _arg_1[1], usage])])));
+                        return singleton_2.Return(value_2);
+                    });
+                }
+                else {
+                    return synthOther(settings, usage, voice, code, text, where);
+                }
             }
         });
     });
@@ -1692,14 +1776,15 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
                                 const track_3 = (tupledArg_1[0] > 0) ? silence(max(tupledArg[2], PART_GAP), track_2) : track_2;
                                 const partStart = now(startFrame, track_3);
                                 let x_2;
-                                if (settings.Voice != null) {
+                                if (settings.Choice != null) {
                                     x_2 = singleton_2.Delay(() => {
-                                        const x = synth(settings, code, spoken(text), `${Py_str(id)}[${i_1}]`);
+                                        const where = `${Py_str(id)}[${i_1}]`;
+                                        const x = synth(settings, track_3.usage, code, spoken(text), where);
                                         return singleton_2.Bind(x, (x$0027) => {
-                                            let _arg_2, line;
+                                            let _arg_2, usage, line;
                                             let value_7;
                                             const input_3 = x$0027;
-                                            value_7 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_2 = input_3.fields[0], (line = _arg_2[1], lay(new Audio(/* Speech */ 1, [_arg_2[0]]), (line == null) ? track_3 : (new Track(track_3.audio, track_3.pos, cons(line, track_3.report))))))])));
+                                            value_7 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_2 = input_3.fields[0], (usage = _arg_2[2], (line = _arg_2[1], lay(new Audio(/* Speech */ 1, [_arg_2[0]]), (line == null) ? (new Track(track_3.audio, track_3.pos, track_3.report, usage)) : (new Track(track_3.audio, track_3.pos, cons(line, track_3.report), usage))))))])));
                                             return singleton_2.Return(value_7);
                                         });
                                     });
@@ -1732,7 +1817,7 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
                             return singleton_2.Return(value_13);
                         });
                     });
-                }, [silence(getFloat(sc, "lead", 0.4), track), empty(), empty()], indexed(sentences(apply(settings.Glossary, defaultArg((input_1 = ((option_1 = get$(sc, "say"), (option_1 != null) ? (!Operators_IsNull(value_22(option_1)) ? option_1 : undefined) : undefined)), (input_1 == null) ? undefined : value_22(input_1)), "")))));
+                }, [silence(getFloat(sc, "lead", 0.4), track), empty(), empty()], indexed(sentences(apply(settings.Glossary, defaultArg((input_1 = ((option_1 = get$(sc, "say"), (option_1 != null) ? (!Operators_IsNull(value_19(option_1)) ? option_1 : undefined) : undefined)), (input_1 == null) ? undefined : value_19(input_1)), "")))));
                 return singleton_2.Bind(x_6, (x$0027_3) => {
                     let _arg_5, sceneBreaks_1, lines_1, track_13, over, track_14, endFrame, msc, passthrough, breaksJson;
                     let value_15;
@@ -1756,6 +1841,29 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
     });
 }
 
+function grouped(n) {
+    const go = (s) => {
+        if (s.length <= 3) {
+            return s;
+        }
+        else {
+            return (go(substring(s, 0, s.length - 3)) + ",") + substring(s, s.length - 3);
+        }
+    };
+    return go(int32ToString(n));
+}
+
+function printUsage(choice, usage) {
+    let matchValue, matchValue_1, m;
+    const said = providerName(choice.Provider);
+    if (!FSharpSet__get_IsEmpty(usage.unpinned)) {
+        const arg = `${FSharpSet__get_Count(usage.unpinned)} pinned pronunciation(s) not used by ${said}: the text is sent as written`;
+        toConsole(printf("%s"))(arg);
+    }
+    const arg_1 = `voice: ${said}${(matchValue = choice.Provider, (matchValue_1 = choice.Model, (matchValue.tag === 1) ? ((matchValue_1 != null) ? ((m = matchValue_1, " " + m)) : "") : ((matchValue.tag === 2) ? ((matchValue_1 != null) ? ((m = matchValue_1, " " + m)) : "") : "")))}, ${concat_1(grouped(usage.characters), " characters in ", grouped(usage.requests), " requests")}, ${grouped(usage.cached)} pieces from the cache`;
+    toConsole(printf("%s"))(arg_1);
+}
+
 function writeOutputs(settings, track, scenes) {
     let p, ps_1, ps_2, matchValue_2, matchValue_3, matchValue_4, activePatternResult_1, c, asked, on, total, label, matchValue_5, activePatternResult_2, k, matchValue_6, activePatternResult_3, m;
     const duration = ~~(track.pos / FRAME) / 30;
@@ -1763,16 +1871,16 @@ function writeOutputs(settings, track, scenes) {
     let posterId;
     const matchValue = get$(settings.Script, "poster");
     const activePatternResult = $007CTruthy$007C_$007C(matchValue);
-    posterId = ((activePatternResult != null) ? ((p = value_22(activePatternResult), p)) : ((length(scenes) > 1) ? item_1(1, scenes) : item_1(0, scenes)).id);
-    let input_1;
+    posterId = ((activePatternResult != null) ? ((p = value_19(activePatternResult), p)) : ((length(scenes) > 1) ? item_1(1, scenes) : item_1(0, scenes)).id);
+    let input_3;
     const matchValue_1 = tryFind((s) => (toJson(s.id) === toJson(posterId)), scenes);
-    input_1 = ((matchValue_1 != null) ? (isEmpty(matchValue_1.sentences) ? ((ps_1 = matchValue_1, new FSharpResult$2(/* Ok */ 0, [ps_1.finish - 0.1]))) : ((ps_2 = matchValue_1, new FSharpResult$2(/* Ok */ 0, [last_2(ps_2.sentences).finish])))) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* PosterNotFound */ 5, [posterId])])));
-    if (input_1.tag === 1) {
-        return new FSharpResult$2(/* Error */ 1, [input_1.fields[0]]);
+    input_3 = ((matchValue_1 != null) ? (isEmpty(matchValue_1.sentences) ? ((ps_1 = matchValue_1, new FSharpResult$2(/* Ok */ 0, [ps_1.finish - 0.1]))) : ((ps_2 = matchValue_1, new FSharpResult$2(/* Ok */ 0, [last_2(ps_2.sentences).finish])))) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* PosterNotFound */ 5, [posterId])])));
+    if (input_3.tag === 1) {
+        return new FSharpResult$2(/* Error */ 1, [input_3.fields[0]]);
     }
     else {
-        const poster = input_1.fields[0];
-        const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [settings.Name])], ["title", (matchValue_2 = get$(settings.Script, "title"), (matchValue_2 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_22(matchValue_2)))], ["voiced", new Py_Json(/* Bool */ 1, [settings.Voice != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_3 = get$(settings.Script, "captions"), (matchValue_3 == null) ? false : Py_truthy(value_22(matchValue_3)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes)])]]), append((matchValue_4 = get$(settings.Script, "card"), (activePatternResult_1 = $007CTruthy$007C_$007C(matchValue_4), (activePatternResult_1 != null) ? ((c = value_22(activePatternResult_1), (asked = c.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(settings.Ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton(["card", Py_ofJs(Object.assign({}, settings.Marked.card, { thumbnail: (on && label) }))]))))))) : empty())), append((matchValue_5 = get$(settings.Script, "kind"), (activePatternResult_2 = $007CTruthy$007C_$007C(matchValue_5), (activePatternResult_2 != null) ? ((k = value_22(activePatternResult_2), singleton(["kind", Py_ofJs(k)]))) : empty())), (matchValue_6 = get$(settings.Script, "map"), (activePatternResult_3 = $007CTruthy$007C_$007C(matchValue_6), (activePatternResult_3 != null) ? ((m = value_22(activePatternResult_3), singleton(["map", Py_ofJs(m)]))) : empty())))))]);
+        const poster = input_3.fields[0];
+        const timing = new Py_Json(/* Obj */ 6, [append(ofArray([["name", new Py_Json(/* Str */ 4, [settings.Name])], ["title", (matchValue_2 = get$(settings.Script, "title"), (matchValue_2 == null) ? (new Py_Json(/* Str */ 4, [""])) : Py_ofJs(value_19(matchValue_2)))], ["voiced", new Py_Json(/* Bool */ 1, [settings.Choice != null])], ["captions", new Py_Json(/* Bool */ 1, [(matchValue_3 = get$(settings.Script, "captions"), (matchValue_3 == null) ? false : Py_truthy(value_19(matchValue_3)))])], ["duration", num(duration)], ["poster", num(Py_round(poster, 3))], ["scenes", new Py_Json(/* List */ 5, [map_2(sceneJson, scenes)])]]), append((matchValue_4 = get$(settings.Script, "card"), (activePatternResult_1 = $007CTruthy$007C_$007C(matchValue_4), (activePatternResult_1 != null) ? ((c = value_19(activePatternResult_1), (asked = c.thumbnail, (on = (((asked === undefined || asked === null)) ? (briefLength(settings.Ws) === "short") : Py_truthy(asked)), (total = (~~round(duration) | 0), (label = (`${~~(total / 60)}:${padLeft(int32ToString(total % 60), 2, "0")}`), singleton(["card", Py_ofJs(Object.assign({}, settings.Marked.card, { thumbnail: (on && label) }))]))))))) : empty())), append((matchValue_5 = get$(settings.Script, "kind"), (activePatternResult_2 = $007CTruthy$007C_$007C(matchValue_5), (activePatternResult_2 != null) ? ((k = value_19(activePatternResult_2), singleton(["kind", Py_ofJs(k)]))) : empty())), (matchValue_6 = get$(settings.Script, "map"), (activePatternResult_3 = $007CTruthy$007C_$007C(matchValue_6), (activePatternResult_3 != null) ? ((m = value_19(activePatternResult_3), singleton(["map", Py_ofJs(m)]))) : empty())))))]);
         writeText(join_1(ofArray([settings.Build, "timing.json"])), Py_dumpsIndented(2, timing));
         writeText(join_1(ofArray([settings.Build, "timing.js"])), ("window.TIMING = " + Py_dumps(timing)) + ";\n");
         const cues = toList(delay(() => append_1(singleton_1("WEBVTT"), delay(() => append_1(singleton_1(""), delay(() => collect((s_2) => collect((c_1) => append_1(singleton_1(concat_1(vttTime(c_1.start), " --> ", vttTime(c_1.finish))), delay(() => append_1(singleton_1(c_1.text), delay(() => singleton_1(""))))), s_2.sentences), scenes)))))));
@@ -1793,13 +1901,42 @@ function writeOutputs(settings, track, scenes) {
             const arg_1 = `  ${padRight(Py_str(s_4.id), 14)} ${times}  (${length(s_4.sentences)} sentences)`;
             toConsole(printf("%s"))(arg_1);
         }, scenes);
+        let input_1;
         if (!isEmpty(track.report)) {
             const arg_2 = `  ${length(track.report)} phrase(s) in another voice - check build/phonemes.txt against the lesson`;
             toConsole(printf("%s"))(arg_2);
-            return ResultCE_ResultBuilder__Zero_1(ResultCE_result_1);
+            input_1 = ResultCE_ResultBuilder__Zero_1(ResultCE_result_1);
         }
         else {
-            return ResultCE_ResultBuilder__Zero_1(ResultCE_result_1);
+            input_1 = ResultCE_ResultBuilder__Zero_1(ResultCE_result_1);
+        }
+        if (input_1.tag === 1) {
+            return new FSharpResult$2(/* Error */ 1, [input_1.fields[0]]);
+        }
+        else {
+            const matchValue_7 = settings.Choice;
+            let matchResult, choice_1;
+            if (matchValue_7 != null) {
+                if (!equals(matchValue_7.Provider, Provider.Kokoro)) {
+                    matchResult = 0;
+                    choice_1 = matchValue_7;
+                }
+                else {
+                    matchResult = 1;
+                }
+            }
+            else {
+                matchResult = 1;
+            }
+            switch (matchResult) {
+                case 0: {
+                    printUsage(choice_1, track.usage);
+                    return ResultCE_ResultBuilder__Zero_1(ResultCE_result_1);
+                }
+                default: {
+                    return ResultCE_ResultBuilder__Zero_1(ResultCE_result_1);
+                }
+            }
         }
     }
 }
@@ -1809,7 +1946,9 @@ function narrate(settings) {
         const sceneObjs = settings.Script.scenes;
         const markedScenes = settings.Marked.scenes;
         const scenes = toList(delay(() => map((si) => [si, item(si, sceneObjs)], rangeDouble(0, 1, sceneObjs.length - 1))));
-        const emptyTrack = new Track(empty(), 0, empty());
+        const emptyTrack = new Track(empty(), 0, empty(), new Usage(0, 0, 0, empty_3({
+            Compare: (x, y) => (comparePrimitives(x, y) | 0),
+        })));
         const asyncResult = singleton_2.Delay(() => singleton_2.Bind(closingOnError(release, foldAR((tupledArg, tupledArg_1) => voiceScene(settings, markedScenes, tupledArg[0], tupledArg[1], tupledArg_1[0], tupledArg_1[1]), [emptyTrack, empty()], scenes)), (_arg) => singleton_2.Bind(release(), () => singleton_2.Return(_arg))));
         return singleton_2.Bind(asyncResult, (input_1_1) => {
             const input_6 = input_1_1;
@@ -1818,10 +1957,10 @@ function narrate(settings) {
             }
             else {
                 const _arg_2 = input_6.fields[0];
-                let x;
+                let x_1;
                 const value_1 = writeOutputs(settings, _arg_2[0], reverse(_arg_2[1]));
-                x = singleton_2.Return(value_1);
-                return singleton_2.Bind(x, (x$0027) => {
+                x_1 = singleton_2.Return(value_1);
+                return singleton_2.Bind(x_1, (x$0027) => {
                     let value_2;
                     const input_2 = x$0027;
                     value_2 = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_2.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
@@ -1853,84 +1992,158 @@ function unspoken(specs) {
     }, specs);
 }
 
-/**
- * Voices the workspace. Reading and checking script.json happen as `run` is called, before the Async starts: what
- * throws there reaches the caller at once, and a failed check (the voice not installed, the name, a language) is
- * the Error the Async returns, before any work is done.
- */
-export function run(ws) {
-    let v, option_2;
-    const matchValue = requirePackages(voicePackages);
-    if (matchValue.tag === 0) {
-        const clip = resolve(ws);
-        const scriptText = readText(join_1(ofArray([clip, "script.json"])));
-        const script = parseJson(scriptText);
-        const marked = JSON.parse(scriptText, (k, v, c) => typeof v === 'number' && c && typeof c.source === 'string' && /[.eE]/.test(c.source) ? {__py_float__: v} : v);
-        const matchValue_1 = script.name;
-        const activePatternResult = $007CServerName$007C_$007C(matchValue_1);
-        if (activePatternResult != null) {
-            const name = activePatternResult;
-            let voiceName;
-            const matchValue_2 = get$(script, "voice");
-            if (matchValue_2 != null) {
-                const activePatternResult_1 = $007CTruthy$007C_$007C(matchValue_2);
-                voiceName = ((activePatternResult_1 != null) ? ((v = value_22(activePatternResult_1), v)) : undefined);
-            }
-            else {
-                voiceName = "af_heart";
-            }
-            const lang = defaultArg(get$(script, "lang"), "en-us");
-            const speed = getFloat(script, "speed", 1);
-            const others = defaultArg((option_2 = get$(script, "voices"), (option_2 != null) ? (!Operators_IsNull(value_22(option_2)) ? option_2 : undefined) : undefined), {});
-            let pronounce;
-            const matchValue_3 = get$(script, "pronounce");
-            let matchResult, p_1;
-            if (matchValue_3 != null) {
-                if (!Operators_IsNull(value_22(matchValue_3))) {
-                    matchResult = 0;
-                    p_1 = value_22(matchValue_3);
-                }
-                else {
-                    matchResult = 1;
-                }
-            }
-            else {
-                matchResult = 1;
-            }
-            switch (matchResult) {
-                case 0: {
-                    pronounce = ofArray_1(map_1((k) => [k.trim(), p_1[k]], Object.keys(p_1)), {
-                        Compare: (x, y) => (comparePrimitives(x, y) | 0),
-                    });
-                    break;
-                }
-                default:
-                    pronounce = empty_2({
-                        Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
-                    });
-            }
-            const matchValue_4 = unspoken(cons({
-                voice: voiceName,
-                lang: lang,
-            }, toList(delay(() => map((k_1) => others[k_1], Object.keys(others))))));
-            if (matchValue_4 == null) {
-                const glossary = load_1(clip);
-                const build = join_1(ofArray([clip, "build"]));
-                const cache = join_1(ofArray([build, "tts-cache"]));
-                mkdirp(cache);
-                return narrate(new Settings(ws, script, marked, name, voiceName, lang, speed, others, pronounce, glossary, build, cache));
-            }
-            else {
-                const lang_1 = value_22(matchValue_4);
-                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* UnknownLanguage */ 2, [lang_1])]));
-            }
+function scriptDecides(clip, script) {
+    const provider = script.provider;
+    if (((typeof provider) === "string") && (provider !== "")) {
+        return true;
+    }
+    else {
+        return !exists(join_1(ofArray([dirname(clip), "voice.json"])));
+    }
+}
+
+function voicesObject(others) {
+    return createObj(toList(delay(() => collect((matchValue) => {
+        const activePatternResult = matchValue;
+        return singleton_1([activePatternResult[0], {
+            voice: activePatternResult[1][0],
+            lang: activePatternResult[1][1],
+        }]);
+    }, others))));
+}
+
+function spokenElsewhere(ws) {
+    try {
+        const matchValue = choose_1(ws, readJson(join_1(ofArray([resolve(ws), "script.json"]))));
+        return (matchValue.tag === 1) ? true : ((matchValue.fields[0] == null) ? false : !equals(matchValue.fields[0].Provider, Provider.Kokoro));
+    }
+    catch (matchValue_1) {
+        return false;
+    }
+}
+
+function chosen(ws, script, speed, voiceName, others) {
+    let input_1, c_2, input_3;
+    const input_6 = choose_1(ws, script);
+    if (input_6.tag === 1) {
+        return new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]);
+    }
+    else {
+        const choice = input_6.fields[0];
+        const input_4 = defaultArg((input_1 = choice, (input_1 == null) ? undefined : check(input_1, speed)), new FSharpResult$2(/* Ok */ 0, [undefined]));
+        if (input_4.tag === 1) {
+            return new FSharpResult$2(/* Error */ 1, [input_4.fields[0]]);
         }
         else {
-            return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* BadName */ 1, [matchValue_1])]));
+            return new FSharpResult$2(/* Ok */ 0, [(choice != null) ? (equals(choice.Provider, Provider.Kokoro) ? ((c_2 = choice, scriptDecides(resolve(ws), script) ? [(input_3 = voiceName, (input_3 == null) ? undefined : (new Choice(c_2.Provider, input_3, c_2.Model, c_2.Instructions, c_2.Others))), others] : [c_2, voicesObject(c_2.Others)])) : [choice, others]) : [choice, others]]);
+        }
+    }
+}
+
+/**
+ * Voices the workspace. Reading and checking script.json and the voice settings happen as `run` is called, before
+ * the Async starts: what throws there reaches the caller at once, and a failed check (the Kokoro voice not
+ * installed, the name, the chosen voice, a Kokoro language) is the Error the Async returns, before any work is done.
+ */
+export function run(ws) {
+    let v, option_2, input_1;
+    const matchValue = requirePackages(voicePackages);
+    let matchResult;
+    if (matchValue.tag === 1) {
+        if (!spokenElsewhere(ws)) {
+            matchResult = 0;
+        }
+        else {
+            matchResult = 1;
         }
     }
     else {
-        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* VoiceNotInstalled */ 0, [matchValue.fields[0]])]));
+        matchResult = 1;
+    }
+    switch (matchResult) {
+        case 0:
+            return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* VoiceNotInstalled */ 0, [matchValue.fields[0]])]));
+        default: {
+            const clip = resolve(ws);
+            const scriptText = readText(join_1(ofArray([clip, "script.json"])));
+            const script = parseJson(scriptText);
+            const marked = JSON.parse(scriptText, (k, v, c) => typeof v === 'number' && c && typeof c.source === 'string' && /[.eE]/.test(c.source) ? {__py_float__: v} : v);
+            const matchValue_1 = script.name;
+            const activePatternResult = $007CServerName$007C_$007C(matchValue_1);
+            if (activePatternResult != null) {
+                const name = activePatternResult;
+                let voiceName;
+                const matchValue_2 = get$(script, "voice");
+                if (matchValue_2 != null) {
+                    const activePatternResult_1 = $007CTruthy$007C_$007C(matchValue_2);
+                    voiceName = ((activePatternResult_1 != null) ? ((v = value_19(activePatternResult_1), v)) : undefined);
+                }
+                else {
+                    voiceName = "af_heart";
+                }
+                const lang = defaultArg(get$(script, "lang"), "en-us");
+                const speed = getFloat(script, "speed", 1);
+                const others = defaultArg((option_2 = get$(script, "voices"), (option_2 != null) ? (!Operators_IsNull(value_19(option_2)) ? option_2 : undefined) : undefined), {});
+                let pronounce;
+                const matchValue_3 = get$(script, "pronounce");
+                let matchResult_1, p_1;
+                if (matchValue_3 != null) {
+                    if (!Operators_IsNull(value_19(matchValue_3))) {
+                        matchResult_1 = 0;
+                        p_1 = value_19(matchValue_3);
+                    }
+                    else {
+                        matchResult_1 = 1;
+                    }
+                }
+                else {
+                    matchResult_1 = 1;
+                }
+                switch (matchResult_1) {
+                    case 0: {
+                        pronounce = ofArray_1(map_1((k) => [k.trim(), p_1[k]], Object.keys(p_1)), {
+                            Compare: (x, y) => (comparePrimitives(x, y) | 0),
+                        });
+                        break;
+                    }
+                    default:
+                        pronounce = empty_2({
+                            Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
+                        });
+                }
+                const voice = chosen(ws, script, speed, voiceName, others);
+                let patternInput;
+                const result_1 = voice;
+                patternInput = ((result_1.tag === 1) ? [undefined, others] : result_1.fields[0]);
+                const others_1 = patternInput[1];
+                const choice = patternInput[0];
+                const specs = cons({
+                    voice: (input_1 = choice, (input_1 == null) ? undefined : input_1.Name),
+                    lang: lang,
+                }, toList(delay(() => map((k_1) => others_1[k_1], Object.keys(others_1)))));
+                const matchValue_4 = unspoken(exists_2((c_1) => !equals(c_1.Provider, Provider.Kokoro), toArray_1(choice)) ? empty() : specs);
+                const copyOfStruct = voice;
+                if (copyOfStruct.tag === 0) {
+                    if (matchValue_4 == null) {
+                        const glossary = load_1(clip);
+                        const build = join_1(ofArray([clip, "build"]));
+                        const cache = join_1(ofArray([build, "tts-cache"]));
+                        mkdirp(cache);
+                        return narrate(new Settings(ws, script, marked, name, choice, lang, speed, others_1, pronounce, glossary, build, cache));
+                    }
+                    else {
+                        const lang_1 = value_19(matchValue_4);
+                        return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* UnknownLanguage */ 2, [lang_1])]));
+                    }
+                }
+                else {
+                    return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* VoiceFailed */ 6, [copyOfStruct.fields[0]])]));
+                }
+            }
+            else {
+                return singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* BadName */ 1, [matchValue_1])]));
+            }
+        }
     }
 }
 

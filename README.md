@@ -43,6 +43,7 @@ ignores that folder.
 | fix or change a video, give standing hints, or fix how a word is said | [Change a video](docs/change-a-video.md) |
 | show what changed since a release, a commit or a date | [A progress video](docs/progress-video.md) |
 | give the video in my own voice, as slides | [Present it yourself](docs/present-it-yourself.md) |
+| use another voice than Kokoro, a cloud voice or my own model | [Use another voice](docs/use-another-voice.md) |
 | put the video in a README | [Share it on GitHub](docs/share-on-github.md) |
 | make videos from CI, without questions | [Run it from CI](docs/ci.md) |
 | look up a setting, an output file or a command | [Reference](docs/features.md) |
@@ -58,7 +59,8 @@ ignores that folder.
 - **Is it correct?** Every statement is checked against your code by a Claude that did not write it, and so are the
   script and the pictures. That is careful checking, not a proof: the write-up beside each video names the file and
   line behind every statement.
-- **Is my code private?** The voice, the drawing and the video files stay on your computer; nothing is uploaded.
+- **Is my code private?** The voice (Kokoro, the default), the drawing and the video files stay on your computer;
+  nothing is uploaded. A [cloud voice](docs/use-another-voice.md) you choose gets the narration text.
   Claude Code reads your code as it always does. Claude is told to keep passwords and keys out of the video. The
   video shows your code: share it only with people who may see the code.
 - **Which languages?** Any. Code on screen is coloured for F#, C#, JavaScript, TypeScript, Python, SQL, JSON, YAML,

@@ -15,6 +15,7 @@ committed, which is why users need only Node.js.
 | `briefs/*.progress.md`, `briefs/kind.progress.md` | what differs for a progress video (how the code changed over a commit range) |
 | `engine/glossary.json` | how technical terms are said aloud ("JSON" as "jason"); hand-written, read by `src/Engine/Glossary.fs` |
 | `engine/kit/gallery` | a small sample video that uses every kit component |
+| `test/voice` | tests of the voice providers against a local fake server and local commands (run `node --test 'test/voice/*.test.mjs'`; they need ffmpeg) |
 | `test/golden` | a baseline harness: records every output of the engine, then shows what a change altered |
 | `docs/` | the guides for users (the README links each one), the [reference](docs/features.md) and [how it works](docs/how-it-works.md) |
 | branch `gh-pages` | the project page and the promo video (kept off `main` so installs stay small) |
@@ -39,6 +40,13 @@ something new, for example a new part of the chapter frame in `src/Kit/Frame.fs`
 segment will be reused. `video --full` ignores the cache. `video --lossless` writes lossless segments and joins
 them into `build/frames.mkv`; its frames must be identical to a `video --full --lossless` run after any change,
 which is how to test the key (`ffmpeg -i build/frames.mkv -f framemd5 -`).
+
+The voice tests need ffmpeg, and they call no real service. The macOS `say` test is skipped elsewhere, and the test
+that Kokoro is unchanged is skipped when Kokoro is not set up. Run them with:
+
+```
+node --test 'test/voice/*.test.mjs'
+```
 
 To check that a change to the engine alters nothing it should not (a refactor, for example), record a baseline before
 the change and compare after it:

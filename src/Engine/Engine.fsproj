@@ -9,6 +9,8 @@
     <Compile Include="Node.fs" />
     <Compile Include="../Shared/Steps.fs" />
     <Compile Include="Wav.fs" />
+    <Compile Include="Voice.fs" />
+    <Compile Include="VoiceCloud.fs" />
     <Compile Include="Glossary.fs" />
     <Compile Include="Narrate.fs" />
     <Compile Include="Chapters.fs" />
