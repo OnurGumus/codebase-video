@@ -6,12 +6,12 @@ import { split, substring, concat } from "./fable_modules/fable-library-js.5.19.
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { toJson, sha1Hex, fileSize, childProcess, runCapture, remove, fs, os, env, toolHome, readJson, exists, resolve, dirname, join } from "./Node.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
-import { orElse, defaultArg, value as value_5, some } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { orElse, defaultArg, value as value_7, some } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { ofArray as ofArray_1 } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { map, tryLast, choose as choose_1 } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { defaultOf as defaultOf_1, createObj, int32ToString, disposeSafe, getEnumerator, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { traverseResultM } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/List.fs.js";
-import { collect, empty, singleton as singleton_1, append, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { empty, collect, singleton as singleton_1, append, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
 import { defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { read } from "./Wav.js";
@@ -234,7 +234,7 @@ function pick(project, script) {
             return some(script);
         }
         else {
-            return some(value_5(project));
+            return some(value_7(project));
         }
     }
     else {
@@ -260,14 +260,45 @@ function others(spec) {
 
 const shellClasses = ofArray([["$ or `", ofArray(["$", "`"])], ["a quote", ofArray(["\"", "\'"])], ["a backslash", singleton("\\")], ["; & or |", ofArray([";", "&", "|"])], ["< or >", ofArray(["<", ">"])], ["a line break", ofArray(["\n", "\r"])], ["a NUL", singleton(String.fromCharCode(0 & 0xFFFF))]]);
 
+function notText(field, value) {
+    return new Failure(/* SettingsBad */ 1, [(`the voice setting "${field}" is ${value === null ? 'null' : Array.isArray(value) ? 'a list'
+    : typeof value === 'object' ? 'an object' : 'a ' + typeof value}, not text: write it as a string `) + "(voice.json, script.json)"]);
+}
+
+function textOnly(fields) {
+    const matchValue = tryFind((tupledArg) => {
+        const o = tupledArg[1];
+        const key = tupledArg[2];
+        if ((o != null && Object.hasOwn(o, key))) {
+            return (typeof o[key]) !== "string";
+        }
+        else {
+            return false;
+        }
+    }, fields);
+    if (matchValue == null) {
+        return new FSharpResult$2(/* Ok */ 0, [undefined]);
+    }
+    else {
+        const o_1 = matchValue[1];
+        const key_1 = matchValue[2];
+        return new FSharpResult$2(/* Error */ 1, [notText(matchValue[0], o_1[key_1])]);
+    }
+}
+
 function plainValues(values) {
     const input_1 = traverseResultM((tupledArg) => {
-        const matchValue = tryFind((tupledArg_1) => exists_1((c) => (tupledArg[1].indexOf(c) >= 0), tupledArg_1[1]), shellClasses);
-        if (matchValue == null) {
+        const field = tupledArg[0];
+        const value = tupledArg[1];
+        const matchValue = tryFind((tupledArg_1) => exists_1((c) => (value.indexOf(c) >= 0), tupledArg_1[1]), shellClasses);
+        if ((typeof value) !== "string") {
+            return new FSharpResult$2(/* Error */ 1, [notText(field, value)]);
+        }
+        else if (matchValue == null) {
             return new FSharpResult$2(/* Ok */ 0, [undefined]);
         }
         else {
-            return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [((`the command voice's "${tupledArg[0]}" holds ${matchValue[0]}: a command voice's voice and lang may not hold `) + "$ ` \" \' \\ ; & | < >, CR, LF or NUL, since its command runs in a shell ") + "(voice.json, script.json)"])]);
+            return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [((`the command voice's "${field}" holds ${matchValue[0]}: a command voice's voice and lang may not hold `) + "$ ` \" \' \\ ; & | < >, CR, LF or NUL, since its command runs in a shell ") + "(voice.json, script.json)"])]);
         }
     }, values);
     if (input_1.tag === 1) {
@@ -287,87 +318,104 @@ export function choose(ws, script) {
         return new FSharpResult$2(/* Ok */ 0, [undefined]);
     }
     else {
-        const input_13 = projectSettings(ws);
-        if (input_13.tag === 1) {
-            return new FSharpResult$2(/* Error */ 1, [input_13.fields[0]]);
+        const input_16 = projectSettings(ws);
+        if (input_16.tag === 1) {
+            return new FSharpResult$2(/* Error */ 1, [input_16.fields[0]]);
         }
         else {
-            const spec = value_5(pick(input_13.fields[0], script));
+            const spec = value_7(pick(input_16.fields[0], script));
             const provider = defaultArg(text(spec, "provider"), "kokoro");
-            const input_11 = (activePatternResult = $007CNamed$007C_$007C(provider), (activePatternResult != null) ? ((p = activePatternResult, new FSharpResult$2(/* Ok */ 0, [p]))) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [concat("unknown provider \"", provider, "\" (voice.json, script.json): use one of ", "kokoro, elevenlabs, openai, azure, google, command")])])));
-            if (input_11.tag === 1) {
-                return new FSharpResult$2(/* Error */ 1, [input_11.fields[0]]);
+            const input_14 = (activePatternResult = $007CNamed$007C_$007C(provider), (activePatternResult != null) ? ((p = activePatternResult, new FSharpResult$2(/* Ok */ 0, [p]))) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [concat("unknown provider \"", provider, "\" (voice.json, script.json): use one of ", "kokoro, elevenlabs, openai, azure, google, command")])])));
+            if (input_14.tag === 1) {
+                return new FSharpResult$2(/* Error */ 1, [input_14.fields[0]]);
             }
             else {
-                const kind = input_11.fields[0];
-                const voice = text(spec, "voice");
-                const input_9 = (voice == null) ? ((kind === "kokoro") ? (new FSharpResult$2(/* Ok */ 0, ["af_heart"])) : ((kind === "command") ? (new FSharpResult$2(/* Ok */ 0, [""])) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [concat("provider \"", kind, "\" needs a \"voice\" in voice.json or script.json")])])))) : (new FSharpResult$2(/* Ok */ 0, [voice]));
-                if (input_9.tag === 1) {
-                    return new FSharpResult$2(/* Error */ 1, [input_9.fields[0]]);
+                const kind = input_14.fields[0];
+                let input_12;
+                if (kind !== "kokoro") {
+                    const input = textOnly(toList(delay(() => append(singleton_1(["voice", spec, "voice"]), delay(() => append(singleton_1(["lang", script, "lang"]), delay(() => collect((matchValue) => {
+                        const v = matchValue[1];
+                        const code = matchValue[0];
+                        return append(singleton_1([concat("voices.", code, ".voice"), v, "voice"]), delay(() => singleton_1([concat("voices.", code, ".lang"), v, "lang"])));
+                    }, Object.entries(spec.voices || {})))))))));
+                    input_12 = ((input.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
                 }
                 else {
-                    const name = input_9.fields[0];
-                    let input_7;
-                    switch (kind) {
-                        case "elevenlabs": {
-                            input_7 = (new FSharpResult$2(/* Ok */ 0, [Provider.ElevenLabs]));
-                            break;
-                        }
-                        case "openai": {
-                            input_7 = (new FSharpResult$2(/* Ok */ 0, [Provider.OpenAI]));
-                            break;
-                        }
-                        case "azure": {
-                            input_7 = (new FSharpResult$2(/* Ok */ 0, [new Provider(/* Azure */ 3, [defaultArg(env("AZURE_SPEECH_REGION"), "")])]));
-                            break;
-                        }
-                        case "google": {
-                            input_7 = (new FSharpResult$2(/* Ok */ 0, [Provider.Google]));
-                            break;
-                        }
-                        case "command": {
-                            let input_2;
-                            const option_1 = text(spec, "command");
-                            input_2 = ((option_1 == null) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, ["provider \"command\" needs a \"command\": a command name from voices.json"])])) : (new FSharpResult$2(/* Ok */ 0, [option_1])));
-                            if (input_2.tag === 1) {
-                                input_7 = (new FSharpResult$2(/* Error */ 1, [input_2.fields[0]]));
-                            }
-                            else {
-                                const command = input_2.fields[0];
-                                const input = commandText(command);
-                                input_7 = ((input.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [new Provider(/* Command */ 5, [command, input.fields[0]])])));
-                            }
-                            break;
-                        }
-                        default:
-                            input_7 = (new FSharpResult$2(/* Ok */ 0, [Provider.Kokoro]));
-                    }
-                    if (input_7.tag === 1) {
-                        return new FSharpResult$2(/* Error */ 1, [input_7.fields[0]]);
+                    input_12 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+                }
+                if (input_12.tag === 1) {
+                    return new FSharpResult$2(/* Error */ 1, [input_12.fields[0]]);
+                }
+                else {
+                    const voice = text(spec, "voice");
+                    const input_10 = (voice == null) ? ((kind === "kokoro") ? (new FSharpResult$2(/* Ok */ 0, ["af_heart"])) : ((kind === "command") ? (new FSharpResult$2(/* Ok */ 0, [""])) : (new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [concat("provider \"", kind, "\" needs a \"voice\" in voice.json or script.json")])])))) : (new FSharpResult$2(/* Ok */ 0, [voice]));
+                    if (input_10.tag === 1) {
+                        return new FSharpResult$2(/* Error */ 1, [input_10.fields[0]]);
                     }
                     else {
-                        const chosen = input_7.fields[0];
-                        const phrases = others(spec);
-                        let input_5;
-                        if (chosen.tag === 5) {
-                            const input_3 = plainValues(toList(delay(() => append(singleton_1(["voice", name]), delay(() => {
-                                let matchValue_1;
-                                return append((matchValue_1 = text(script, "lang"), (matchValue_1 == null) ? (empty()) : singleton_1(["lang", matchValue_1])), delay(() => collect((matchValue_2) => {
-                                    const activePatternResult_1 = matchValue_2;
-                                    const code = activePatternResult_1[0];
-                                    return append(singleton_1([concat("voices.", code, ".voice"), activePatternResult_1[1][0]]), delay(() => singleton_1([concat("voices.", code, ".lang"), activePatternResult_1[1][1]])));
-                                }, phrases)));
-                            })))));
-                            input_5 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
+                        const name = input_10.fields[0];
+                        let input_8;
+                        switch (kind) {
+                            case "elevenlabs": {
+                                input_8 = (new FSharpResult$2(/* Ok */ 0, [Provider.ElevenLabs]));
+                                break;
+                            }
+                            case "openai": {
+                                input_8 = (new FSharpResult$2(/* Ok */ 0, [Provider.OpenAI]));
+                                break;
+                            }
+                            case "azure": {
+                                input_8 = (new FSharpResult$2(/* Ok */ 0, [new Provider(/* Azure */ 3, [defaultArg(env("AZURE_SPEECH_REGION"), "")])]));
+                                break;
+                            }
+                            case "google": {
+                                input_8 = (new FSharpResult$2(/* Ok */ 0, [Provider.Google]));
+                                break;
+                            }
+                            case "command": {
+                                let input_3;
+                                const option_1 = text(spec, "command");
+                                input_3 = ((option_1 == null) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, ["provider \"command\" needs a \"command\": a command name from voices.json"])])) : (new FSharpResult$2(/* Ok */ 0, [option_1])));
+                                if (input_3.tag === 1) {
+                                    input_8 = (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]]));
+                                }
+                                else {
+                                    const command = input_3.fields[0];
+                                    const input_1 = commandText(command);
+                                    input_8 = ((input_1.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_1.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [new Provider(/* Command */ 5, [command, input_1.fields[0]])])));
+                                }
+                                break;
+                            }
+                            default:
+                                input_8 = (new FSharpResult$2(/* Ok */ 0, [Provider.Kokoro]));
+                        }
+                        if (input_8.tag === 1) {
+                            return new FSharpResult$2(/* Error */ 1, [input_8.fields[0]]);
                         }
                         else {
-                            input_5 = ResultCE_ResultBuilder__Zero(ResultCE_result);
-                        }
-                        if (input_5.tag === 1) {
-                            return new FSharpResult$2(/* Error */ 1, [input_5.fields[0]]);
-                        }
-                        else {
-                            return new FSharpResult$2(/* Ok */ 0, [new Choice(chosen, name, orElse(text(spec, "model"), (chosen.tag === 1) ? "eleven_multilingual_v2" : ((chosen.tag === 2) ? "gpt-4o-mini-tts" : undefined)), text(spec, "instructions"), phrases)]);
+                            const chosen = input_8.fields[0];
+                            const phrases = others(spec);
+                            let input_6;
+                            if (chosen.tag === 5) {
+                                const input_4 = plainValues(toList(delay(() => append(singleton_1(["voice", name]), delay(() => {
+                                    let matchValue_2;
+                                    return append((matchValue_2 = text(script, "lang"), (matchValue_2 == null) ? (empty()) : singleton_1(["lang", matchValue_2])), delay(() => collect((matchValue_3) => {
+                                        const activePatternResult_1 = matchValue_3;
+                                        const code_1 = activePatternResult_1[0];
+                                        return append(singleton_1([concat("voices.", code_1, ".voice"), activePatternResult_1[1][0]]), delay(() => singleton_1([concat("voices.", code_1, ".lang"), activePatternResult_1[1][1]])));
+                                    }, phrases)));
+                                })))));
+                                input_6 = ((input_4.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_4.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
+                            }
+                            else {
+                                input_6 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+                            }
+                            if (input_6.tag === 1) {
+                                return new FSharpResult$2(/* Error */ 1, [input_6.fields[0]]);
+                            }
+                            else {
+                                return new FSharpResult$2(/* Ok */ 0, [new Choice(chosen, name, orElse(text(spec, "model"), (chosen.tag === 1) ? "eleven_multilingual_v2" : ((chosen.tag === 2) ? "gpt-4o-mini-tts" : undefined)), text(spec, "instructions"), phrases)]);
+                            }
                         }
                     }
                 }
@@ -438,17 +486,17 @@ function placeholderAt(body, i) {
 }
 
 function misplacedPlaceholder(body) {
-    const scan = (i_mut, quoting_mut) => {
+    const scan = (i_mut, quoting_mut, wordStart_mut) => {
         scan:
         while (true) {
-            const i = i_mut, quoting = quoting_mut;
+            const i = i_mut, quoting = quoting_mut, wordStart = wordStart_mut;
             if (i >= body.length) {
                 return undefined;
             }
             else {
                 const matchValue = body[i];
                 const matchValue_1 = placeholderAt(body, i);
-                let matchResult, p;
+                let matchResult, p, c;
                 switch (quoting.tag) {
                     case 2: {
                         if (matchValue_1 != null) {
@@ -458,7 +506,7 @@ function misplacedPlaceholder(body) {
                         else {
                             switch (matchValue) {
                                 case "\"": {
-                                    matchResult = 7;
+                                    matchResult = 8;
                                     break;
                                 }
                                 case "\\": {
@@ -471,7 +519,7 @@ function misplacedPlaceholder(body) {
                                     break;
                                 }
                                 default:
-                                    matchResult = 8;
+                                    matchResult = 10;
                             }
                         }
                         break;
@@ -479,11 +527,21 @@ function misplacedPlaceholder(body) {
                     case 0: {
                         switch (matchValue) {
                             case "\"": {
-                                matchResult = 6;
+                                matchResult = 7;
+                                break;
+                            }
+                            case "#": {
+                                if (wordStart) {
+                                    matchResult = 5;
+                                }
+                                else {
+                                    matchResult = 9;
+                                    c = matchValue;
+                                }
                                 break;
                             }
                             case "\'": {
-                                matchResult = 5;
+                                matchResult = 6;
                                 break;
                             }
                             case "\\": {
@@ -495,8 +553,10 @@ function misplacedPlaceholder(body) {
                                 }
                                 break;
                             }
-                            default:
-                                matchResult = 8;
+                            default: {
+                                matchResult = 9;
+                                c = matchValue;
+                            }
                         }
                         break;
                     }
@@ -522,11 +582,13 @@ function misplacedPlaceholder(body) {
                     case 1: {
                         i_mut = (i + 1);
                         quoting_mut = Quoting.Outside;
+                        wordStart_mut = false;
                         continue scan;
                     }
                     case 2: {
                         i_mut = (i + 1);
                         quoting_mut = Quoting.InSingle;
+                        wordStart_mut = false;
                         continue scan;
                     }
                     case 3:
@@ -534,26 +596,49 @@ function misplacedPlaceholder(body) {
                     case 4: {
                         i_mut = (i + 2);
                         quoting_mut = quoting;
+                        wordStart_mut = false;
                         continue scan;
                     }
                     case 5: {
-                        i_mut = (i + 1);
-                        quoting_mut = Quoting.InSingle;
-                        continue scan;
+                        const matchValue_3 = body.indexOf("\n", i) | 0;
+                        if (matchValue_3 === -1) {
+                            return undefined;
+                        }
+                        else {
+                            i_mut = (matchValue_3 + 1);
+                            quoting_mut = Quoting.Outside;
+                            wordStart_mut = true;
+                            continue scan;
+                        }
                     }
                     case 6: {
                         i_mut = (i + 1);
-                        quoting_mut = Quoting.InDouble;
+                        quoting_mut = Quoting.InSingle;
+                        wordStart_mut = false;
                         continue scan;
                     }
                     case 7: {
                         i_mut = (i + 1);
+                        quoting_mut = Quoting.InDouble;
+                        wordStart_mut = false;
+                        continue scan;
+                    }
+                    case 8: {
+                        i_mut = (i + 1);
                         quoting_mut = Quoting.Outside;
+                        wordStart_mut = false;
+                        continue scan;
+                    }
+                    case 9: {
+                        i_mut = (i + 1);
+                        quoting_mut = Quoting.Outside;
+                        wordStart_mut = (" \t\r\n;&|()<>".indexOf(c) >= 0);
                         continue scan;
                     }
                     default: {
                         i_mut = (i + 1);
                         quoting_mut = quoting;
+                        wordStart_mut = false;
                         continue scan;
                     }
                 }
@@ -561,14 +646,14 @@ function misplacedPlaceholder(body) {
             break;
         }
     };
-    return scan(0, Quoting.Outside);
+    return scan(0, Quoting.Outside, true);
 }
 
 /**
  * Before any work: the provider's key and the speed it can take.
  */
 export function check(choice, speed) {
-    let input_9;
+    let input_11;
     let resource;
     let copyOfStruct = variables(choice.Provider);
     resource = getEnumerator(copyOfStruct);
@@ -592,7 +677,7 @@ export function check(choice, speed) {
                 result_1 = (new FSharpResult$2(/* Error */ 1, [matchValue.fields[0]]));
             }
         }
-        input_9 = result_1;
+        input_11 = result_1;
     }
     finally {
         if (!(resource === defaultOf())) {
@@ -600,14 +685,14 @@ export function check(choice, speed) {
             disposeSafe(copyOfStruct_1);
         }
     }
-    if (input_9.tag === 1) {
-        return new FSharpResult$2(/* Error */ 1, [input_9.fields[0]]);
+    if (input_11.tag === 1) {
+        return new FSharpResult$2(/* Error */ 1, [input_11.fields[0]]);
     }
     else {
-        let input_7;
+        let input_9;
         const matchValue_1 = speedRange(choice.Provider);
         if (matchValue_1 == null) {
-            input_7 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+            input_9 = ResultCE_ResultBuilder__Zero(ResultCE_result);
         }
         else {
             const said = matchValue_1[2];
@@ -616,30 +701,39 @@ export function check(choice, speed) {
             const value_1 = (matchValue_1[0] <= speed) && (speed <= high);
             const error_2 = new Failure(/* SettingsBad */ 1, [(`speed ${speed} is not one ${providerName(choice.Provider)} takes (${said}): `) + "change \"speed\" in script.json"]);
             input_3 = (value_1 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_2])));
-            input_7 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
+            input_9 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
         }
-        if (input_7.tag === 1) {
-            return new FSharpResult$2(/* Error */ 1, [input_7.fields[0]]);
+        if (input_9.tag === 1) {
+            return new FSharpResult$2(/* Error */ 1, [input_9.fields[0]]);
         }
         else {
             const matchValue_2 = choice.Provider;
             if (matchValue_2.tag === 5) {
                 const name = matchValue_2.fields[0];
                 const body = matchValue_2.fields[1];
-                let input_5;
+                let input_7;
                 const value_3 = body.indexOf("{out}") >= 0;
                 const error_4 = new Failure(/* SettingsBad */ 1, [concat("command ", name, " never says where its audio goes: put {out} in its text (voices.json)")]);
-                input_5 = (value_3 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_4])));
-                if (input_5.tag === 1) {
-                    return new FSharpResult$2(/* Error */ 1, [input_5.fields[0]]);
+                input_7 = (value_3 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_4])));
+                if (input_7.tag === 1) {
+                    return new FSharpResult$2(/* Error */ 1, [input_7.fields[0]]);
                 }
                 else {
-                    const matchValue_3 = misplacedPlaceholder(body);
-                    if (matchValue_3 == null) {
-                        return ResultCE_ResultBuilder__Zero(ResultCE_result);
+                    let input_5;
+                    const value_5 = !(body.indexOf("<<") >= 0);
+                    const error_6 = new Failure(/* SettingsBad */ 1, [concat("command ", name, " has a heredoc (<<): heredocs are not supported in voice commands")]);
+                    input_5 = (value_5 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_6])));
+                    if (input_5.tag === 1) {
+                        return new FSharpResult$2(/* Error */ 1, [input_5.fields[0]]);
                     }
                     else {
-                        return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [(`command ${name} puts ${matchValue_3} inside quotes or after a backslash: write each placeholder `) + "outside any quotes in its text (voices.json); the engine quotes it itself"])]);
+                        const matchValue_3 = misplacedPlaceholder(body);
+                        if (matchValue_3 == null) {
+                            return ResultCE_ResultBuilder__Zero(ResultCE_result);
+                        }
+                        else {
+                            return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [(`command ${name} puts ${matchValue_3} inside quotes or after a backslash: write each placeholder `) + "outside any quotes in its text (voices.json); the engine quotes it itself"])]);
+                        }
                     }
                 }
             }

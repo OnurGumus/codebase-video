@@ -163,6 +163,63 @@ test("speak alone refuses a shell character in the voice or lang, and a NUL is a
   assert.equal(fs.existsSync(marker), false);
 });
 
+/** The re-review's chain: quotes inside comments around a placeholder that sh reads inside "...". */
+const COMMENTED = `# tuned for a 12" speaker
+sh -c "true --lang {lang}"
+# (and a 6" one)
+${FF} {out}`;
+
+test("the commented chain: an array lang is refused by choose, a text one by check, and nothing runs", async () => {
+  const marker = path.join(fs.mkdtempSync(path.join(tmp, "probe-")), "PWNED");
+  const lang = [`$(touch\${IFS}${marker})`];
+  voiceFor(COMMENTED);
+  const spec = { provider: "command", command: "mine", voice: "v", lang };
+  const f = bad(V.choose(ws, spec));
+  assert.equal(f.name, "SettingsBad");
+  assert.match(said(f), /"lang"/);
+  // as narrate would, had choose let it through; then speak alone
+  const c = V.choose(ws, spec);
+  if (c.tag === 0 && V.check(c.fields[0], 1.0).tag === 0) await run(unchecked(COMMENTED, "v", lang));
+  assert.equal(bad(await run(unchecked(COMMENTED, "v", lang))).name, "SettingsBad");
+  assert.equal(fs.existsSync(marker), false);
+  // with a text lang, the {lang} inside the nested "..." is refused by check
+  const text = ok(V.choose(ws, { ...spec, lang: "a b" }));
+  assert.match(said(bad(V.check(text, 1.0))), /\{lang\} inside quotes/);
+});
+
+test("a comment's quotes do not count, and a heredoc is refused", () => {
+  const checked = (command) => {
+    voiceFor(command);
+    return V.check(ok(V.choose(ws, { provider: "command", voice: "v", command: "mine" })), 1.0);
+  };
+  ok(checked(`# a comment with a " quote\nsay -o {out}`));
+  ok(checked(`say -v {voice} -o {out} # it's "fine" {lang}`));
+  ok(checked(`say -o {out}#x\nsay -o {out}`));
+  // a # inside a word is no comment: the quote after it still opens
+  assert.match(said(bad(checked(`say a#" {voice} " -o {out}`))), /inside quotes/);
+  for (const command of [`cat <<EOF > {out}\nhi\nEOF`, `say -o {out} <<< hi`]) {
+    assert.match(said(bad(checked(command))), /heredoc/, command);
+  }
+});
+
+test("a voice value that is not text is a SettingsBad for a cloud or command voice; Kokoro is unchanged", () => {
+  voiceFor(`say -v {voice} -o {out}`);
+  const specs = { openai: { provider: "openai", voice: "coral" }, command: { provider: "command", command: "mine",
+    voice: "v" } };
+  for (const [kind, spec] of Object.entries(specs)) {
+    for (const lang of [5, null, {}, ["en"]]) {
+      const f = bad(V.choose(ws, { ...spec, lang }));
+      assert.equal(f.name, "SettingsBad", `${kind} ${JSON.stringify(lang)}`);
+      assert.match(said(f), /"lang".*not text/, `${kind} ${JSON.stringify(lang)}`);
+    }
+    assert.match(said(bad(V.choose(ws, { ...spec, voice: 5 }))), /"voice".*not text/, kind);
+    const phrase = { ...spec, voices: { fr: { voice: "x", lang: 7 } } };
+    assert.match(said(bad(V.choose(ws, phrase))), /"voices\.fr\.lang".*not text/, kind);
+    assert.match(said(bad(V.choose(ws, { ...spec, voices: { fr: { voice: [] } } }))), /"voices\.fr\.voice"/, kind);
+  }
+  for (const lang of [5, null, {}, ["en"]]) ok(V.choose(ws, { voice: "af_heart", lang }));
+});
+
 test("a command text that spawn refuses (a NUL) is a CommandFailed, not a throw", async () => {
   const f = bad(await run(voiceFor("echo a\u0000b {out}")));
   assert.equal(f.name, "CommandFailed");

@@ -175,6 +175,18 @@ test("a command that fails stops the run with its stderr", async () => {
   assert.ok(r.stderr.includes("command broken failed (exit 1): broken voice"), r.stderr);
 });
 
+test("a lang that is not text stops the run, with no TypeError", async () => {
+  const { ws, home } = workspace(OPENAI);
+  const file = path.join(ws, "script.json");
+  fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, "utf8")), lang: 5 }));
+  const vars = { CODEBASE_VIDEO_HOME: home, OPENAI_API_KEY: "test-key", CODEBASE_VIDEO_OPENAI_URL: "http://127.0.0.1:9" };
+  const env = envWith(vars);
+  const r = await narrate(ws, env);
+  assert.equal(r.code, 1, r.stderr);
+  assert.ok(r.stderr.includes('"lang"') && !r.stderr.includes("TypeError"), r.stderr);
+  assert.ok(!fs.existsSync(path.join(ws, "build", "timing.json")));
+});
+
 const kokoroHome = path.join(os.homedir(), ".cache", "codebase-video");
 const kokoroMissing = !fs.existsSync(path.join(kokoroHome, "node", "node_modules", "kokoro-js"));
 

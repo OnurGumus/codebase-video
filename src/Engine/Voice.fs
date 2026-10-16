@@ -148,11 +148,32 @@ let private shellClasses: (string * char list) list =
       "a line break", [ '\n'; '\r' ]
       "a NUL", [ char 0 ] ]
 
-/// A command voice's values (each a field name and its value), refused when one holds a shell character.
+/// What a JSON value is, as a message says it: "null", "a list", "an object", "a number" and so on.
+[<Emit("$0 === null ? 'null' : Array.isArray($0) ? 'a list'
+    : typeof $0 === 'object' ? 'an object' : 'a ' + typeof $0")>]
+let private kindOf (o: obj) : string = jsNative
+
+/// The message for a voice setting that is present but not text.
+let private notText (field: string) (value: obj) : Failure =
+    SettingsBad(
+        $"the voice setting \"{field}\" is {kindOf value}, not text: write it as a string "
+        + "(voice.json, script.json)"
+    )
+
+/// A cloud or command voice's settings (each a message's name, the object and its key), refused when one is present
+/// but not text: each is passed on as text, to a service or to a shell.
+let private textOnly (fields: (string * obj * string) list) : Result<unit, Failure> =
+    match fields |> List.tryFind (fun (_, o, key) -> has o key && jsTypeof o?(key) <> "string") with
+    | Some(field, o, key) -> Error(notText field o?(key))
+    | None -> Ok()
+
+/// A command voice's values (each a field name and its value), refused when one is not text or holds a shell
+/// character.
 let private plainValues (values: (string * string) list) : Result<unit, Failure> =
     let plain (field: string, value: string) =
         let holds (_, chars: char list) = chars |> List.exists (fun c -> value.IndexOf c >= 0)
         match shellClasses |> List.tryFind holds with
+        | _ when jsTypeof (box value) <> "string" -> Error(notText field (box value))
         | Some(said, _) ->
             Error(
                 SettingsBad(
@@ -179,6 +200,15 @@ let choose (ws: string) (script: obj) : Result<Choice option, Failure> =
                 | _ ->
                     let known = "kokoro, elevenlabs, openai, azure, google, command"
                     Error(SettingsBad $"unknown provider \"{provider}\" (voice.json, script.json): use one of {known}")
+            // Kokoro keeps its own handling of these fields
+            if kind <> "kokoro" then
+                do!
+                    textOnly
+                        [ yield "voice", spec, "voice"
+                          yield "lang", script, "lang"
+                          for code, v in entries spec?voices do
+                              yield $"voices.{code}.voice", v, "voice"
+                              yield $"voices.{code}.lang", v, "lang" ]
             let voice = text spec "voice"
             let! name =
                 match kind, voice with
@@ -262,25 +292,35 @@ let private placeholderAt (body: string) (i: int) : string option =
     [ "{voice}"; "{lang}"; "{speed}"; "{out}" ]
     |> List.tryFind (fun p -> i >= 0 && i + p.Length <= body.Length && body.Substring(i, p.Length) = p)
 
+/// The characters after which an unquoted, unescaped character starts a word for `sh` (a `#` there starts a comment).
+[<Literal>]
+let private WordBreaks = " \t\r\n;&|()<>"
+
 /// The first placeholder that `sh` would not read as a bare word: one inside '...' or "...", or right after a
 /// backslash (which would escape the quote the engine puts there). A backslash outside single quotes escapes the
-/// next character.
+/// next character, and an unquoted `#` that starts a word is a comment to the end of the line (its quotes do not
+/// count, and a placeholder in it is fine).
 let private misplacedPlaceholder (body: string) : string option =
-    let rec scan (i: int) (quoting: Quoting) : string option =
+    let rec scan (i: int) (quoting: Quoting) (wordStart: bool) : string option =
         if i >= body.Length then
             None
         else
             match quoting, body[i], placeholderAt body i with
             | (InSingle | InDouble), _, Some p -> Some p
-            | InSingle, '\'', _ -> scan (i + 1) Outside
-            | InSingle, _, _ -> scan (i + 1) InSingle
+            | InSingle, '\'', _ -> scan (i + 1) Outside false
+            | InSingle, _, _ -> scan (i + 1) InSingle false
             | _, '\\', _ when (placeholderAt body (i + 1)).IsSome -> placeholderAt body (i + 1)
-            | _, '\\', _ -> scan (i + 2) quoting
-            | Outside, '\'', _ -> scan (i + 1) InSingle
-            | Outside, '"', _ -> scan (i + 1) InDouble
-            | InDouble, '"', _ -> scan (i + 1) Outside
-            | _ -> scan (i + 1) quoting
-    scan 0 Outside
+            | _, '\\', _ -> scan (i + 2) quoting false
+            | Outside, '#', _ when wordStart ->
+                match body.IndexOf("\n", i) with
+                | -1 -> None
+                | eol -> scan (eol + 1) Outside true
+            | Outside, '\'', _ -> scan (i + 1) InSingle false
+            | Outside, '"', _ -> scan (i + 1) InDouble false
+            | InDouble, '"', _ -> scan (i + 1) Outside false
+            | Outside, c, _ -> scan (i + 1) Outside (WordBreaks.IndexOf c >= 0)
+            | _ -> scan (i + 1) quoting false
+    scan 0 Outside true
 
 /// Before any work: the provider's key and the speed it can take.
 let check (choice: Choice) (speed: float) : Result<unit, Failure> =
@@ -306,6 +346,11 @@ let check (choice: Choice) (speed: float) : Result<unit, Failure> =
                 body.Contains "{out}"
                 |> Result.requireTrue (
                     SettingsBad $"command {name} never says where its audio goes: put {{out}} in its text (voices.json)"
+                )
+            do!
+                not (body.Contains "<<")
+                |> Result.requireTrue (
+                    SettingsBad $"command {name} has a heredoc (<<): heredocs are not supported in voice commands"
                 )
             match misplacedPlaceholder body with
             | Some p ->
