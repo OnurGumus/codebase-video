@@ -96,12 +96,18 @@ The project then names the command, and nothing else:
 ```
 
 The program gets the text on standard input. In its command line, `{out}` is required and is where the audio goes;
-`{voice}` (the project's `voice` field), `{lang}` and `{speed}` are optional. Write them without quotes, as above:
-each reaches the program as one word whatever it holds, and nothing in it runs. A placeholder inside quotes, such as
-`"{voice}"`, stops `narrate` with a message. The values are also in the program's environment as `CV_OUT`,
-`CV_VOICE`, `CV_LANG` and `CV_SPEED`.
+`{voice}` (the project's `voice` field), `{lang}` and `{speed}` are optional. Write each placeholder outside any
+quotes, as above. Do not put it inside `'...'` or `"..."` (not even a longer quoted text such as `sh -c "..."` or
+`"/My Voices/{voice}.onnx"`), and not after a backslash. The engine quotes it itself, so it reaches the program as one
+word. A placeholder anywhere inside quotes stops `narrate` with a message that names it. The values are also in the
+program's environment as `CV_OUT`, `CV_VOICE`, `CV_LANG` and `CV_SPEED`.
 The program must write a file ffmpeg can read to `{out}`, exit with 0, and finish within 120 seconds. Any audio
 format ffmpeg reads is fine, and it is converted for you.
+
+A command voice's `voice` and `lang` (in `voice.json`, `script.json` or a `voices` entry) may not contain
+`$` `` ` `` `"` `'` `\` `;` `&` `|` `<` `>`, a line break (CR or LF) or a NUL. The command runs in a shell, where
+each of these has a meaning. A value with one of them stops `narrate` before any work, with a message that names the
+field. Spaces, parentheses and letters in any language are fine.
 
 Commands live outside the repository on purpose: a project can choose among your commands, but a `voice.json` that
 comes with a repository cannot run one of its own. A name you have not defined stops `narrate` with a message that

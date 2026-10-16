@@ -53,35 +53,120 @@ test("the text arrives on stdin as UTF-8", async () => {
 
 test("placeholders are shell-quoted", async () => {
   const dump = path.join(tmp, "voice.txt");
-  const name = `it's "x"`;
+  // spaces, a glob and a tilde stay as they are (quotes are refused in a command voice's value: see below)
+  const name = "My Voice (2) * ~ é";
   ok(await run(voiceFor(`printf %s {voice} > ${dump}; ${FF} {out}`, { name })));
   assert.equal(fs.readFileSync(dump, "utf8"), name);
 });
 
-/** Runs the command as narrate would (check, then speak) and as speak alone; true when PWNED was created. */
+/** The described lines of a failure, as one text. */
+const said = (f) => Array.from(V.describe(f)[1]).join("\n");
+
+/** The command voice "mine" running `command`, with this voice name, built without choose or check. */
+const unchecked = (command, name, lang = "en") => {
+  const base = voiceFor(command);
+  return new V.Voice(base.Provider, name, base.Model, base.Instructions, lang, 1.0);
+};
+
+/**
+ * Runs the command with a repository voice that tries to touch PWNED: as narrate would (choose, check, then speak),
+ * and with speak alone (no choose, no check). True when PWNED was created.
+ */
 const pwned = async (command) => {
   const marker = path.join(fs.mkdtempSync(path.join(tmp, "probe-")), "PWNED");
-  const voice = voiceFor(command, { name: `$(touch ${marker})` });
-  const c = ok(V.choose(ws, { provider: "command", voice: voice.Name, command: "mine" }));
-  if (V.check(c, 1.0).tag === 0) await run(voice);
-  await run(voice);
+  for (const name of [`$(touch ${marker})`, `$(touch\${IFS}${marker})`]) {
+    voiceFor(command);
+    const c = V.choose(ws, { provider: "command", voice: name, command: "mine" });
+    if (c.tag === 0 && V.check(c.fields[0], 1.0).tag === 0) await run(unchecked(command, name));
+    await run(unchecked(command, name));
+  }
   return fs.existsSync(marker);
 };
 
-test("a repository's voice never runs as code, even inside quotes in the command", async () => {
+/** The reviewer's commands: a placeholder inside a double-quoted `sh -c` text, and inside a quoted path. */
+const SH_C = (dump) => `sh -c "printf '[%s]' {voice} > ${dump}"; ${FF} {out}`;
+const IN_PATH = (dump) => `printf '[%s]' "/My Voices/{voice}.onnx" > ${dump}; ${FF} {out}`;
+
+test("a repository's voice never runs as code, whatever quotes the command has", async () => {
+  const dump = path.join(tmp, "probe.txt");
   assert.equal(await pwned(`printf %s "{voice}" > {out}.v; ${FF} {out}`), false, "double quotes");
   assert.equal(await pwned(`printf %s '{voice}' > {out}.v; ${FF} {out}`), false, "single quotes");
   assert.equal(await pwned(`printf %s {voice} > {out}.v; ${FF} {out}`), false, "no quotes");
+  assert.equal(await pwned(SH_C(dump)), false, "inside sh -c");
 });
 
-test("check refuses a placeholder written inside quotes", () => {
-  for (const command of [`say -v "{voice}" -o {out}`, `say -o '{out}'`, `say -o {out}"x"`]) {
+test("check refuses a placeholder anywhere inside quotes, or after a backslash", () => {
+  const dump = path.join(tmp, "probe.txt");
+  const refused = [SH_C(dump), IN_PATH(dump), `say -v "{voice}" -o {out}`, `say -o '{out}'`,
+    `say -o "x {out} y"`, `say -o \\{out}`, `say "it's" -v "a \\" {voice}" -o {out}`];
+  for (const command of refused) {
     voiceFor(command);
     const c = ok(V.choose(ws, { provider: "command", voice: "v", command: "mine" }));
     const f = bad(V.check(c, 1.0));
     assert.equal(f.name, "SettingsBad", command);
-    assert.match(Array.from(V.describe(f)[1]).join("\n"), /without quotes/, command);
+    assert.match(said(f), /outside any quotes/, command);
   }
+  const accepted = [`say -o {out}"x"`, `say -v 'Ava' -o {out} --rate "1"`, `say "it's" {voice} -o {out}`,
+    `say 'a "b' {voice} -o {out}`, `say "a \\" b" {voice} -o {out}`];
+  for (const command of accepted) {
+    voiceFor(command);
+    ok(V.check(ok(V.choose(ws, { provider: "command", voice: "v", command: "mine" })), 1.0));
+  }
+});
+
+test("a placeholder outside quotes is one word: no argument injection", async () => {
+  const dump = path.join(tmp, "words.txt");
+  ok(await run(voiceFor(`printf '[%s]' {voice} > ${dump}; ${FF} {out}`, { name: "a --extra-opt b" })));
+  assert.equal(fs.readFileSync(dump, "utf8"), "[a --extra-opt b]");
+});
+
+test("a command voice's voice and lang may hold no shell characters", () => {
+  voiceFor(`say {voice} -o {out}`);
+  const spec = (o) => ({ provider: "command", command: "mine", voice: "v", ...o });
+  const cases = [
+    [{ voice: "$(x)" }, /"voice".*\$ or `/],
+    [{ voice: "a`b" }, /"voice".*\$ or `/],
+    [{ voice: `it's` }, /"voice".*a quote/],
+    [{ voice: `a"b` }, /"voice".*a quote/],
+    [{ voice: "a\\b" }, /"voice".*a backslash/],
+    [{ voice: "a;b" }, /"voice".*; & or \|/],
+    [{ voice: "a&b" }, /"voice".*; & or \|/],
+    [{ voice: "a|b" }, /"voice".*; & or \|/],
+    [{ voice: "a>b" }, /"voice".*< or >/],
+    [{ voice: "a<b" }, /"voice".*< or >/],
+    [{ voice: "a\nb" }, /"voice".*a line break/],
+    [{ voice: "a\rb" }, /"voice".*a line break/],
+    [{ voice: "a\u0000b" }, /"voice".*a NUL/],
+    [{ lang: "en;x" }, /"lang".*; & or \|/],
+    [{ voices: { fr: { voice: "a|b" } } }, /"voices\.fr\.voice".*; & or \|/],
+    [{ voices: { fr: { voice: "ok", lang: "fr$x" } } }, /"voices\.fr\.lang".*\$ or `/],
+  ];
+  for (const [fields, message] of cases) {
+    const f = bad(V.choose(ws, spec(fields)));
+    assert.equal(f.name, "SettingsBad", JSON.stringify(fields));
+    assert.match(said(f), message, JSON.stringify(fields));
+  }
+  // what a voice name or language needs is still fine
+  ok(V.choose(ws, spec({ voice: "en_US-lessac-medium (2) é.onnx", lang: "en-us" })));
+  // other providers send the value in a request, not to a shell
+  ok(V.choose(ws, { provider: "openai", voice: "it's $x" }));
+});
+
+test("speak alone refuses a shell character in the voice or lang, and a NUL is a value, not a throw", async () => {
+  const marker = path.join(fs.mkdtempSync(path.join(tmp, "probe-")), "PWNED");
+  const command = SH_C(path.join(tmp, "probe.txt"));
+  for (const [name, lang] of [[`$(touch\${IFS}${marker})`, "en"], ["v", `$(touch ${marker})`], ["a\u0000b", "en"],
+    ["v", "en\u0000"]]) {
+    const f = bad(await run(unchecked(command, name, lang)));
+    assert.equal(f.name, "SettingsBad", JSON.stringify([name, lang]));
+  }
+  assert.equal(fs.existsSync(marker), false);
+});
+
+test("a command text that spawn refuses (a NUL) is a CommandFailed, not a throw", async () => {
+  const f = bad(await run(voiceFor("echo a\u0000b {out}")));
+  assert.equal(f.name, "CommandFailed");
+  assert.equal(f.fields[1], 127);
 });
 
 test("the values reach the command as CV_VOICE, CV_LANG, CV_SPEED and CV_OUT", async () => {

@@ -137,6 +137,33 @@ let private others (spec: obj) : Map<string, string * string> =
         text v "voice" |> Option.map (fun name -> code, (name, defaultArg (text v "lang") code)))
     |> Map.ofArray
 
+/// The characters a command voice's voice and lang may not hold, by the class the message names: its command runs
+/// in `sh`, where each has a meaning.
+let private shellClasses: (string * char list) list =
+    [ "$ or `", [ '$'; '`' ]
+      "a quote", [ '"'; '\'' ]
+      "a backslash", [ '\\' ]
+      "; & or |", [ ';'; '&'; '|' ]
+      "< or >", [ '<'; '>' ]
+      "a line break", [ '\n'; '\r' ]
+      "a NUL", [ char 0 ] ]
+
+/// A command voice's values (each a field name and its value), refused when one holds a shell character.
+let private plainValues (values: (string * string) list) : Result<unit, Failure> =
+    let plain (field: string, value: string) =
+        let holds (_, chars: char list) = chars |> List.exists (fun c -> value.IndexOf c >= 0)
+        match shellClasses |> List.tryFind holds with
+        | Some(said, _) ->
+            Error(
+                SettingsBad(
+                    $"the command voice's \"{field}\" holds {said}: a command voice's voice and lang may not hold "
+                    + "$ ` \" ' \\ ; & | < >, CR, LF or NUL, since its command runs in a shell "
+                    + "(voice.json, script.json)"
+                )
+            )
+        | None -> Ok()
+    values |> List.traverseResultM plain |> Result.map ignore
+
 /// The voice settings of the video in workspace `ws`: None for a silent clip.
 let choose (ws: string) (script: obj) : Result<Choice option, Failure> =
     result {
@@ -176,6 +203,19 @@ let choose (ws: string) (script: obj) : Result<Choice option, Failure> =
                         return Command(command, body)
                     }
                 | _ -> Ok Kokoro
+            let phrases = others spec
+            match chosen with
+            | Command _ ->
+                do!
+                    plainValues
+                        [ yield "voice", name
+                          match text script "lang" with
+                          | Some lang -> yield "lang", lang
+                          | None -> ()
+                          for KeyValue(code, (voice, lang)) in phrases do
+                              yield $"voices.{code}.voice", voice
+                              yield $"voices.{code}.lang", lang ]
+            | _ -> ()
             let model =
                 text spec "model"
                 |> Option.orElse (
@@ -190,7 +230,7 @@ let choose (ws: string) (script: obj) : Result<Choice option, Failure> =
                       Name = name
                       Model = model
                       Instructions = text spec "instructions"
-                      Others = others spec }
+                      Others = phrases }
     }
 
 /// The key (and region) a provider needs, as environment variable names.
@@ -211,8 +251,36 @@ let private speedRange (provider: Provider) : (float * float * string) option =
     | Azure _ -> Some(0.5, 2.0, "0.5 to 2.0")
     | Kokoro | Command _ -> None
 
-/// A placeholder with a quote character next to it, such as `"{voice}"` or `'{out}'`.
-let private quotedPlaceholder: Regex = Regex(@"[""']\{(voice|lang|speed|out)\}|\{(voice|lang|speed|out)\}[""']")
+/// Where a scan of a command's text is, as `sh` reads it: outside quotes, inside '...', or inside "...".
+type private Quoting =
+    | Outside
+    | InSingle
+    | InDouble
+
+/// The placeholder that starts at index `i` of the text, if one does.
+let private placeholderAt (body: string) (i: int) : string option =
+    [ "{voice}"; "{lang}"; "{speed}"; "{out}" ]
+    |> List.tryFind (fun p -> i >= 0 && i + p.Length <= body.Length && body.Substring(i, p.Length) = p)
+
+/// The first placeholder that `sh` would not read as a bare word: one inside '...' or "...", or right after a
+/// backslash (which would escape the quote the engine puts there). A backslash outside single quotes escapes the
+/// next character.
+let private misplacedPlaceholder (body: string) : string option =
+    let rec scan (i: int) (quoting: Quoting) : string option =
+        if i >= body.Length then
+            None
+        else
+            match quoting, body[i], placeholderAt body i with
+            | (InSingle | InDouble), _, Some p -> Some p
+            | InSingle, '\'', _ -> scan (i + 1) Outside
+            | InSingle, _, _ -> scan (i + 1) InSingle
+            | _, '\\', _ when (placeholderAt body (i + 1)).IsSome -> placeholderAt body (i + 1)
+            | _, '\\', _ -> scan (i + 2) quoting
+            | Outside, '\'', _ -> scan (i + 1) InSingle
+            | Outside, '"', _ -> scan (i + 1) InDouble
+            | InDouble, '"', _ -> scan (i + 1) Outside
+            | _ -> scan (i + 1) quoting
+    scan 0 Outside
 
 /// Before any work: the provider's key and the speed it can take.
 let check (choice: Choice) (speed: float) : Result<unit, Failure> =
@@ -239,14 +307,16 @@ let check (choice: Choice) (speed: float) : Result<unit, Failure> =
                 |> Result.requireTrue (
                     SettingsBad $"command {name} never says where its audio goes: put {{out}} in its text (voices.json)"
                 )
-            do!
-                not (quotedPlaceholder.IsMatch body)
-                |> Result.requireTrue (
-                    SettingsBad(
-                        $"command {name} puts a placeholder inside quotes: write {{voice}}, {{lang}}, {{speed}} and "
-                        + "{out} without quotes in its text (voices.json); each is already passed as one word"
+            match misplacedPlaceholder body with
+            | Some p ->
+                return!
+                    Error(
+                        SettingsBad(
+                            $"command {name} puts {p} inside quotes or after a backslash: write each placeholder "
+                            + "outside any quotes in its text (voices.json); the engine quotes it itself"
+                        )
                     )
-                )
+            | None -> ()
         | _ -> ()
     }
 
@@ -323,43 +393,47 @@ let private spawnText (command: string) (vars: (string * string) list) (input: s
                   "detached" ==> true
                   "stdio" ==> [| "pipe"; "ignore"; "pipe" |]
                   "env" ==> withEnv (createObj (vars |> List.map (fun (k, v) -> k ==> v))) ]
-        let child: obj = childProcess?spawn (command, options)
-        let mutable err = ""
-        let mutable settled = false
-        let mutable timer: obj = null
-        let tail () = if err.Length > 300 then err.Substring(err.Length - 300) else err
-        let settle (ended: Ended) =
-            if not settled then
-                settled <- true
-                stopTimer timer
-                ok ended
-        child?stderr?on ("data", (fun (chunk: obj) -> err <- err + string (chunk?toString ("utf8")))) |> ignore
-        // a command that does not read its stdin ends before the text is written: that is its business
-        child?stdin?on ("error", (fun (_: obj) -> ())) |> ignore
-        child?on ("error", (fun (e: obj) -> settle (Exited(127, string e?message)))) |> ignore
-        child?on (
-            "close",
-            (fun (code: obj) -> settle (Exited((if isNull code then 1 else unbox code), (tail ()).Trim())))
-        )
-        |> ignore
-        timer <-
-            startTimer
-                (fun () ->
-                    (try
-                        proc?kill (-(unbox<int> child?pid), "SIGKILL")
-                     with _ ->
-                         ())
-                    settle (TimedOut(seconds, (tail ()).Trim())))
-                (seconds * 1000.0)
-        child?stdin?``end`` (input, "utf8") |> ignore)
+        match (try Ok(childProcess?spawn (command, options): obj) with e -> Error e.Message) with
+        | Error why -> ok (Exited(127, why))
+        | Ok child ->
+            let mutable err = ""
+            let mutable settled = false
+            let mutable timer: obj = null
+            let tail () = if err.Length > 300 then err.Substring(err.Length - 300) else err
+            let settle (ended: Ended) =
+                if not settled then
+                    settled <- true
+                    stopTimer timer
+                    ok ended
+            child?stderr?on ("data", (fun (chunk: obj) -> err <- err + string (chunk?toString ("utf8")))) |> ignore
+            // a command that does not read its stdin ends before the text is written: that is its business
+            child?stdin?on ("error", (fun (_: obj) -> ())) |> ignore
+            child?on ("error", (fun (e: obj) -> settle (Exited(127, string e?message)))) |> ignore
+            child?on (
+                "close",
+                (fun (code: obj) -> settle (Exited((if isNull code then 1 else unbox code), (tail ()).Trim())))
+            )
+            |> ignore
+            timer <-
+                startTimer
+                    (fun () ->
+                        (try
+                            proc?kill (-(unbox<int> child?pid), "SIGKILL")
+                         with _ ->
+                             ())
+                        settle (TimedOut(seconds, (tail ()).Trim())))
+                    (seconds * 1000.0)
+            child?stdin?``end`` (input, "utf8") |> ignore)
 
 /// The voice's text spoken by its command: the samples at 24 kHz mono, or why not. The command runs once per call,
 /// with the text on stdin, the values in CV_VOICE, CV_LANG, CV_SPEED and CV_OUT, and `{out}` a fresh .wav path (the
 /// file may hold any audio ffmpeg reads).
 let speakCommand (voice: Voice) (input: string) : Async<Result<float32[], Failure>> =
     async {
-        match voice.Provider with
-        | Command(name, body) ->
+        // `choose` refuses these values too; checked again here so that no caller can skip it
+        match voice.Provider, plainValues [ "voice", voice.Name; "lang", voice.Lang ] with
+        | Command _, Error refused -> return Error refused
+        | Command(name, body), Ok() ->
             let dir = tempDir ()
             try
                 let out = join [ dir; "voice.wav" ]
@@ -377,7 +451,7 @@ let speakCommand (voice: Voice) (input: string) : Async<Result<float32[], Failur
                 | Exited _ -> return samplesOf out |> Result.mapError (fun why -> CommandFailed(name, 0, why))
             finally
                 remove dir
-        | other -> return Error(SettingsBad $"{providerName other} is not a command voice")
+        | other, _ -> return Error(SettingsBad $"{providerName other} is not a command voice")
     }
 
 /// The tag of a provider in a piece's key: a command's name is left out, its text is in the key.
