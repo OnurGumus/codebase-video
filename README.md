@@ -24,6 +24,8 @@ People use it to:
 - understand a project somebody else wrote;
 - explain one part of a big system.
 
+Everything it can do is listed in [features](docs/features.md).
+
 ## How do I use it?
 
 **1. Install three things** (if you do not have them yet):
