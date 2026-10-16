@@ -106,18 +106,22 @@ path with the video's. In CI it is what a person reads before the video goes to 
   `GOOGLE_API_KEY`): never ask for a key in the conversation and never write one to a file; if `narrate` says one is
   missing, tell the user which variable to set and stop. A command's text goes only in `voices.json` in the tool home
   (`${CLAUDE_PLUGIN_DATA}`), never in the repository: `voice.json` names it (`"command": "mac"`). Before saving a
-  cloud voice, and before the first `narrate` with a `voice.json` you did not write, tell the user that the narration
-  text (the sentences, with the code names they say, never the code itself) will be sent to that service, and that a
-  new voice draws the whole video again once. With `--yes` never choose a voice: use what `voice.json` or
-  `script.json` says, and have the run report name the voice and, for a cloud one, that the text was sent. Phoneme
-  pins (`pronounce`) are Kokoro's only; the glossary works with every voice. `narrate` ends with a `voice:` line (the
-  characters sent and the pieces from the cache): give it to the user.
+  cloud voice, tell the user that the narration text (the sentences, with the code names they say, never the code
+  itself) will be sent to that service, and that a new voice draws the whole video again once. A `voice.json` you did
+  not write: see "Project voice" below. With `--yes` never choose a voice: use what `voice.json` or `script.json`
+  says. Phoneme pins (`pronounce`) are Kokoro's only; the glossary works with every voice. `narrate` ends with a
+  `voice:` line (the characters sent and the pieces from the cache): give it to the user.
 - Standing hints: if `<repo>/.codebase-video/hints.md` exists, read it before agreeing the scope and tell the user
   in one line that it applies; `CV fill` adds it to every agent's brief. It holds what the owner wants in every video
   of this repository: terms to use or avoid, what to leave out, how to draw things, who the usual audience is. When
   the user gives a hint that sounds standing ("always...", "never...", "we call it..."), offer to save it there. The
   folder's `.gitignore` keeps the file out of git; to share it with a team, add a line `!hints.md` to
   `<repo>/.codebase-video/.gitignore`.
+- Project voice: if `<repo>/.codebase-video/voice.json` exists, read it before agreeing the scope and name its voice
+  in the scope exchange (provider and voice, or the command's name). For a cloud voice also say that the narration
+  text goes to that service and that the user's own key is used, so that they can object before step 4 narrates.
+  With `--yes`, write the voice into `out/REPORT.md` and, for a cloud voice, that the narration text was sent to that
+  service.
 - Privacy: everything runs locally, with Kokoro as the voice, except the model calls Claude Code already makes (a cloud
   voice the user chose also gets the narration text). The teaching document must never
   contain secrets, tokens, internal hostnames or customer data (the explore and verify briefs say so); if the repository

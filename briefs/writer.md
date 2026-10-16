@@ -10,8 +10,10 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 **Read first:** {{ENGINE}}/KIT.md (the whole file; especially "Toasts" and "Breathing room"). The example script
 {{ENGINE}}/kit/gallery/script.json shows the format.
 
-**Output:** {{WS}}/script.json with top-level `"name": "{{NAME}}"`, `title`, `"voice": "af_heart"`, `"lang": "en-us"`,
-`"speed": 0.87`, `poster` (a scene id whose last frame will make a good still), `readsFine` (a list), `source`
+**Output:** {{WS}}/script.json with top-level `"name": "{{NAME}}"`, `title`, `"voice": "af_heart"` (but if
+script.json already holds voice fields, `provider`, `voice`, `model`, `instructions` or `voices`, keep them exactly as
+they are and do not write `"voice": "af_heart"`), `"lang": "en-us"`, `"speed": 0.87`, `poster` (a scene id whose
+last frame will make a good still), `readsFine` (a list), `source`
 {"repo", "document"}, `card` {course: the repository name, lesson: the subject, sub: one line; leave out `thumbnail` unless you are told to
 set it}, and `scenes`.
 
@@ -91,6 +93,9 @@ set it}, and `scenes`.
 **Process** (from any directory):
 - `node {{ENGINE}}/cli/Cv.js {{WS}} narrate`
 - `node {{ENGINE}}/cli/Cv.js {{WS}} check --lesson {{WS}}/build/lesson.md`
+
+If `narrate` fails on the voice (a missing key, a refused request, a voice setting error), stop and report its
+message. Never edit voice.json or the script's voice fields to get past it.
 
 Repeat until `check` shows no warnings and its only errors are "module has no <key>.js" (one per module key,
 `intro` and `outro` included: builders write those files later). Then re-read the whole script

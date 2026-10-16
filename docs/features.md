@@ -58,10 +58,14 @@ Your own settings for a project live beside the videos: `.codebase-video/hints.m
 `.codebase-video/glossary.json` (see [Change a video](change-a-video.md)), and `.codebase-video/voice.json`, the
 voice for every video of the project (see [Use another voice](use-another-voice.md)).
 
-One more file is yours alone and is not in the project: `voices.json` in the plugin's data folder
-(`CODEBASE_VIDEO_HOME`). It defines the commands a voice may name, such as `{ "commands": { "mac": "say ... -o {out}" } }`.
+One more file is yours alone and is not in the project: `voices.json` in the tool home. When Claude runs the plugin
+that is the plugin's data folder (`CLAUDE_PLUGIN_DATA`, for example
+`~/.claude/plugins/data/codebase-video-codebase-video`); when you run the engine yourself, `CODEBASE_VIDEO_HOME` if
+set, else `~/.cache/codebase-video`. It defines the commands a voice may name, such as
+`{ "commands": { "mac": "say ... -o {out}" } }`.
 A project can name a command from it but cannot define one. Keys for a cloud voice (`ELEVENLABS_API_KEY`,
 `OPENAI_API_KEY`, `AZURE_SPEECH_KEY` with `AZURE_SPEECH_REGION`, `GOOGLE_API_KEY`) are read from the environment only.
+A `model` in a voice's settings is used by ElevenLabs and OpenAI only; Azure and Google ignore it.
 
 ## Requirements
 

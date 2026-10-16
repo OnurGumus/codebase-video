@@ -59,6 +59,7 @@ Azure AI Speech, Google Cloud Text-to-Speech) with your own key, or a program on
 ```
 
 `model` is optional: ElevenLabs uses `eleven_multilingual_v2` and OpenAI `gpt-4o-mini-tts` if you leave it out.
+Azure and Google take no model: a `model` there is ignored.
 `instructions` is OpenAI only, and optional (the `tts-1` models do not take it). Azure needs `AZURE_SPEECH_REGION`
 (for example `westeurope`) as well as the key. The video's language (`lang`) and pace (`speed`) stay in
 `script.json`. They belong to the video, not to the voice.
@@ -79,7 +80,9 @@ fields, as before. A script with `"voice": null` stays silent whatever `voice.js
 ## A program of your own: Piper, macOS `say`
 
 A program that turns text into a sound file is a voice. Its command line is defined in `voices.json` in the tool
-home (the plugin's data folder, `CODEBASE_VIDEO_HOME`), not in the project:
+home, not in the project. When Claude runs the plugin, the tool home is the plugin's data folder
+(`CLAUDE_PLUGIN_DATA`, for example `~/.claude/plugins/data/codebase-video-codebase-video`). When you run the engine
+yourself, it is `CODEBASE_VIDEO_HOME` if set, else `~/.cache/codebase-video`:
 
 ```json
 { "commands": { "my-piper": "piper --model ~/voices/me.onnx --output_file {out}",
@@ -112,9 +115,11 @@ names `voices.json`.
 - **Privacy.** Kokoro, the default, runs on your computer. A cloud voice sends the narration text to that service:
   the sentences, including code names they say aloud, not the code itself. Your code is never sent. Check the
   service's own terms for what it does with the text.
-- **A repository's own `voice.json`.** Claude says which voice a project uses before it first narrates, and with a
-  cloud voice that the text will be sent. With `--yes` Claude never picks a voice: it uses what `voice.json` or
-  `script.json` says, and the run report names the voice and, for a cloud one, that the text was sent.
+- **A repository's own `voice.json`.** When a project already has `.codebase-video/voice.json`, Claude reads it
+  before you agree what the video covers and names its voice then. For a cloud voice it also says that the narration
+  text goes to that service and that your own key is used, so you can object before anything is narrated. With
+  `--yes` Claude never picks a voice: it uses what `voice.json` or `script.json` says, and the run report
+  (`out/REPORT.md`) names the voice and, for a cloud one, that the narration text was sent.
 
 ## Which providers were tested
 
