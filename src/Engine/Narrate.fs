@@ -1329,8 +1329,8 @@ let private writeOutputs (settings: Settings) (track: Track) (scenes: Scene list
     }
 
 /// The scenes voiced one after another, then the voice released and the outputs written. A failure while voicing
-/// ends it there: no later scene is voiced and nothing is written, but the voice is released all the same, so that
-/// nothing keeps the process alive once the failure is reported.
+/// ends it there: no later scene is voiced and nothing is written, but the voice is released all the same (also when
+/// voicing throws), so that nothing keeps the process alive once the failure is reported.
 let private narrate (settings: Settings) : Async<Result<unit, Failure>> =
     asyncResult {
         let sceneObjs: obj[] = settings.Script?scenes
@@ -1339,7 +1339,8 @@ let private narrate (settings: Settings) : Async<Result<unit, Failure>> =
         let emptyTrack: Track = { audio = []; pos = 0; report = [] }
         let! track, finished =
             async {
-                let! voiced = foldAR (voiceScene settings markedScenes) (emptyTrack, []) scenes
+                let! voiced =
+                    foldAR (voiceScene settings markedScenes) (emptyTrack, []) scenes |> closingOnError release
                 do! release ()
                 return voiced
             }

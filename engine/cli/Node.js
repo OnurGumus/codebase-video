@@ -8,9 +8,10 @@ import * as node$003Acrypto from "node:crypto";
 import * as node$003Achild_process from "node:child_process";
 import * as node$003Ahttp from "node:http";
 import * as node$003Amodule from "node:module";
-import { singleton as singleton_1, sort, tail, isEmpty, empty, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { singleton as singleton_2, sort, tail, isEmpty, empty, ofArray, toArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
-import { singleton, map, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
+import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
+import { singleton as singleton_1, map, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { disposeSafe, getEnumerator, defaultOf, uncurry2, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { awaitPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
@@ -108,6 +109,26 @@ export function exit(code) {
  */
 export function setExitCode(code) {
     (process).exitCode = code;
+}
+
+/**
+ * `body`; when it throws, `cleanup` runs first and the exception then goes on as it was, so that a step that fails
+ * part-way leaves nothing (a server, a browser, the voice Worker) keeping the process alive.
+ */
+export function closingOnError(cleanup, body) {
+    return singleton.Delay(() => singleton.TryWith(singleton.Delay(() => singleton.ReturnFrom(body)), (_arg) => singleton.Bind(cleanup(), () => singleton.Return((() => {
+        throw _arg;
+    })()))));
+}
+
+/**
+ * Sets the exit status; the process ends by itself if nothing else keeps it alive, else `exit` ends it after `ms`.
+ */
+export function exitUnlessDone(code, ms) {
+    setExitCode(code);
+    setTimeout((() => {
+        exit(code);
+    }), ms).unref();
 }
 
 export function cwd() {
@@ -221,7 +242,7 @@ export function fileSize(p) {
 export function walk(dir) {
     return toList(delay(() => collect((name) => {
         const p = join(ofArray([dir, name]));
-        return isDir(p) ? map((rest) => ((name + "/") + rest), walk(p)) : singleton(name);
+        return isDir(p) ? map((rest) => ((name + "/") + rest), walk(p)) : singleton_1(name);
     }, sort(readDir(dir), {
         Compare: (x, y) => (comparePrimitives(x, y) | 0),
     }))));
@@ -289,7 +310,7 @@ export function runCapture(cmd, args) {
  * True when the command is on PATH.
  */
 export function hasCommand(cmd) {
-    return runCapture((platform === "win32") ? "where" : "which", singleton_1(cmd))[0] === 0;
+    return runCapture((platform === "win32") ? "where" : "which", singleton_2(cmd))[0] === 0;
 }
 
 export function awaitJs(p) {

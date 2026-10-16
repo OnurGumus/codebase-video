@@ -7,7 +7,7 @@ import { run, describe as describe_1, Failure_$reflection as Failure_$reflection
 import { run as run_9, describe as describe_2, Failure_$reflection as Failure_$reflection_2 } from "./History.js";
 import { run as run_5, describe as describe_3, Failure_$reflection as Failure_$reflection_3 } from "./Present.js";
 import { startAsPromise } from "./fable_modules/fable-library-js.5.19.0/Async.js";
-import { argv, resolve, engineDir, copyFile, mkdirp, isDir, writeText, readText, join, exists, exit, setExitCode, eprint } from "./Node.js";
+import { argv, resolve, engineDir, copyFile, mkdirp, isDir, writeText, readText, join, exists, exitUnlessDone, setExitCode, eprint } from "./Node.js";
 import { singleton as singleton_1 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { run as run_1, requireReady } from "./Setup.js";
@@ -90,13 +90,13 @@ export function describe(failure) {
 
 /**
  * Runs a step to its end, then ends with its code; an Error prints its lines and ends with its code; an exception
- * is printed and exits with 1. The engine's one Async.StartAsPromise, and the one caller of process.exit: every
+ * is printed and ends with 1. The engine's one Async.StartAsPromise, and the one caller of process.exit: every
  * step below is an Async. A step that returns (Ok whatever its code, or Error) only sets process.exitCode: the
  * process ends by itself once the event loop is empty, so stdout reaches a slow pipe whole and V8 is torn down
  * before its threads are joined (process.exit joins them first and, rarely, hangs there for good:
  * nodejs/node#64274). A step leaves nothing running when it returns: Chrome and the page server are closed, and the
- * voice Worker is released, also when voicing fails. An exception exits at once, as it can leave any of them
- * running.
+ * voice Worker is released, also when voicing fails. An exception can leave any of them running, so it also ends
+ * by itself when nothing is left, and with process.exit a second later when something is.
  */
 export function finish(step) {
     startAsPromise(step).then((outcome) => {
@@ -112,7 +112,7 @@ export function finish(step) {
         }
     }).catch((e) => {
         eprint(toString(e));
-        exit(1);
+        exitUnlessDone(1, 1000);
     });
 }
 

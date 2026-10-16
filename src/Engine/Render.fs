@@ -65,6 +65,16 @@ let releaseChrome (browser: obj) : unit =
         unref p?stderr
     | None -> ()
 
+/// Closes a browser after a failure, as far as it can: one that has crashed may not answer.
+let closeQuietly (browser: obj) : Async<unit> =
+    async {
+        try
+            do! fromJs (browser?close ())
+        with _ ->
+            ()
+        releaseChrome browser
+    }
+
 // Static server ------------------------------------------------------------------------------------------------
 
 /// Who the server is for. The scan's server (scan.mjs) differs on purpose: it answers 404 for .wav (no audio is
@@ -554,27 +564,33 @@ let private withChrome (clip: string) (job: Session -> obj -> Async<int>) : Asyn
             server.Close()
             return 2
         | Some chrome ->
-            let puppeteer = requireFromHome "puppeteer-core"
-            let! (browser: obj) =
-                fromJs (
-                    puppeteer?launch (
-                        createObj
-                            [ "executablePath" ==> chrome
-                              "headless" ==> true
-                              "args"
-                              ==> [| "--font-render-hinting=none"
-                                     "--force-color-profile=srgb"
-                                     "--autoplay-policy=no-user-gesture-required" |] ]
-                    )
-                )
-            let session = Session(browser, server.Url)
-            let! first = session.OpenPage()
-            let! code = job session first
-            do! fromJs (browser?close ())
-            releaseChrome browser
-            server.Close()
-            let! failed = session.IsFailed()
-            return (if code <> 0 then code elif failed then 1 else 0)
+            return!
+                closingOnError (fun () -> async { server.Close() }) (async {
+                    let puppeteer = requireFromHome "puppeteer-core"
+                    let! (browser: obj) =
+                        fromJs (
+                            puppeteer?launch (
+                                createObj
+                                    [ "executablePath" ==> chrome
+                                      "headless" ==> true
+                                      "args"
+                                      ==> [| "--font-render-hinting=none"
+                                             "--force-color-profile=srgb"
+                                             "--autoplay-policy=no-user-gesture-required" |] ]
+                            )
+                        )
+                    return!
+                        closingOnError (fun () -> closeQuietly browser) (async {
+                            let session = Session(browser, server.Url)
+                            let! first = session.OpenPage()
+                            let! code = job session first
+                            do! fromJs (browser?close ())
+                            releaseChrome browser
+                            server.Close()
+                            let! failed = session.IsFailed()
+                            return (if code <> 0 then code elif failed then 1 else 0)
+                        })
+                })
     }
 
 /// mode: stills | sheet | serve; returns an exit code.

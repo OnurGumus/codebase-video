@@ -1,13 +1,13 @@
 
 import { toArray, choose, reverse, chunkBySize, iterateIndexed, indexed, iterate, filter as filter_1, collect as collect_1, length, truncate, mapIndexed, append, exists as exists_1, map, empty, cons, tail, head, isEmpty, singleton as singleton_1, tryFind, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { requireFromHome, childProcess, readDir, remove, eprint, run as run_1, writeBytes, fromJs, deliver, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, exists, env } from "./Node.js";
+import { requireFromHome, closingOnError, childProcess, readDir, remove, eprint, run as run_1, writeBytes, deliver, extname, fsp, awaitJs, sep as sep_3, join, engineDir, http, resolve, fromJs, exists, env } from "./Node.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { defaultArg, value as value_9, ofNullable } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { tuple_type, obj_type, option_type, list_type, int32_type, float64_type, class_type, bool_type, record_type, lambda_type, unit_type, string_type, union_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { empty as empty_2, FSharpMap__Add, FSharpMap__Remove, FSharpMap__TryFind, tryFind as tryFind_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { disposeSafe, getEnumerator, int32ToString, Exception, equals, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
-import { singleton } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { padLeft, join as join_1, split, concat, substring } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { parallel, fromContinuations } from "./fable_modules/fable-library-js.5.19.0/Async.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
@@ -59,6 +59,18 @@ export function releaseChrome(browser) {
         unref(p.stdout);
         unref(p.stderr);
     }
+}
+
+/**
+ * Closes a browser after a failure, as far as it can: one that has crashed may not answer.
+ */
+export function closeQuietly(browser) {
+    return singleton.Delay(() => singleton.Combine(singleton.TryWith(singleton.Delay(() => singleton.Bind(fromJs(browser.close()), () => singleton.Return(undefined))), (_arg_1) => {
+        return singleton.Zero();
+    }), singleton.Delay(() => {
+        releaseChrome(browser);
+        return singleton.Zero();
+    })));
 }
 
 /**
@@ -647,23 +659,30 @@ function withChrome(clip, job) {
         const matchValue = findChrome();
         if (matchValue != null) {
             const chrome = matchValue;
-            const puppeteer = requireFromHome("puppeteer-core");
-            return singleton.Bind(fromJs(puppeteer.launch({
-                executablePath: chrome,
-                headless: true,
-                args: ["--font-render-hinting=none", "--force-color-profile=srgb", "--autoplay-policy=no-user-gesture-required"],
-            })), (_arg_1) => {
-                const browser = _arg_1;
-                const session = Session_$ctor_Z6861C5C0(browser, server.Url);
-                return singleton.Bind(Session__OpenPage(session), (_arg_2) => singleton.Bind(job(session, _arg_2), (_arg_3) => {
-                    const code = _arg_3 | 0;
-                    return singleton.Bind(fromJs(browser.close()), () => {
-                        releaseChrome(browser);
-                        server.Close();
-                        return singleton.Bind(Session__IsFailed(session), (_arg_5) => singleton.Return((code !== 0) ? code : (_arg_5 ? 1 : 0)));
-                    });
-                }));
-            });
+            return singleton.ReturnFrom(closingOnError(() => singleton.Delay(() => {
+                server.Close();
+                return singleton.Zero();
+            }), singleton.Delay(() => {
+                const puppeteer = requireFromHome("puppeteer-core");
+                return singleton.Bind(fromJs(puppeteer.launch({
+                    executablePath: chrome,
+                    headless: true,
+                    args: ["--font-render-hinting=none", "--force-color-profile=srgb", "--autoplay-policy=no-user-gesture-required"],
+                })), (_arg_1) => {
+                    const browser = _arg_1;
+                    return singleton.ReturnFrom(closingOnError(() => closeQuietly(browser), singleton.Delay(() => {
+                        const session = Session_$ctor_Z6861C5C0(browser, server.Url);
+                        return singleton.Bind(Session__OpenPage(session), (_arg_2) => singleton.Bind(job(session, _arg_2), (_arg_3) => {
+                            const code = _arg_3 | 0;
+                            return singleton.Bind(fromJs(browser.close()), () => {
+                                releaseChrome(browser);
+                                server.Close();
+                                return singleton.Bind(Session__IsFailed(session), (_arg_5) => singleton.Return((code !== 0) ? code : (_arg_5 ? 1 : 0)));
+                            });
+                        }));
+                    })));
+                });
+            })));
         }
         else {
             eprint("no Chrome found: set CHROME to the browser\'s executable");
