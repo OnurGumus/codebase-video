@@ -25,3 +25,7 @@ jobs:
       - name: the command line starts
         run: |
           node engine/cli/Cv.js 2>&1 | grep -q "usage: node engine/cli/Cv.js"
+      - name: ffmpeg for the voice tests
+        run: sudo apt-get install -y ffmpeg
+      - name: the voice providers work against their fake servers
+        run: node --test 'test/voice/*.test.mjs'

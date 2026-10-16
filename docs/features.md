@@ -16,7 +16,7 @@ from the [README](../README.md#what-do-you-want-to-do) instead.
 - The core mechanism followed to the bottom with one worked example and real values, shown happening on screen.
 - A recap after each chapter, and in longer videos a few "pause and think" questions that show the question, not
   the answer.
-- A natural voice, with technical terms said properly.
+- A natural voice, with technical terms said properly. Kokoro is the default; you can [use another voice](use-another-voice.md).
 - Captions as a separate file, and chapter markers. Captions can also be drawn into the picture.
 
 ## Settings
@@ -55,7 +55,13 @@ In your project, in `.codebase-video/<name>/` (git ignores the folder; your code
 | `build/history.md` | a progress video's facts, read from git |
 
 Your own settings for a project live beside the videos: `.codebase-video/hints.md` and
-`.codebase-video/glossary.json` (see [Change a video](change-a-video.md)).
+`.codebase-video/glossary.json` (see [Change a video](change-a-video.md)), and `.codebase-video/voice.json`, the
+voice for every video of the project (see [Use another voice](use-another-voice.md)).
+
+One more file is yours alone and is not in the project: `voices.json` in the plugin's data folder
+(`CODEBASE_VIDEO_HOME`). It defines the commands a voice may name, such as `{ "commands": { "mac": "say ... -o {out}" } }`.
+A project can name a command from it but cannot define one. Keys for a cloud voice (`ELEVENLABS_API_KEY`,
+`OPENAI_API_KEY`, `AZURE_SPEECH_KEY` with `AZURE_SPEECH_REGION`, `GOOGLE_API_KEY`) are read from the environment only.
 
 ## Requirements
 

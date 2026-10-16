@@ -59,9 +59,10 @@ draws again only the scenes it can change. Joining the pieces takes seconds.
 
 ## What runs on your computer
 
-The voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)), the drawing (your Chrome) and the encoding (ffmpeg)
-all run locally, and the video is not uploaded anywhere. Your source code is read by Claude Code, as in any Claude
-Code session.
+The voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), the default), the drawing (your Chrome) and the
+encoding (ffmpeg) all run locally, and the video is not uploaded anywhere. Your source code is read by Claude Code,
+as in any Claude Code session. If you choose a [cloud voice](use-another-voice.md), that service gets the narration
+text (the sentences, including code names they say aloud, not the code itself); everything else stays local.
 
 The one-time setup downloads the voice model, the software that runs it, a browser driver, and
 [eSpeak NG](https://github.com/espeak-ng/espeak-ng) for pronunciation: about 800 MB. eSpeak NG is licensed under
