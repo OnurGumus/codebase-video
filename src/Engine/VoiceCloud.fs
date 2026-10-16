@@ -51,14 +51,17 @@ let requestFor (voice: Voice) (input: string) : Request =
     match voice.Provider with
     | ElevenLabs ->
         let root = baseUrl "CODEBASE_VIDEO_ELEVENLABS_URL" "https://api.elevenlabs.io"
+        let model = defaultArg voice.Model "eleven_multilingual_v2"
         { Url = root + "/v1/text-to-speech/" + Uri.EscapeDataString voice.Name + "?output_format=wav_24000"
           Headers = [ "xi-api-key", setting "ELEVENLABS_API_KEY"; jsonType ]
           Body =
             json
-                [ "text", box input
-                  "model_id", box (defaultArg voice.Model "eleven_multilingual_v2")
-                  "language_code", box (langCode false voice.Lang)
-                  "voice_settings", box (createObj [ "speed" ==> voice.Speed ]) ] }
+                [ yield "text", box input
+                  yield "model_id", box model
+                  // eleven_multilingual_v2 does not take a language code (ElevenLabs ignores it there)
+                  if model <> "eleven_multilingual_v2" then
+                      yield "language_code", box (langCode false voice.Lang)
+                  yield "voice_settings", box (createObj [ "speed" ==> voice.Speed ]) ] }
     | OpenAI ->
         let root = baseUrl "CODEBASE_VIDEO_OPENAI_URL" "https://api.openai.com"
         { Url = root + "/v1/audio/speech"
@@ -183,6 +186,15 @@ let private messageOf (body: string) : string =
     let said = structured |> Option.defaultValue body
     if said.Length > 300 then said.Substring(0, 300) else said
 
+/// What a refusal says: the service's own message, or "HTTP <status>" when its body says nothing (Azure's usual 401
+/// for a wrong key or region has an empty body, so that one also names the two variables to check).
+let private refusalMessage (provider: Provider) (status: int) (body: string) : string =
+    let said = messageOf body
+    match provider, status with
+    | _ when said.Trim() <> "" -> said
+    | Azure _, 401 -> "HTTP 401: check AZURE_SPEECH_KEY and AZURE_SPEECH_REGION"
+    | _ -> $"HTTP {status}"
+
 /// The audio in a reply's body: Google's is base64 inside JSON, the others are the bytes themselves; None when the
 /// body is not shaped so.
 let private audioBytes (provider: Provider) (bytes: obj) : obj option =
@@ -223,5 +235,6 @@ let speak (voice: Voice) (input: string) : Async<Result<float32[], Failure>> =
             | Down why -> return Error(Unreachable(name, scrub secrets why))
             | Got(status, bytes) when status >= 200 && status < 300 ->
                 return convert name (audioBytes provider bytes)
-            | Got(status, bytes) -> return Error(Refused(name, status, scrub secrets (messageOf (utf8 bytes))))
+            | Got(status, bytes) ->
+                return Error(Refused(name, status, scrub secrets (refusalMessage provider status (utf8 bytes))))
         }

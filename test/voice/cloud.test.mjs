@@ -48,9 +48,17 @@ test("requestFor: ElevenLabs", async () => {
     const r = C.requestFor(withModel("ElevenLabs"), "Hi");
     assert.equal(r.Url, `${s.url}/v1/text-to-speech/abc?output_format=wav_24000`);
     assert.ok(headerOf(r, "xi-api-key") === KEY);
+    // eleven_multilingual_v2 takes no language_code
     assert.deepEqual(JSON.parse(r.Body), {
       text: "Hi",
       model_id: "eleven_multilingual_v2",
+      voice_settings: { speed: 1.0 },
+    });
+    assert.deepEqual(JSON.parse(C.requestFor(voice("ElevenLabs"), "Hi").Body).language_code, undefined);
+    // the other models get the bare language
+    assert.deepEqual(JSON.parse(C.requestFor(voice("ElevenLabs", { model: "eleven_flash_v2_5" }), "Hi").Body), {
+      text: "Hi",
+      model_id: "eleven_flash_v2_5",
       language_code: "en",
       voice_settings: { speed: 1.0 },
     });
@@ -144,6 +152,16 @@ test("400 is refused with the service's message, without a retry", async () => {
     assert.deepEqual(fieldsOf(bad(await speak(withModel("OpenAI")))), ["Refused", "OpenAI", 400, "voice not found"]);
     assert.deepEqual(fieldsOf(bad(await speak(voice("Google")))), ["Refused", "Google", 400, "voice not found"]);
     assert.deepEqual(fieldsOf(bad(await speak(voice("Azure")))), ["Refused", "Azure", 400, "voice not found"]);
+  });
+});
+
+test("an empty error body says the HTTP status, and Azure's 401 what to check", async () => {
+  await withServer("empty-401", async () => {
+    const azure = fieldsOf(bad(await speak(voice("Azure"))));
+    assert.deepEqual(azure, ["Refused", "Azure", 401, "HTTP 401: check AZURE_SPEECH_KEY and AZURE_SPEECH_REGION"]);
+    for (const p of ["ElevenLabs", "OpenAI", "Google"]) {
+      assert.deepEqual(fieldsOf(bad(await speak(withModel(p)))), ["Refused", p, 401, "HTTP 401"]);
+    }
   });
 });
 

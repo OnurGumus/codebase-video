@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import crypto from "node:crypto";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "voice-command-"));
 const home = path.join(tmp, "home");
@@ -128,6 +129,9 @@ test("pieceKey differs by provider, voice, speed and command text, not by comman
   const a = voiceFor("echo {out}");
   const key = V.pieceKey(a, "Hi");
   assert.match(key, /^[0-9a-f]{16}$/);
+  // the key's JSON starts with its version, so a later change to a request or the conversion can bump it
+  const parts = ["cv-voice 1", "command", null, "v", "en", 1, null, "echo {out}", "Hi"];
+  assert.equal(key, crypto.createHash("sha1").update(JSON.stringify(parts)).digest("hex").slice(0, 16));
   assert.equal(V.pieceKey(a, "Hi"), key);
   assert.notEqual(V.pieceKey(a, "Ho"), key);
   assert.notEqual(V.pieceKey(voiceFor("echo {out}", { name: "w" }), "Hi"), key);

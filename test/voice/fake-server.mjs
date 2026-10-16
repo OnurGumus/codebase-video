@@ -34,7 +34,8 @@ const errorBody = (path, message) =>
 
 /**
  * Starts the server. mode: ok, 400, echo (400 repeating the query and key headers), 429-once (429 then 200),
- * fail-twice (503 twice, then 200), html (200 with HTML).
+ * fail-twice (503 twice, then 200), html (200 with HTML), empty-401 (401 with an empty body, as Azure sends for a
+ * wrong key or region).
  * Resolves to { url, requests, close }; requests holds { method, path, query, headers, body } (body a Buffer).
  */
 export const start = (mode) =>
@@ -64,6 +65,10 @@ export const start = (mode) =>
           const h = req.headers;
           const keys = [h["xi-api-key"], h["authorization"], h["ocp-apim-subscription-key"]];
           return fail(400, `bad request ${u.search} ${keys.join(" ")}`);
+        }
+        if (mode === "empty-401") {
+          res.writeHead(401);
+          return res.end();
         }
         if (mode === "429-once" && n === 1) return fail(429, "slow down");
         if (mode === "fail-twice" && n <= 2) return fail(503, "try later");

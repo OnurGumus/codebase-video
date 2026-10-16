@@ -131,6 +131,50 @@ test("a refused request stops the run", async () => {
   assert.ok(!fs.existsSync(path.join(ws, "build", "timing.json")));
 });
 
+test("the summary names no model for Azure or Google, whose requests send none", async () => {
+  const { ws, home } = workspace({ provider: "azure", voice: "en-US-AvaMultilingualNeural", model: "ignored" });
+  const server = await start("ok");
+  try {
+    const env = envWith({
+      CODEBASE_VIDEO_HOME: home,
+      CODEBASE_VIDEO_AZURE_URL: server.url,
+      AZURE_SPEECH_KEY: "test-key",
+      AZURE_SPEECH_REGION: "westeurope",
+    });
+    const r = await narrate(ws, env);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(lastLine(r.stdout), /^voice: Azure, [\d,]+ characters in 5 requests, 0 pieces from the cache$/);
+  } finally {
+    await server.close();
+  }
+});
+
+/** Narrates with this voice.json and environment; the run must fail with exit 1 and leave no timing.json. */
+const fails = async (voiceJson, vars, home = null) => {
+  const w = workspace(voiceJson);
+  if (home) fs.writeFileSync(path.join(w.home, "voices.json"), JSON.stringify(home));
+  const r = await narrate(w.ws, envWith({ CODEBASE_VIDEO_HOME: w.home, ...vars }));
+  assert.equal(r.code, 1, r.stderr);
+  assert.ok(!fs.existsSync(path.join(w.ws, "build", "timing.json")), "timing.json was written");
+  return r;
+};
+
+test("an unknown provider stops the run", async () => {
+  const r = await fails({ provider: "nope", voice: "x" }, {});
+  assert.ok(r.stderr.includes('unknown provider "nope"'), r.stderr);
+});
+
+test("a service that cannot be reached stops the run", async () => {
+  const r = await fails(OPENAI, { OPENAI_API_KEY: "test-key", CODEBASE_VIDEO_OPENAI_URL: "http://127.0.0.1:9" });
+  assert.ok(r.stderr.includes("OpenAI could not be reached"), r.stderr);
+});
+
+test("a command that fails stops the run with its stderr", async () => {
+  const commands = { commands: { broken: "echo broken voice >&2; exit 1 # {out}" } };
+  const r = await fails({ provider: "command", command: "broken" }, {}, commands);
+  assert.ok(r.stderr.includes("command broken failed (exit 1): broken voice"), r.stderr);
+});
+
 const kokoroHome = path.join(os.homedir(), ".cache", "codebase-video");
 const kokoroMissing = !fs.existsSync(path.join(kokoroHome, "node", "node_modules", "kokoro-js"));
 

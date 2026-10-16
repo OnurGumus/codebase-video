@@ -1328,7 +1328,11 @@ let private printUsage (choice: Voice.Choice) (usage: Usage) : unit =
     let said = Voice.providerName choice.Provider
     if not usage.unpinned.IsEmpty then
         printfn "%s" $"{usage.unpinned.Count} pinned pronunciation(s) not used by {said}: the text is sent as written"
-    let model = choice.Model |> Option.map (fun m -> " " + m) |> Option.defaultValue ""
+    // only ElevenLabs and OpenAI send a model
+    let model =
+        match choice.Provider, choice.Model with
+        | (Voice.ElevenLabs | Voice.OpenAI), Some m -> " " + m
+        | _ -> ""
     let sent = $"{grouped usage.characters} characters in {grouped usage.requests} requests"
     printfn "%s" $"voice: {said}{model}, {sent}, {grouped usage.cached} pieces from the cache"
 

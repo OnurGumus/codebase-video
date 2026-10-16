@@ -102,10 +102,13 @@ export function requestFor(voice, input) {
         case 0:
         case 5:
             return new Request("", empty_1(), "");
-        default:
-            return new Request(((baseUrl("CODEBASE_VIDEO_ELEVENLABS_URL", "https://api.elevenlabs.io") + "/v1/text-to-speech/") + escapeDataString(voice.Name)) + "?output_format=wav_24000", ofArray([["xi-api-key", setting("ELEVENLABS_API_KEY")], jsonType]), json(ofArray([["text", input], ["model_id", defaultArg(voice.Model, "eleven_multilingual_v2")], ["language_code", langCode(false, voice.Lang)], ["voice_settings", {
+        default: {
+            const root = baseUrl("CODEBASE_VIDEO_ELEVENLABS_URL", "https://api.elevenlabs.io");
+            const model = defaultArg(voice.Model, "eleven_multilingual_v2");
+            return new Request(((root + "/v1/text-to-speech/") + escapeDataString(voice.Name)) + "?output_format=wav_24000", ofArray([["xi-api-key", setting("ELEVENLABS_API_KEY")], jsonType]), json(toList(delay(() => append(singleton(["text", input]), delay(() => append(singleton(["model_id", model]), delay(() => append((model !== "eleven_multilingual_v2") ? singleton(["language_code", langCode(false, voice.Lang)]) : empty(), delay(() => singleton(["voice_settings", {
                 speed: voice.Speed,
-            }]])));
+            }])))))))))));
+        }
     }
 }
 
@@ -197,6 +200,33 @@ function messageOf(body) {
     }
 }
 
+function refusalMessage(provider, status, body) {
+    const said = messageOf(body);
+    let matchResult;
+    if (said.trim() !== "") {
+        matchResult = 0;
+    }
+    else if (provider.tag === 3) {
+        if (status === 401) {
+            matchResult = 1;
+        }
+        else {
+            matchResult = 2;
+        }
+    }
+    else {
+        matchResult = 2;
+    }
+    switch (matchResult) {
+        case 0:
+            return said;
+        case 1:
+            return "HTTP 401: check AZURE_SPEECH_KEY and AZURE_SPEECH_REGION";
+        default:
+            return `HTTP ${status}`;
+    }
+}
+
 function audioBytes(provider, bytes) {
     if (provider.tag === 4) {
         try {
@@ -249,7 +279,7 @@ export function speak(voice, input) {
                 const secrets = secretsOf(request);
                 return singleton_2.Bind(deliver(request), (_arg) => {
                     let status;
-                    return (_arg.tag === 0) ? (((status = (_arg.fields[0] | 0), (status >= 200) && (status < 300))) ? singleton_2.Return(convert(name, audioBytes(provider, _arg.fields[1]))) : singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Refused */ 2, [name, _arg.fields[0], scrub(secrets, messageOf(_arg.fields[1].toString('utf8')))])]))) : singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Unreachable */ 3, [name, scrub(secrets, _arg.fields[0])])]));
+                    return (_arg.tag === 0) ? (((status = (_arg.fields[0] | 0), (status >= 200) && (status < 300))) ? singleton_2.Return(convert(name, audioBytes(provider, _arg.fields[1]))) : singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Refused */ 2, [name, _arg.fields[0], scrub(secrets, refusalMessage(provider, _arg.fields[0], _arg.fields[1].toString('utf8')))])]))) : singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* Unreachable */ 3, [name, scrub(secrets, _arg.fields[0])])]));
                 });
             });
         }

@@ -1854,13 +1854,13 @@ function grouped(n) {
 }
 
 function printUsage(choice, usage) {
-    let input_1;
+    let matchValue, matchValue_1, m;
     const said = providerName(choice.Provider);
     if (!FSharpSet__get_IsEmpty(usage.unpinned)) {
         const arg = `${FSharpSet__get_Count(usage.unpinned)} pinned pronunciation(s) not used by ${said}: the text is sent as written`;
         toConsole(printf("%s"))(arg);
     }
-    const arg_1 = `voice: ${said}${defaultArg((input_1 = choice.Model, (input_1 == null) ? undefined : (" " + input_1)), "")}, ${concat_1(grouped(usage.characters), " characters in ", grouped(usage.requests), " requests")}, ${grouped(usage.cached)} pieces from the cache`;
+    const arg_1 = `voice: ${said}${(matchValue = choice.Provider, (matchValue_1 = choice.Model, (matchValue.tag === 1) ? ((matchValue_1 != null) ? ((m = matchValue_1, " " + m)) : "") : ((matchValue.tag === 2) ? ((matchValue_1 != null) ? ((m = matchValue_1, " " + m)) : "") : "")))}, ${concat_1(grouped(usage.characters), " characters in ", grouped(usage.requests), " requests")}, ${grouped(usage.cached)} pieces from the cache`;
     toConsole(printf("%s"))(arg_1);
 }
 

@@ -614,6 +614,6 @@ export function pieceKey(voice, input) {
     let command;
     const matchValue = voice.Provider;
     command = ((matchValue.tag === 5) ? matchValue.fields[1] : "");
-    return substring(sha1Hex(toJson([tag(voice.Provider), defaultArg(voice.Model, defaultOf_1()), voice.Name, voice.Lang, voice.Speed, defaultArg(voice.Instructions, defaultOf_1()), command, input])), 0, 16);
+    return substring(sha1Hex(toJson(["cv-voice 1", tag(voice.Provider), defaultArg(voice.Model, defaultOf_1()), voice.Name, voice.Lang, voice.Speed, defaultArg(voice.Instructions, defaultOf_1()), command, input])), 0, 16);
 }
 

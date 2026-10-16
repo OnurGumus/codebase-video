@@ -386,6 +386,10 @@ let private tag (provider: Provider) : string =
     | Command _ -> "command"
     | other -> (providerName other).ToLower()
 
+/// The version of a piece's key: bump it when a request or the conversion changes, so that no old piece is reused.
+[<Literal>]
+let private KeyVersion = "cv-voice 1"
+
 /// The cache key of a piece of a non-Kokoro voice: 16 hex of the SHA-1 of everything that changes the sound.
 let pieceKey (voice: Voice) (input: string) : string =
     let command =
@@ -393,7 +397,8 @@ let pieceKey (voice: Voice) (input: string) : string =
         | Command(_, body) -> body
         | _ -> ""
     let parts: obj[] =
-        [| box (tag voice.Provider)
+        [| box KeyVersion
+           box (tag voice.Provider)
            box (defaultArg voice.Model null)
            box voice.Name
            box voice.Lang
