@@ -1,12 +1,11 @@
-# Making a video from CI
+# Run it from CI
 
-A progress video is a good fit for CI: on each release, or once a week, a job makes a short video of what changed
-since the last one. A teaching video can be made the same way. This page says what the job needs and gives an
-example for GitHub Actions.
+**You get** a video made by a CI job, with no one answering questions: for example a short
+[progress video](progress-video.md) on each release or once a week. A teaching video works the same way.
 
-The plugin's skill is what runs the agents, so the job runs Claude Code without a person (`claude -p`) and passes
-the skill its flags. With `--yes` the skill never asks a question: it takes the default for everything not given and
-lists those defaults in its report.
+The job runs Claude Code without a person (`claude -p`) and passes the skill its [settings](features.md#settings)
+as flags. With `--yes` the skill asks nothing: it takes the default for everything not given and lists those
+defaults in its report. Below: what the job needs, the commands, and an example for GitHub Actions.
 
 ## What the job needs
 
@@ -82,9 +81,8 @@ Everything is in `.codebase-video/<name>/out/`:
 The checked document the video was made from is `.codebase-video/<name>/build/lesson.md`, and the facts read from
 git are `build/history.md` beside it.
 
-**Read `REPORT.md` before the video goes to anyone.** Interactively, a person sees the audits' findings as they
-come. In CI nobody does; the audits still run and fix what they find, and the report is where the rest is written
-down.
+**Read `REPORT.md` before the video goes to anyone.** In CI nobody sees the checks' findings as they come; the
+checks still run and fix what they find, and the report is where the rest is written down.
 
 ## An example workflow
 

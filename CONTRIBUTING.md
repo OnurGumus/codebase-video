@@ -16,7 +16,7 @@ committed, which is why users need only Node.js.
 | `engine/glossary.json` | how technical terms are said aloud ("JSON" as "jason"); hand-written, read by `src/Engine/Glossary.fs` |
 | `engine/kit/gallery` | a small sample video that uses every kit component |
 | `test/golden` | a baseline harness: records every output of the engine, then shows what a change altered |
-| `docs/` | [how it works](docs/how-it-works.md) |
+| `docs/` | the guides for users (the README links each one), the [reference](docs/features.md) and [how it works](docs/how-it-works.md) |
 | branch `gh-pages` | the project page and the promo video (kept off `main` so installs stay small) |
 
 To rebuild after changing the F# code (needs the .NET SDK, version 10 or later):
