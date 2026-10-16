@@ -1,7 +1,7 @@
 
 import { toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { int32_type, float64_type, record_type, class_type, tuple_type, option_type, union_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
-import { map as map_1, empty as empty_1, exists as exists_1, tryFind, ofArray, singleton } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { map as map_1, empty as empty_1, tryFind, ofArray, singleton } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { split, substring, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { toJson, sha1Hex, fileSize, childProcess, runCapture, remove, fs, os, env, toolHome, readJson, exists, resolve, dirname, join } from "./Node.js";
@@ -10,8 +10,8 @@ import { orElse, defaultArg, value as value_7, some } from "./fable_modules/fabl
 import { ofArray as ofArray_1 } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { map, tryLast, choose as choose_1 } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { defaultOf as defaultOf_1, createObj, int32ToString, disposeSafe, getEnumerator, comparePrimitives } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { empty, collect, singleton as singleton_1, append, delay, toList, mapIndexed, forAll } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { traverseResultM } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/List.fs.js";
-import { empty, collect, singleton as singleton_1, append, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
 import { defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { read } from "./Wav.js";
@@ -258,7 +258,26 @@ function others(spec) {
     });
 }
 
-const shellClasses = ofArray([["$ or `", ofArray(["$", "`"])], ["a quote", ofArray(["\"", "\'"])], ["a backslash", singleton("\\")], ["; & or |", ofArray([";", "&", "|"])], ["< or >", ofArray(["<", ">"])], ["a line break", ofArray(["\n", "\r"])], ["a NUL", singleton(String.fromCharCode(0 & 0xFFFF))]]);
+function plainChar(first, c) {
+    if (((("A" <= c) && (c <= "Z")) ? true : (("a" <= c) && (c <= "z"))) ? true : (("0" <= c) && (c <= "9"))) {
+        return true;
+    }
+    else if (!first) {
+        if (((c === ".") ? true : (c === "_")) ? true : (c === "+")) {
+            return true;
+        }
+        else {
+            return c === "-";
+        }
+    }
+    else {
+        return false;
+    }
+}
+
+function plainWord(value) {
+    return forAll((x) => x, mapIndexed((i, c) => plainChar(i === 0, c), value.split("")));
+}
 
 function notText(field, value) {
     return new Failure(/* SettingsBad */ 1, [(`the voice setting "${field}" is ${value === null ? 'null' : Array.isArray(value) ? 'a list'
@@ -290,15 +309,14 @@ function plainValues(values) {
     const input_1 = traverseResultM((tupledArg) => {
         const field = tupledArg[0];
         const value = tupledArg[1];
-        const matchValue = tryFind((tupledArg_1) => exists_1((c) => (value.indexOf(c) >= 0), tupledArg_1[1]), shellClasses);
         if ((typeof value) !== "string") {
             return new FSharpResult$2(/* Error */ 1, [notText(field, value)]);
         }
-        else if (matchValue == null) {
+        else if (plainWord(value)) {
             return new FSharpResult$2(/* Ok */ 0, [undefined]);
         }
         else {
-            return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [((`the command voice's "${field}" holds ${matchValue[0]}: a command voice's voice and lang may not hold `) + "$ ` \" \' \\ ; & | < >, CR, LF or NUL, since its command runs in a shell ") + "(voice.json, script.json)"])]);
+            return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [((concat("the command voice\'s \"", field, "\" is not a plain word: a command voice\'s voice and lang may hold ") + "only A-Z, a-z, 0-9 and . _ + - (starting with a letter or a digit), since its command runs in ") + "a shell (voice.json, script.json). A voice name with spaces or other characters belongs in ") + "your own command\'s text in voices.json"])]);
         }
     }, values);
     if (input_1.tag === 1) {
@@ -306,6 +324,18 @@ function plainValues(values) {
     }
     else {
         return new FSharpResult$2(/* Ok */ 0, [void input_1.fields[0]]);
+    }
+}
+
+function numericSpeed(speed) {
+    const value = (typeof speed === 'number' && isFinite(speed));
+    const error = new Failure(/* SettingsBad */ 1, [concat("the voice setting \"speed\" is ", speed === null ? 'null' : Array.isArray(speed) ? 'a list'
+    : typeof speed === 'object' ? 'an object' : 'a ' + typeof speed, ", not a number: write it as a number such as 1.0 ") + "(script.json)"]);
+    if (value) {
+        return new FSharpResult$2(/* Ok */ 0, [undefined]);
+    }
+    else {
+        return new FSharpResult$2(/* Error */ 1, [error]);
     }
 }
 
@@ -653,7 +683,7 @@ function misplacedPlaceholder(body) {
  * Before any work: the provider's key and the speed it can take.
  */
 export function check(choice, speed) {
-    let input_11;
+    let input_13;
     let resource;
     let copyOfStruct = variables(choice.Provider);
     resource = getEnumerator(copyOfStruct);
@@ -677,7 +707,7 @@ export function check(choice, speed) {
                 result_1 = (new FSharpResult$2(/* Error */ 1, [matchValue.fields[0]]));
             }
         }
-        input_11 = result_1;
+        input_13 = result_1;
     }
     finally {
         if (!(resource === defaultOf())) {
@@ -685,14 +715,14 @@ export function check(choice, speed) {
             disposeSafe(copyOfStruct_1);
         }
     }
-    if (input_11.tag === 1) {
-        return new FSharpResult$2(/* Error */ 1, [input_11.fields[0]]);
+    if (input_13.tag === 1) {
+        return new FSharpResult$2(/* Error */ 1, [input_13.fields[0]]);
     }
     else {
-        let input_9;
+        let input_11;
         const matchValue_1 = speedRange(choice.Provider);
         if (matchValue_1 == null) {
-            input_9 = ResultCE_ResultBuilder__Zero(ResultCE_result);
+            input_11 = ResultCE_ResultBuilder__Zero(ResultCE_result);
         }
         else {
             const said = matchValue_1[2];
@@ -701,38 +731,44 @@ export function check(choice, speed) {
             const value_1 = (matchValue_1[0] <= speed) && (speed <= high);
             const error_2 = new Failure(/* SettingsBad */ 1, [(`speed ${speed} is not one ${providerName(choice.Provider)} takes (${said}): `) + "change \"speed\" in script.json"]);
             input_3 = (value_1 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_2])));
-            input_9 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
+            input_11 = ((input_3.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_3.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [undefined])));
         }
-        if (input_9.tag === 1) {
-            return new FSharpResult$2(/* Error */ 1, [input_9.fields[0]]);
+        if (input_11.tag === 1) {
+            return new FSharpResult$2(/* Error */ 1, [input_11.fields[0]]);
         }
         else {
             const matchValue_2 = choice.Provider;
             if (matchValue_2.tag === 5) {
                 const name = matchValue_2.fields[0];
                 const body = matchValue_2.fields[1];
-                let input_7;
-                const value_3 = body.indexOf("{out}") >= 0;
-                const error_4 = new Failure(/* SettingsBad */ 1, [concat("command ", name, " never says where its audio goes: put {out} in its text (voices.json)")]);
-                input_7 = (value_3 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_4])));
-                if (input_7.tag === 1) {
-                    return new FSharpResult$2(/* Error */ 1, [input_7.fields[0]]);
+                const input_9 = numericSpeed(speed);
+                if (input_9.tag === 1) {
+                    return new FSharpResult$2(/* Error */ 1, [input_9.fields[0]]);
                 }
                 else {
-                    let input_5;
-                    const value_5 = !(body.indexOf("<<") >= 0);
-                    const error_6 = new Failure(/* SettingsBad */ 1, [concat("command ", name, " has a heredoc (<<): heredocs are not supported in voice commands")]);
-                    input_5 = (value_5 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_6])));
-                    if (input_5.tag === 1) {
-                        return new FSharpResult$2(/* Error */ 1, [input_5.fields[0]]);
+                    let input_7;
+                    const value_3 = body.indexOf("{out}") >= 0;
+                    const error_4 = new Failure(/* SettingsBad */ 1, [concat("command ", name, " never says where its audio goes: put {out} in its text (voices.json)")]);
+                    input_7 = (value_3 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_4])));
+                    if (input_7.tag === 1) {
+                        return new FSharpResult$2(/* Error */ 1, [input_7.fields[0]]);
                     }
                     else {
-                        const matchValue_3 = misplacedPlaceholder(body);
-                        if (matchValue_3 == null) {
-                            return ResultCE_ResultBuilder__Zero(ResultCE_result);
+                        let input_5;
+                        const value_5 = !(body.indexOf("<<") >= 0);
+                        const error_6 = new Failure(/* SettingsBad */ 1, [concat("command ", name, " has a heredoc (<<): heredocs are not supported in voice commands")]);
+                        input_5 = (value_5 ? (new FSharpResult$2(/* Ok */ 0, [undefined])) : (new FSharpResult$2(/* Error */ 1, [error_6])));
+                        if (input_5.tag === 1) {
+                            return new FSharpResult$2(/* Error */ 1, [input_5.fields[0]]);
                         }
                         else {
-                            return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [(`command ${name} puts ${matchValue_3} inside quotes or after a backslash: write each placeholder `) + "outside any quotes in its text (voices.json); the engine quotes it itself"])]);
+                            const matchValue_3 = misplacedPlaceholder(body);
+                            if (matchValue_3 == null) {
+                                return ResultCE_ResultBuilder__Zero(ResultCE_result);
+                            }
+                            else {
+                                return new FSharpResult$2(/* Error */ 1, [new Failure(/* SettingsBad */ 1, [(`command ${name} puts ${matchValue_3} inside quotes or after a backslash: write each placeholder `) + "outside any quotes in its text (voices.json); the engine quotes it itself"])]);
+                            }
                         }
                     }
                 }
@@ -879,10 +915,12 @@ function spawnText(command, vars, input, seconds) {
  */
 export function speakCommand(voice, input) {
     return singleton_2.Delay(() => {
+        let values;
+        const input_2 = plainValues(ofArray([["voice", voice.Name], ["lang", voice.Lang]]));
+        values = ((input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_2.fields[0]])) : numericSpeed(voice.Speed));
         const matchValue = voice.Provider;
-        const matchValue_1 = plainValues(ofArray([["voice", voice.Name], ["lang", voice.Lang]]));
         if (matchValue.tag === 5) {
-            const copyOfStruct = matchValue_1;
+            const copyOfStruct = values;
             if (copyOfStruct.tag === 0) {
                 const dir = tempDir();
                 return singleton_2.TryFinally(singleton_2.Delay(() => {
@@ -890,8 +928,8 @@ export function speakCommand(voice, input) {
                     const vars = ofArray([["CV_VOICE", voice.Name], ["CV_LANG", voice.Lang], ["CV_SPEED", voice.Speed.toString()], ["CV_OUT", out]]);
                     const seconds = commandTimeout();
                     return singleton_2.Bind(spawnText(fill(matchValue.fields[1]), vars, input, seconds), (_arg) => {
-                        let input_2;
-                        return (_arg.tag === 0) ? ((_arg.fields[0] !== 0) ? singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], _arg.fields[0], _arg.fields[1]])])) : ((!exists(out) ? true : (fileSize(out) === 0)) ? singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], 0, "no audio was written: the command did not create {out}"])])) : singleton_2.Return((input_2 = samplesOf(out), (input_2.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], 0, input_2.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_2.fields[0]])))))) : singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], 1, (`timed out after ${_arg.fields[0]} s. ${_arg.fields[1]}`).trim()])]));
+                        let input_4;
+                        return (_arg.tag === 0) ? ((_arg.fields[0] !== 0) ? singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], _arg.fields[0], _arg.fields[1]])])) : ((!exists(out) ? true : (fileSize(out) === 0)) ? singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], 0, "no audio was written: the command did not create {out}"])])) : singleton_2.Return((input_4 = samplesOf(out), (input_4.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], 0, input_4.fields[0]])])) : (new FSharpResult$2(/* Ok */ 0, [input_4.fields[0]])))))) : singleton_2.Return(new FSharpResult$2(/* Error */ 1, [new Failure(/* CommandFailed */ 4, [matchValue.fields[0], 1, (`timed out after ${_arg.fields[0]} s. ${_arg.fields[1]}`).trim()])]));
                     });
                 }), () => {
                     remove(dir);

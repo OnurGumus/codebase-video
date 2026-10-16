@@ -137,16 +137,19 @@ let private others (spec: obj) : Map<string, string * string> =
         text v "voice" |> Option.map (fun name -> code, (name, defaultArg (text v "lang") code)))
     |> Map.ofArray
 
-/// The characters a command voice's voice and lang may not hold, by the class the message names: its command runs
-/// in `sh`, where each has a meaning.
-let private shellClasses: (string * char list) list =
-    [ "$ or `", [ '$'; '`' ]
-      "a quote", [ '"'; '\'' ]
-      "a backslash", [ '\\' ]
-      "; & or |", [ ';'; '&'; '|' ]
-      "< or >", [ '<'; '>' ]
-      "a line break", [ '\n'; '\r' ]
-      "a NUL", [ char 0 ] ]
+/// Whether a character may stand in a command voice's value: an ASCII letter or digit, anywhere; `.` `_` `+` `-`,
+/// except first.
+let private plainChar (first: bool) (c: char) : bool =
+    ('A' <= c && c <= 'Z')
+    || ('a' <= c && c <= 'z')
+    || ('0' <= c && c <= '9')
+    || (not first && (c = '.' || c = '_' || c = '+' || c = '-'))
+
+/// Whether a command voice's value is a plain word: empty, or matching ^[A-Za-z0-9][A-Za-z0-9._+-]*$. Such a word
+/// has no blank, no glob character, no slash, no `~` and no shell syntax, and cannot start like an option, so `sh`
+/// keeps it one inert word wherever the command puts it: quoted, unquoted, after a glob or in a nested `sh -c`.
+let private plainWord (value: string) : bool =
+    value |> Seq.mapi (fun i c -> plainChar (i = 0) c) |> Seq.forall id
 
 /// What a JSON value is, as a message says it: "null", "a list", "an object", "a number" and so on.
 [<Emit("$0 === null ? 'null' : Array.isArray($0) ? 'a list'
@@ -167,23 +170,39 @@ let private textOnly (fields: (string * obj * string) list) : Result<unit, Failu
     | Some(field, o, key) -> Error(notText field o?(key))
     | None -> Ok()
 
-/// A command voice's values (each a field name and its value), refused when one is not text or holds a shell
-/// character.
+/// A command voice's values (each a field name and its value), refused when one is not text (checked first, so that
+/// no string method runs on a number, a null or a list) or is not a plain word.
 let private plainValues (values: (string * string) list) : Result<unit, Failure> =
     let plain (field: string, value: string) =
-        let holds (_, chars: char list) = chars |> List.exists (fun c -> value.IndexOf c >= 0)
-        match shellClasses |> List.tryFind holds with
-        | _ when jsTypeof (box value) <> "string" -> Error(notText field (box value))
-        | Some(said, _) ->
+        if jsTypeof (box value) <> "string" then
+            Error(notText field (box value))
+        elif plainWord value then
+            Ok()
+        else
             Error(
                 SettingsBad(
-                    $"the command voice's \"{field}\" holds {said}: a command voice's voice and lang may not hold "
-                    + "$ ` \" ' \\ ; & | < >, CR, LF or NUL, since its command runs in a shell "
-                    + "(voice.json, script.json)"
+                    $"the command voice's \"{field}\" is not a plain word: a command voice's voice and lang may hold "
+                    + "only A-Z, a-z, 0-9 and . _ + - (starting with a letter or a digit), since its command runs in "
+                    + "a shell (voice.json, script.json). A voice name with spaces or other characters belongs in "
+                    + "your own command's text in voices.json"
                 )
             )
-        | None -> Ok()
     values |> List.traverseResultM plain |> Result.map ignore
+
+/// Whether a JSON value is a finite number (a string such as "1" is not).
+[<Emit("(typeof $0 === 'number' && isFinite($0))")>]
+let private finiteNumber (o: obj) : bool = jsNative
+
+/// A command voice's speed, refused unless it is a number: script.json's "speed" reaches here as whatever JSON value
+/// it is, and `{speed}` must be the engine's own writing of a number, never a repository's text.
+let private numericSpeed (speed: float) : Result<unit, Failure> =
+    finiteNumber (box speed)
+    |> Result.requireTrue (
+        SettingsBad(
+            $"the voice setting \"speed\" is {kindOf (box speed)}, not a number: write it as a number such as 1.0 "
+            + "(script.json)"
+        )
+    )
 
 /// The voice settings of the video in workspace `ws`: None for a silent clip.
 let choose (ws: string) (script: obj) : Result<Choice option, Failure> =
@@ -342,6 +361,7 @@ let check (choice: Choice) (speed: float) : Result<unit, Failure> =
         | None -> ()
         match choice.Provider with
         | Command(name, body) ->
+            do! numericSpeed speed
             do!
                 body.Contains "{out}"
                 |> Result.requireTrue (
@@ -400,7 +420,8 @@ let samplesOf (file: string) : Result<float32[], string> =
         remove dir
 
 /// The command's text with each placeholder replaced by a quoted reference to its environment variable (`{voice}`
-/// becomes `"$CV_VOICE"`): no value is ever spliced into the command, so none can run as code, inside quotes or not.
+/// becomes `"$CV_VOICE"`): no value is ever spliced into the command. What keeps a value inert wherever `sh` then
+/// puts it (a nested `sh -c`, after a glob) is that it is a plain word or a number (`plainWord`, `numericSpeed`).
 let private fill (body: string) : string =
     let reference (m: Match) = "\"$CV_" + m.Groups[1].Value.ToUpper() + "\""
     Regex.Replace(body, @"\{(voice|lang|speed|out)\}", MatchEvaluator reference)
@@ -475,8 +496,11 @@ let private spawnText (command: string) (vars: (string * string) list) (input: s
 /// file may hold any audio ffmpeg reads).
 let speakCommand (voice: Voice) (input: string) : Async<Result<float32[], Failure>> =
     async {
-        // `choose` refuses these values too; checked again here so that no caller can skip it
-        match voice.Provider, plainValues [ "voice", voice.Name; "lang", voice.Lang ] with
+        // `choose` and `check` refuse these values too; checked again here so that no caller can skip them
+        let values =
+            plainValues [ "voice", voice.Name; "lang", voice.Lang ]
+            |> Result.bind (fun () -> numericSpeed voice.Speed)
+        match voice.Provider, values with
         | Command _, Error refused -> return Error refused
         | Command(name, body), Ok() ->
             let dir = tempDir ()

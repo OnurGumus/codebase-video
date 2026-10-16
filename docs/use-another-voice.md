@@ -97,26 +97,30 @@ The project then names the command, and nothing else:
 
 The program gets the text on standard input. In its command line, `{out}` is required and is where the audio goes;
 `{voice}` (the project's `voice` field), `{lang}` and `{speed}` are optional. Write each placeholder outside any
-quotes, as above. Do not put it inside `'...'` or `"..."` (not even a longer quoted text such as `sh -c "..."` or
+quotes, as above: not inside `'...'` or `"..."` (not even a longer quoted text such as `sh -c "..."` or
 `"/My Voices/{voice}.onnx"`), and not after a backslash. The engine quotes it itself, so it reaches the program as one
-word. A placeholder anywhere inside quotes stops `narrate` with a message that names it. A `#` comment may hold
-quotes, but a heredoc (`<<`) is not supported in a voice command. The values are also in the program's environment
-as `CV_OUT`, `CV_VOICE`, `CV_LANG` and `CV_SPEED`.
+word. The engine refuses the quoted forms it recognises, with a message that names the placeholder, but it does not
+read the shell's full grammar, so do not rely on it to catch every one. A heredoc (`<<`) is not supported in a voice
+command. The values are also in the program's environment as `CV_OUT`, `CV_VOICE`, `CV_LANG` and `CV_SPEED`.
 
 The program must write a file ffmpeg can read to `{out}`, exit with 0, and finish within 120 seconds. Any audio
 format ffmpeg reads is fine, and it is converted for you.
 
-A command voice's `voice` and `lang` (in `voice.json`, `script.json` or a `voices` entry) must be text, and may not
-contain `$` `` ` `` `"` `'` `\` `;` `&` `|` `<` `>`, a line break (CR or LF) or a NUL. The command runs in a shell,
-where each of these has a meaning. A value with one of them stops `narrate` before any work, with a message that
-names the field. Spaces, parentheses and letters in any language are fine.
+A command voice's `voice` and `lang` (in `voice.json`, `script.json` or a `voices` entry) must be plain words: only
+the letters `A-Z` and `a-z`, the digits `0-9` and `.` `_` `+` `-`, starting with a letter or a digit (`en-us`,
+`fr_FR`, `en+f3`, `Samantha`). An empty `voice` is fine. Any other value (a space, `*`, `/`, `~`, `$`, a letter
+such as `é`, a value that is not text) stops `narrate` before any work, with a message that names the field. A plain
+word stays one harmless word wherever the shell puts it. `speed` must be a number. A voice name with spaces or other
+characters goes in your own command's text in `voices.json` (`say -v "Good News" -o {out}`), not in the project.
 
-Two things the engine cannot check for you:
+Three things the engine cannot check for you:
 
 - A program that runs its argument as code (`eval {voice}`, `sh -c {voice}`, `python -c {voice}`) runs whatever the
   project's value says. Never pass a placeholder to one.
-- A placeholder in a positional slot can receive a value that starts with `-`, which the program may read as an
-  option. Put it after its option (`-v {voice}`, `--model {voice}`) or after `--`.
+- Never put a placeholder in command position (`{voice} --text hi`, `X=$({voice})`): the shell would run whatever
+  program the project names.
+- Put each placeholder after its option (`-v {voice}`, `--rate {speed}`), so the program reads it as that option's
+  value: `{speed}` can be a negative number, which starts with `-`.
 
 Commands live outside the repository on purpose: a project can choose among your commands, but a `voice.json` that
 comes with a repository cannot run one of its own. A name you have not defined stops `narrate` with a message that
