@@ -11,7 +11,8 @@ const V = await import(pathToFileURL(path.join(root, "engine", "cli", "Voice.js"
 const C = await import(pathToFileURL(path.join(root, "engine", "cli", "VoiceCloud.js")).href);
 
 const KEY = "test-key";
-for (const v of ["ELEVENLABS_API_KEY", "OPENAI_API_KEY", "AZURE_SPEECH_KEY", "GOOGLE_API_KEY"]) process.env[v] = KEY;
+const KEY_VARIABLES = ["ELEVENLABS_API_KEY", "OPENAI_API_KEY", "AZURE_SPEECH_KEY", "GOOGLE_API_KEY"];
+for (const v of KEY_VARIABLES) process.env[v] = KEY;
 process.env.AZURE_SPEECH_REGION = "westeurope";
 
 const ok = (r) => { assert.equal(r.tag, 0, JSON.stringify(r)); return r.fields[0]; };
@@ -22,9 +23,14 @@ const fieldsOf = (f) => [caseOf(f), ...f.fields];
 const URLS = { ElevenLabs: "ELEVENLABS", OpenAI: "OPENAI", Azure: "AZURE", Google: "GOOGLE" };
 const setBase = (base) => { for (const p of Object.values(URLS)) process.env[`CODEBASE_VIDEO_${p}_URL`] = base; };
 
-/** A voice: provider is a case name; the Voice record's field order is Provider, Name, Model, Instructions, Lang, Speed. */
+/** A voice: provider is a case name; the Voice fields are Provider, Name, Model, Instructions, Lang, Speed. */
 const voice = (provider, { name = "abc", model, instructions, lang = "en-us", speed = 1.0 } = {}) => {
-  const p = { ElevenLabs: new V.Provider(1, []), OpenAI: new V.Provider(2, []), Azure: new V.Provider(3, ["westeurope"]), Google: new V.Provider(4, []) }[provider];
+  const p = {
+    ElevenLabs: new V.Provider(1, []),
+    OpenAI: new V.Provider(2, []),
+    Azure: new V.Provider(3, ["westeurope"]),
+    Google: new V.Provider(4, []),
+  }[provider];
   return new V.Voice(p, name, model, instructions, lang, speed);
 };
 const MODELS = { ElevenLabs: "eleven_multilingual_v2", OpenAI: "gpt-4o-mini-tts" };
@@ -42,7 +48,12 @@ test("requestFor: ElevenLabs", async () => {
     const r = C.requestFor(withModel("ElevenLabs"), "Hi");
     assert.equal(r.Url, `${s.url}/v1/text-to-speech/abc?output_format=wav_24000`);
     assert.ok(headerOf(r, "xi-api-key") === KEY);
-    assert.deepEqual(JSON.parse(r.Body), { text: "Hi", model_id: "eleven_multilingual_v2", language_code: "en", voice_settings: { speed: 1.0 } });
+    assert.deepEqual(JSON.parse(r.Body), {
+      text: "Hi",
+      model_id: "eleven_multilingual_v2",
+      language_code: "en",
+      voice_settings: { speed: 1.0 },
+    });
   });
 });
 
@@ -54,7 +65,13 @@ test("requestFor: OpenAI", async () => {
     const r = C.requestFor(withModel("OpenAI", { name: "alloy", speed: 1.5 }), "Hi");
     assert.equal(r.Url, `${s.url}/v1/audio/speech`);
     assert.equal(headerOf(r, "Authorization"), `Bearer ${KEY}`);
-    assert.deepEqual(JSON.parse(r.Body), { model: "gpt-4o-mini-tts", input: "Hi", voice: "alloy", response_format: "wav", speed: 1.5 });
+    assert.deepEqual(JSON.parse(r.Body), {
+      model: "gpt-4o-mini-tts",
+      input: "Hi",
+      voice: "alloy",
+      response_format: "wav",
+      speed: 1.5,
+    });
     const i = C.requestFor(withModel("OpenAI", { name: "alloy", instructions: "calm" }), "Hi");
     assert.equal(JSON.parse(i.Body).instructions, "calm");
   });
@@ -73,7 +90,10 @@ test("requestFor: Azure", async () => {
     assert.match(r.Body, /<prosody rate="\+20%">Hi<\/prosody>/);
   });
   delete process.env.CODEBASE_VIDEO_AZURE_URL;
-  assert.equal(C.requestFor(voice("Azure"), "Hi").Url, "https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1");
+  assert.equal(
+    C.requestFor(voice("Azure"), "Hi").Url,
+    "https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1",
+  );
 });
 
 test("requestFor: Google", async () => {
@@ -118,7 +138,8 @@ test("speak returns 24 kHz audio from each provider", async () => {
 
 test("400 is refused with the service's message, without a retry", async () => {
   await withServer("400", async (s) => {
-    assert.deepEqual(fieldsOf(bad(await speak(withModel("ElevenLabs")))), ["Refused", "ElevenLabs", 400, "voice not found"]);
+    const eleven = fieldsOf(bad(await speak(withModel("ElevenLabs"))));
+    assert.deepEqual(eleven, ["Refused", "ElevenLabs", 400, "voice not found"]);
     assert.equal(s.requests.length, 1);
     assert.deepEqual(fieldsOf(bad(await speak(withModel("OpenAI")))), ["Refused", "OpenAI", 400, "voice not found"]);
     assert.deepEqual(fieldsOf(bad(await speak(voice("Google")))), ["Refused", "Google", 400, "voice not found"]);
@@ -161,22 +182,36 @@ test("a 200 that is not audio is refused", async () => {
 
 test("the key never appears in a failure message", async () => {
   const secret = "sk-very-secret-123";
-  for (const v of ["ELEVENLABS_API_KEY", "OPENAI_API_KEY", "AZURE_SPEECH_KEY", "GOOGLE_API_KEY"]) process.env[v] = secret;
+  for (const v of KEY_VARIABLES) process.env[v] = secret;
+  const providers = ["ElevenLabs", "OpenAI", "Azure", "Google"];
+  const seen = [];
+  const check = async (label, p) => {
+    const failure = bad(await speak(withModel(p)));
+    seen.push(failure);
+    const said = JSON.stringify(V.describe(failure));
+    assert.ok(!said.includes(secret) && !said.includes(encodeURIComponent(secret)), `${label} ${p}: ${said}`);
+  };
   try {
-    for (const mode of ["400", "fail-twice", "html"]) {
-      for (const p of ["ElevenLabs", "OpenAI", "Azure", "Google"]) {
-        await withServer(mode, async () => {
-          assert.ok(!JSON.stringify(V.describe(bad(await speak(withModel(p))))).includes(secret), `${mode} ${p}`);
-        });
-      }
+    // a service whose error repeats the query and the key headers it was sent
+    for (const p of providers) {
+      await withServer("echo", async (s) => {
+        await check("echo", p);
+        assert.ok(s.requests.length === 1);
+      });
     }
+    for (const mode of ["fail-twice", "html"]) {
+      for (const p of providers) await withServer(mode, () => check(mode, p));
+    }
+    // fetch itself throws with the URL in its message (Google's carries ?key=)
+    setBase("http://[bad");
+    for (const p of providers) await check("bad url", p);
     setBase("http://127.0.0.1:9");
-    for (const p of ["ElevenLabs", "OpenAI", "Azure", "Google"]) {
-      assert.ok(!JSON.stringify(V.describe(bad(await speak(withModel(p))))).includes(secret), `down ${p}`);
-    }
+    for (const p of providers) await check("down", p);
   } finally {
-    for (const v of ["ELEVENLABS_API_KEY", "OPENAI_API_KEY", "AZURE_SPEECH_KEY", "GOOGLE_API_KEY"]) process.env[v] = KEY;
+    for (const v of KEY_VARIABLES) process.env[v] = KEY;
   }
+  // the echo really carried the key to the scrubber: its 400 said "bad request" with the keys starred out
+  assert.ok(seen.some((f) => f.fields[2]?.includes("bad request")), "echo failures were produced");
 });
 
 test("Kokoro is never spoken here", async () => {

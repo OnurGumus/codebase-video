@@ -18,7 +18,9 @@ export const wav = () => {
   buf.writeUInt16LE(16, 34);
   buf.write("data", 36);
   buf.writeUInt32LE(n * 2, 40);
-  for (let i = 0; i < n; i++) buf.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 12000), 44 + i * 2);
+  for (let i = 0; i < n; i++) {
+    buf.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 12000), 44 + i * 2);
+  }
   return buf;
 };
 
@@ -31,7 +33,8 @@ const errorBody = (path, message) =>
       : { type: "application/json", body: JSON.stringify({ error: { message } }) };
 
 /**
- * Starts the server. mode: ok, 400, 429-once (429 then 200), fail-twice (503 twice, then 200), html (200 with HTML).
+ * Starts the server. mode: ok, 400, echo (400 repeating the query and key headers), 429-once (429 then 200),
+ * fail-twice (503 twice, then 200), html (200 with HTML).
  * Resolves to { url, requests, close }; requests holds { method, path, query, headers, body } (body a Buffer).
  */
 export const start = (mode) =>
@@ -42,7 +45,13 @@ export const start = (mode) =>
       req.on("data", (c) => chunks.push(c));
       req.on("end", () => {
         const u = new URL(req.url, "http://x");
-        requests.push({ method: req.method, path: u.pathname, query: u.search, headers: req.headers, body: Buffer.concat(chunks) });
+        requests.push({
+          method: req.method,
+          path: u.pathname,
+          query: u.search,
+          headers: req.headers,
+          body: Buffer.concat(chunks),
+        });
         const n = requests.length;
         const fail = (status, message) => {
           const e = errorBody(u.pathname, message);
@@ -50,6 +59,12 @@ export const start = (mode) =>
           res.end(e.body);
         };
         if (mode === "400") return fail(400, "voice not found");
+        if (mode === "echo") {
+          // a hostile service: its 400 repeats the query and every key header it was sent
+          const h = req.headers;
+          const keys = [h["xi-api-key"], h["authorization"], h["ocp-apim-subscription-key"]];
+          return fail(400, `bad request ${u.search} ${keys.join(" ")}`);
+        }
         if (mode === "429-once" && n === 1) return fail(429, "slow down");
         if (mode === "fail-twice" && n <= 2) return fail(503, "try later");
         if (mode === "html") {

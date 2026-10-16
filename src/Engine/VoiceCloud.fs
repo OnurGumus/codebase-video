@@ -108,16 +108,20 @@ type private Reply =
 [<Literal>]
 let private TimeoutMs = 120000
 
+/// POSTs the body and resolves to { status, bytes } (a Buffer); rejects on a network error or after the timeout.
 [<Emit("fetch($0, { method: 'POST', headers: $1, body: $2, signal: AbortSignal.timeout($3) })
     .then(async r => ({ status: r.status, bytes: Buffer.from(await r.arrayBuffer()) }))")>]
 let private post (url: string) (headers: obj) (body: string) (timeoutMs: int) : obj = jsNative
 
+/// Whether a JS value is a non-empty string.
 [<Emit("typeof $0 === 'string' && $0 !== ''")>]
 let private isText (o: obj) : bool = jsNative
 
+/// The bytes (a Buffer) of base64 text.
 [<Emit("Buffer.from($0, 'base64')")>]
 let private fromBase64 (s: string) : obj = jsNative
 
+/// A Buffer's bytes read as UTF-8 text.
 [<Emit("$0.toString('utf8')")>]
 let private utf8 (bytes: obj) : string = jsNative
 
