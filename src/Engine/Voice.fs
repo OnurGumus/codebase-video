@@ -250,7 +250,7 @@ let private lastLine (s: string) : string =
     |> Option.defaultValue ""
 
 /// A fresh empty directory under the system temp directory.
-let private tempDir () : string =
+let tempDir () : string =
     let root: string = os?tmpdir ()
     fs?mkdtempSync (join [ root; "cv-voice-" ])
 

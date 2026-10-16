@@ -446,7 +446,10 @@ function lastLine(s) {
     return defaultArg(tryLast((array_1 = map((l) => l.trim(), split(s, ["\n"], undefined, 0)), array_1.filter((l_1) => (l_1 !== "")))), "");
 }
 
-function tempDir() {
+/**
+ * A fresh empty directory under the system temp directory.
+ */
+export function tempDir() {
     const root = os.tmpdir();
     return fs.mkdtempSync(join(ofArray([root, "cv-voice-"])));
 }
