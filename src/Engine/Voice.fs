@@ -8,6 +8,8 @@ module Voice
 
 open Fable.Core
 open Fable.Core.JsInterop
+open System
+open System.Text.RegularExpressions
 open FsToolkit.ErrorHandling
 open Node
 
@@ -227,4 +229,159 @@ let check (choice: Choice) (speed: float) : Result<unit, Failure> =
                          + "change \"speed\" in script.json")
                 )
         | None -> ()
+        match choice.Provider with
+        | Command(name, body) ->
+            do!
+                body.Contains "{out}"
+                |> Result.requireTrue (
+                    SettingsBad $"command {name} never says where its audio goes: put {{out}} in its text (voices.json)"
+                )
+        | _ -> ()
     }
+
+// Audio conversion and the command provider -------------------------------------------------------------------
+
+/// The last non-empty line of a text.
+let private lastLine (s: string) : string =
+    s.Split('\n')
+    |> Array.map (fun l -> l.Trim())
+    |> Array.filter (fun l -> l <> "")
+    |> Array.tryLast
+    |> Option.defaultValue ""
+
+/// A fresh empty directory under the system temp directory.
+let private tempDir () : string =
+    let root: string = os?tmpdir ()
+    fs?mkdtempSync (join [ root; "cv-voice-" ])
+
+/// The samples of any audio file ffmpeg reads, as 24 kHz mono floats (ffmpeg converts it to the 16-bit PCM mono WAV
+/// that `Wav.read` takes); the error is ffmpeg's last line.
+let samplesOf (file: string) : Result<float32[], string> =
+    let dir = tempDir ()
+    try
+        let wav = join [ dir; "audio.wav" ]
+        let args =
+            [ "-nostdin"; "-v"; "error"; "-y"; "-i"; file; "-ac"; "1"; "-ar"; string Wav.SR; "-c:a"; "pcm_s16le"; wav ]
+        match runCapture "ffmpeg" args with
+        | 0, _, _ ->
+            try
+                Ok(Wav.read wav)
+            with e ->
+                Error e.Message
+        | 127, _, _ -> Error "ffmpeg is not installed or not on PATH"
+        | _, _, err -> Error(lastLine err)
+    finally
+        remove dir
+
+/// The command's text with each placeholder replaced, in one pass, by its value in single quotes for `sh`.
+let private fill (body: string) (values: Map<string, string>) : string =
+    let quoted (v: string) = "'" + v.Replace("'", "'\\''") + "'"
+    Regex.Replace(body, @"\{(voice|lang|speed|out)\}", MatchEvaluator(fun m -> quoted values[m.Groups[1].Value]))
+
+/// Seconds a command may run: 120, or CODEBASE_VIDEO_VOICE_TIMEOUT (it exists so a test need not wait that long).
+let private commandTimeout () : float =
+    env "CODEBASE_VIDEO_VOICE_TIMEOUT"
+    |> Option.map float
+    |> Option.filter (fun s -> not (Double.IsNaN s) && s > 0.0)
+    |> Option.defaultValue 120.0
+
+[<Emit("setTimeout($0, $1)")>]
+let private startTimer (f: unit -> unit) (ms: float) : obj = jsNative
+
+[<Emit("clearTimeout($0)")>]
+let private stopTimer (t: obj) : unit = jsNative
+
+/// How a command ended: its exit status (1 for a signal, 127 when it could not start) or that it ran out of time,
+/// with the last 300 characters of its stderr.
+type private Ended =
+    | Exited of code: int * stderr: string
+    | TimedOut of seconds: float * stderr: string
+
+/// Runs `sh -c` on the command, gives it the text on stdin, and waits for it to end or to run out of time (then the
+/// whole process group is killed, or `sleep` would hold the pipes open).
+let private spawnText (command: string) (input: string) (seconds: float) : Async<Ended> =
+    Async.FromContinuations(fun (ok, _, _) ->
+        let child: obj =
+            childProcess?spawn (
+                command,
+                createObj [ "shell" ==> true; "detached" ==> true; "stdio" ==> [| "pipe"; "ignore"; "pipe" |] ]
+            )
+        let mutable err = ""
+        let mutable settled = false
+        let mutable timer: obj = null
+        let tail () = if err.Length > 300 then err.Substring(err.Length - 300) else err
+        let settle (ended: Ended) =
+            if not settled then
+                settled <- true
+                stopTimer timer
+                ok ended
+        child?stderr?on ("data", (fun (chunk: obj) -> err <- err + string (chunk?toString ("utf8")))) |> ignore
+        // a command that does not read its stdin ends before the text is written: that is its business
+        child?stdin?on ("error", (fun (_: obj) -> ())) |> ignore
+        child?on ("error", (fun (e: obj) -> settle (Exited(127, string e?message)))) |> ignore
+        child?on (
+            "close",
+            (fun (code: obj) -> settle (Exited((if isNull code then 1 else unbox code), (tail ()).Trim())))
+        )
+        |> ignore
+        timer <-
+            startTimer
+                (fun () ->
+                    (try
+                        proc?kill (-(unbox<int> child?pid), "SIGKILL")
+                     with _ ->
+                         ())
+                    settle (TimedOut(seconds, (tail ()).Trim())))
+                (seconds * 1000.0)
+        child?stdin?``end`` (input, "utf8") |> ignore)
+
+/// The voice's text spoken by its command: the samples at 24 kHz mono, or why not. The command runs once per call,
+/// with the text on stdin and `{out}` a fresh .wav path (the file may hold any audio ffmpeg reads).
+let speakCommand (voice: Voice) (input: string) : Async<Result<float32[], Failure>> =
+    async {
+        match voice.Provider with
+        | Command(name, body) ->
+            let dir = tempDir ()
+            try
+                let out = join [ dir; "voice.wav" ]
+                let command =
+                    fill
+                        body
+                        (Map [ "voice", voice.Name
+                               "lang", voice.Lang
+                               "speed", string voice.Speed
+                               "out", out ])
+                let seconds = commandTimeout ()
+                match! spawnText command input seconds with
+                | TimedOut(s, err) -> return Error(CommandFailed(name, 1, $"timed out after {s} s. {err}".Trim()))
+                | Exited(code, err) when code <> 0 -> return Error(CommandFailed(name, code, err))
+                | Exited _ when not (exists out) || fileSize out = 0.0 ->
+                    return Error(CommandFailed(name, 0, "no audio was written: the command did not create {out}"))
+                | Exited _ -> return samplesOf out |> Result.mapError (fun why -> CommandFailed(name, 0, why))
+            finally
+                remove dir
+        | other -> return Error(SettingsBad $"{providerName other} is not a command voice")
+    }
+
+/// The tag of a provider in a piece's key: a command's name is left out, its text is in the key.
+let private tag (provider: Provider) : string =
+    match provider with
+    | Command _ -> "command"
+    | other -> (providerName other).ToLower()
+
+/// The cache key of a piece of a non-Kokoro voice: 16 hex of the SHA-1 of everything that changes the sound.
+let pieceKey (voice: Voice) (input: string) : string =
+    let command =
+        match voice.Provider with
+        | Command(_, body) -> body
+        | _ -> ""
+    let parts: obj[] =
+        [| box (tag voice.Provider)
+           box (defaultArg voice.Model null)
+           box voice.Name
+           box voice.Lang
+           box voice.Speed
+           box (defaultArg voice.Instructions null)
+           box command
+           box input |]
+    (sha1Hex (toJson parts)).Substring(0, 16)
