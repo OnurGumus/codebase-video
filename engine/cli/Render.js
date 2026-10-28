@@ -25,7 +25,7 @@ function stdoutWrite(s) {
     (process).stdout.write(s);
 }
 
-const chromePaths = ofArray(["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Chromium.app/Contents/MacOS/Chromium", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser", "C:/Program Files/Google/Chrome/Application/chrome.exe"]);
+export const browserPaths = ofArray(["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Chromium.app/Contents/MacOS/Chromium", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/snap/bin/chromium", "C:/Program Files/Google/Chrome/Application/chrome.exe", "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe", "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", "C:/Program Files/Microsoft/Edge/Application/msedge.exe", "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser", "/usr/bin/brave-browser", "/usr/bin/brave-browser-stable", "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"]);
 
 /**
  * CHROME, else the first browser found in the usual places.
@@ -33,7 +33,7 @@ const chromePaths = ofArray(["/Applications/Google Chrome.app/Contents/MacOS/Goo
 export function findChrome() {
     const matchValue = env("CHROME");
     if (matchValue == null) {
-        return tryFind(exists, chromePaths);
+        return tryFind(exists, browserPaths);
     }
     else {
         return matchValue;
@@ -685,7 +685,7 @@ function withChrome(clip, job) {
             })));
         }
         else {
-            eprint("no Chrome found: set CHROME to the browser\'s executable");
+            eprint("no Chrome, Chromium, Edge or Brave found: set CHROME to the browser\'s executable");
             server.Close();
             return singleton.Return(2);
         }

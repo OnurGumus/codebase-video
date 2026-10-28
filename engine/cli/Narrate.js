@@ -3,7 +3,7 @@ import { read, write, concat as concat_3, trim as trim_1, roundHalfEven } from "
 import { max, isNegativeInfinity, isPositiveInfinity, parse } from "./fable_modules/fable-library-js.5.19.0/Double.js";
 import { toConsole, concat as concat_1, trim, padLeft, printf, toText, join, substring, padRight, replace, split as split_1 } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { concat as concat_2, truncate, fold as fold_1, choose, reverse as reverse_1, mapIndexed as mapIndexed_1, map as map_1, item, equalsWith } from "./fable_modules/fable-library-js.5.19.0/Array.js";
-import { createObj, equals, round, disposeSafe, getEnumerator, Lazy, Exception, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { createObj, equals, disposeSafe, getEnumerator, Lazy, round, Exception, comparePrimitives, int32ToString, defaultOf } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { op_UnaryNegation_Int32, parse as parse_1 } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { exists as exists_2, empty as empty_1, singleton as singleton_1, collect, append as append_1, delay, toList, map } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { toString, Record, Union } from "./fable_modules/fable-library-js.5.19.0/Types.js";
@@ -12,11 +12,13 @@ import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp
 import { tryPick, iterate, sumBy, last as last_2, tryFind, item as item_1, length, indexed, sort, concat, unzip, exists as exists_1, singleton, append, filter, empty, head, tail as tail_1, cons, fold, reverse, mapIndexed, toArray, mapFold, isEmpty, map as map_2, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { toArray as toArray_1, defaultArg, some, value as value_19 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { FSharpSet__Contains, empty as empty_3, FSharpSet__get_Count, FSharpSet__get_IsEmpty, FSharpSet__Add, toList as toList_1, ofSeq } from "./fable_modules/fable-library-js.5.19.0/Set.js";
-import { mkdirp, parseJson, readText, resolve, closingOnError, writeText, rename, toJson, sha1Hex, readJson, dirname, requireFromHome, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists } from "./Node.js";
+import { parseJson, readText, resolve, closingOnError, writeText, toJson, sha1Hex, readJson, requireFromHome, rename, sha256File, fs, remove, dirname, mkdirp, fileSize, deliver, url, fromJs, nodeModule, engineDir, toolHome, join as join_1, exists } from "./Node.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { FSharpMap__Remove, FSharpMap__Add, empty as empty_2, FSharpMap__TryFind, FSharpMap__ContainsKey, ofArray as ofArray_1, ofList } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 import { post, postAndAsyncReply, receive, start as start_1 } from "./fable_modules/fable-library-js.5.19.0/MailboxProcessor.js";
+import * as node$003Astream from "node:stream";
+import * as promises from "node:stream/promises";
 import * as node$003Aworker_threads from "node:worker_threads";
 import { Choice, check, choose as choose_1, Provider, providerName, pieceKey, Voice, Choice_$reflection, describe as describe_1, Failure_$reflection as Failure_$reflection_1 } from "./Voice.js";
 import { load as load_1, apply, Glossary_$reflection } from "./Glossary.js";
@@ -638,8 +640,15 @@ export function packageInstalled(name) {
     return exists(join_1(ofArray([toolHome, "node", "node_modules", name, "package.json"])));
 }
 
+/**
+ * The command that runs setup.
+ */
+export function setupCommand() {
+    return ("node " + join_1(ofArray([engineDir, "cli", "Cv.js"]))) + " setup";
+}
+
 export function setupHint() {
-    return `the tool is not set up yet: run: node ${join_1(ofArray([engineDir, "cli", "Cv.js"]))} setup (installs the Kokoro voice and puppeteer-core into ${toolHome})`;
+    return `the tool is not set up yet: run: ${setupCommand()} (installs the Kokoro voice and puppeteer-core into ${toolHome})`;
 }
 
 /**
@@ -1003,6 +1012,109 @@ export function modelDir() {
  */
 export function modelFile() {
     return join_1(ofArray([modelDir(), "onnx-community", "Kokoro-82M-v1.0-ONNX", "onnx", "model.onnx"]));
+}
+
+const modelUrl = concat_1("https://huggingface.co/", MODEL, "/resolve/468588286ebb2dd77c25b9771e5d165896538cce/onnx/model.onnx");
+
+const modelBytes = 325532232;
+
+const modelSha256 = "8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb";
+
+/**
+ * Whether the model file is there in full. Only its size is compared (cheap enough for every step): a stopped
+ * download leaves a shorter file; the hash is checked once, when setup downloads it.
+ */
+export class ModelState extends Union {
+    constructor(tag, fields) {
+        super();
+        this.tag = tag;
+        this.fields = fields;
+    }
+    cases() {
+        return ["ModelReady", "ModelMissing", "ModelIncomplete"];
+    }
+    static ModelReady = new ModelState(0, []);
+    static ModelMissing = new ModelState(1, []);
+}
+
+export function ModelState_$reflection() {
+    return union_type("Narrate.ModelState", [], ModelState, () => [[], [], [["bytes", float64_type]]]);
+}
+
+export function modelState() {
+    const file = modelFile();
+    if (!exists(file)) {
+        return ModelState.ModelMissing;
+    }
+    else if (fileSize(file) === modelBytes) {
+        return ModelState.ModelReady;
+    }
+    else {
+        return new ModelState(/* ModelIncomplete */ 2, [fileSize(file)]);
+    }
+}
+
+/**
+ * A size for people: "222 MB".
+ */
+export function megabytes(bytes) {
+    return `${~~round(bytes / 1000000)} MB`;
+}
+
+/**
+ * The model file's state in words, for a model that is not ready.
+ */
+export function modelProblem(state) {
+    switch (state.tag) {
+        case 1:
+            return concat_1("the Kokoro model is not in ", modelDir());
+        case 2:
+            return `the Kokoro model in ${modelDir()} is incomplete (${megabytes(state.fields[0])} of ${megabytes(modelBytes)}), from a download that was stopped`;
+        default:
+            return "";
+    }
+}
+
+export const streams = node$003Astream;
+
+export const streamPromises = promises;
+
+/**
+ * Downloads `address` to `dest` through `dest`.part, which becomes `dest` only once it has `bytes` bytes and the
+ * SHA-256 `sha256`; a download that is stopped or comes out wrong leaves no `dest`.
+ */
+export function downloadChecked(address, bytes, sha256, dest) {
+    return singleton_2.Delay(() => {
+        const part = dest + ".part";
+        mkdirp(dirname(dest));
+        remove(part);
+        return singleton_2.Bind(fromJs(fetch(address)), (_arg) => {
+            const response = _arg;
+            return singleton_2.Combine(!response.ok ? (((() => {
+                throw new Exception(`downloading ${address} failed: HTTP ${response.status}`);
+            })(), singleton_2.Zero())) : singleton_2.Zero(), singleton_2.Delay(() => singleton_2.Bind(fromJs(streamPromises.pipeline((streams.Readable.fromWeb(response.body)), (fs.createWriteStream(part)))), () => {
+                const got = fileSize(part);
+                const problem = (got !== bytes) ? concat_1(megabytes(got), " of ", megabytes(bytes), " arrived") : ((sha256File(part) !== sha256) ? "its SHA-256 is not the expected one" : undefined);
+                if (problem == null) {
+                    rename(part, dest);
+                    return singleton_2.Zero();
+                }
+                else {
+                    const why = problem;
+                    remove(part);
+                    throw new Exception(concat_1("downloading ", address, " failed: ", why));
+                    return singleton_2.Zero();
+                }
+            })));
+        });
+    });
+}
+
+/**
+ * Downloads the model file (about 330 MB) into the tool home, replacing an incomplete one.
+ */
+export function downloadModel() {
+    return downloadChecked(modelUrl, modelBytes, modelSha256, modelFile());
 }
 
 export const workerThreads = node$003Aworker_threads;
@@ -2040,6 +2152,24 @@ function chosen(ws, script, speed, voiceName, others) {
     }
 }
 
+function requireKokoro() {
+    const input_1 = requirePackages(voicePackages);
+    if (input_1.tag === 1) {
+        return new FSharpResult$2(/* Error */ 1, [input_1.fields[0]]);
+    }
+    else {
+        const matchValue = modelState();
+        switch (matchValue.tag) {
+            case 0:
+                return new FSharpResult$2(/* Ok */ 0, [undefined]);
+            case 1:
+                return new FSharpResult$2(/* Error */ 1, [setupHint()]);
+            default:
+                return new FSharpResult$2(/* Error */ 1, [concat_1(modelProblem(matchValue), ". Run setup again: ", setupCommand())]);
+        }
+    }
+}
+
 /**
  * Voices the workspace. Reading and checking script.json and the voice settings happen as `run` is called, before
  * the Async starts: what throws there reaches the caller at once, and a failed check (the Kokoro voice not
@@ -2047,7 +2177,7 @@ function chosen(ws, script, speed, voiceName, others) {
  */
 export function run(ws) {
     let v, option_2, input_1;
-    const matchValue = requirePackages(voicePackages);
+    const matchValue = requireKokoro();
     let matchResult;
     if (matchValue.tag === 1) {
         if (!spokenElsewhere(ws)) {

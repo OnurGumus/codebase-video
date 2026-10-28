@@ -32,6 +32,8 @@ type MapPart =
     abstract row: float
     /// a word shown beside the part ("new", "changed"), or nothing
     abstract badge: string
+    /// a dashed border and a see-through box: a part that does not exist yet
+    abstract dashed: bool
 
 type MapEdge =
     abstract from: string
@@ -115,7 +117,8 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             let cx, cy = X0 + CELL_W * (p.col + 0.5), Y0 + CELL_H * (p.row + 0.5)
             let icon = if truthy kind.icon then $"""<span class="k-node-icon">{kind.icon}</span>""" else ""
             let el =
-                mk layer "div" "k-node k-actor" $"{icon}{esc p.label}" $"left:{cx}px;top:{cy - BOX_H / 2.0}px;transform:translateX(-50%%)"
+                mk layer "div" (if truthy p.dashed then "k-node k-actor k-node-dashed" else "k-node k-actor")
+                    $"{icon}{esc p.label}" $"left:{cx}px;top:{cy - BOX_H / 2.0}px;transform:translateX(-50%%)"
             let badge = if truthy p.badge then mk layer "div" "k-edge-label k-map-badge" (esc p.badge) null else null
             let part =
                 { p = p; tone = tone kind.tone; icon = icon; cx = cx; cy = cy; el = el; badge = badge
@@ -273,7 +276,9 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             let l = clamp01 (s.lit q.p.id)
             let v = clamp01 (s.vis q.p.id) * (if q.p.id = zoomed then 0.0 else others)
             show q.el (v * lerp DIM 1.0 l) 0.0 "translateX(-50%)"
-            q.el.style.borderColor <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--border))"
+            // A dashed part's dashes are drawn in a lighter grey, or they would vanish into the background.
+            let unlit = if truthy q.p.dashed then "var(--muted)" else "var(--border)"
+            q.el.style.borderColor <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, {unlit})"
             q.el.style.color <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--ink))"
             if not (isNull q.badge) then
                 // The badge of the part being zoomed into leaves as the zoom starts and is back as it ends; it does
@@ -298,13 +303,14 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             let q = part zoomed
             let b = q.box
             // The box becomes the boundary: it grows, its fill clears, and its border turns dashed once it is
-            // clearly no longer a box.
+            // clearly no longer a box (a dashed part's border is dashed all along).
             bound.style.left <- $"{lerp b.x BOUND.x z}px"
             bound.style.top <- $"{lerp b.y BOUND.y z}px"
             bound.style.width <- $"{lerp b.w BOUND.w z}px"
             bound.style.height <- $"{lerp b.h BOUND.h z}px"
             bound?style?border <-
-                if z < 0.2 then $"3px solid {q.tone}" else $"4px dashed color-mix(in srgb, {q.tone} 70%%, transparent)"
+                if z < 0.2 && not (truthy q.p.dashed) then $"3px solid {q.tone}"
+                else $"4px dashed color-mix(in srgb, {q.tone} 70%%, transparent)"
             bound.style.background <- $"color-mix(in srgb, var(--card) {(1.0 - clamp01 (z * 2.0)) * 100.0}%%, transparent)"
             if tagged <> zoomed then
                 tagged <- zoomed

@@ -4,12 +4,13 @@ import { eprint, writeText, readText, exists, join as join_1, runCapture, hasCom
 import { compareArrays, createObj } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { isEmpty, append, singleton, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 import { toArray } from "./fable_modules/fable-library-js.5.19.0/Option.js";
+import { browserPaths } from "./Render.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.19.0/FSharp.Core.js";
 import { printf, toConsole, concat, join, split } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { parse } from "./fable_modules/fable-library-js.5.19.0/Int32.js";
 import { item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
-import { requirePackages, selfTest, modelDir, modelFile, packageInstalled } from "./Narrate.js";
+import { requirePackages, selfTest, downloadModel, modelDir, modelProblem, modelState, packageInstalled } from "./Narrate.js";
 import { ResultCE_result, ResultCE_ResultBuilder__Zero } from "./fable_modules/FsToolkit.ErrorHandling.5.2.0/ResultCE.fs.js";
 import { singleton as singleton_2 } from "./fable_modules/fable-library-js.5.19.0/AsyncBuilder.js";
 
@@ -28,7 +29,7 @@ function packageJson() {
 }
 
 function chromeCandidates() {
-    return toList(delay(() => append(ofArray(toArray(env("CHROME"))), delay(() => append(singleton("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), delay(() => append(singleton("/Applications/Chromium.app/Contents/MacOS/Chromium"), delay(() => append(singleton("/usr/bin/google-chrome"), delay(() => append(singleton("/usr/bin/google-chrome-stable"), delay(() => append(singleton("/usr/bin/chromium"), delay(() => singleton("/usr/bin/chromium-browser")))))))))))))));
+    return toList(delay(() => append(ofArray(toArray(env("CHROME"))), delay(() => browserPaths))));
 }
 
 function executable(p) {
@@ -105,7 +106,7 @@ export function run() {
                         return false;
                     }
                 }, chromeCandidates());
-                input_4 = ((option_1 == null) ? (new FSharpResult$2(/* Error */ 1, [singleton_1("no Chrome or Chromium found: install one, or set CHROME to its executable")])) : (new FSharpResult$2(/* Ok */ 0, [option_1])));
+                input_4 = ((option_1 == null) ? (new FSharpResult$2(/* Error */ 1, [singleton_1("no Chrome, Chromium, Edge or Brave found: install one, or set CHROME to its executable")])) : (new FSharpResult$2(/* Ok */ 0, [option_1])));
                 if (input_4.tag === 1) {
                     prepared = (new FSharpResult$2(/* Error */ 1, [input_4.fields[0]]));
                 }
@@ -134,8 +135,8 @@ export function run() {
     }
     if (prepared.tag === 0) {
         return singleton_2.Delay(() => {
-            let arg_3;
-            return singleton_2.Combine(!exists(modelFile()) ? (((arg_3 = concat("downloading the Kokoro model (about 330 MB) into ", modelDir()), toConsole(printf("%s"))(arg_3)), singleton_2.Bind(selfTest(), () => singleton_2.Return(undefined)))) : singleton_2.Zero(), singleton_2.Delay(() => {
+            let matchValue_1, state, arg_3, arg_4;
+            return singleton_2.Combine((matchValue_1 = modelState(), (matchValue_1.tag === 0) ? (singleton_2.Zero()) : ((state = matchValue_1, singleton_2.Combine((state.tag === 2) ? (((arg_3 = concat(modelProblem(state), ". Downloading it again"), toConsole(printf("%s"))(arg_3)), singleton_2.Zero())) : (((arg_4 = concat("downloading the Kokoro model (about 330 MB) into ", modelDir()), toConsole(printf("%s"))(arg_4)), singleton_2.Zero())), singleton_2.Delay(() => singleton_2.Bind(downloadModel(), () => singleton_2.Bind(selfTest(), () => singleton_2.Return(undefined)))))))), singleton_2.Delay(() => {
                 toConsole(printf("%s"))(`ready: voice, renderer and encoder are set up in ${toolHome} (browser: ${prepared.fields[0]})`);
                 return singleton_2.Return(0);
             }));

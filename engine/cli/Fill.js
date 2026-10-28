@@ -1,9 +1,9 @@
 
-import { tail, head, isEmpty, append, map as map_1, tryFind, contains, find, exists as exists_1, empty, ofArray } from "./fable_modules/fable-library-js.5.19.0/List.js";
-import { join as join_1, split, concat } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { comparePrimitives, stringHash, defaultOf, equals, int32ToString } from "./fable_modules/fable-library-js.5.19.0/Util.js";
+import { join as join_1, split, concat, padLeft } from "./fable_modules/fable-library-js.5.19.0/String.js";
+import { tail, head, isEmpty, append, map as map_1, tryFind, contains, exists as exists_1, empty, ofArray, find } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { Py_flush, Py_print, Py_fail, Py_str, Py_reprStr, Py_get, Py_g, lengthGoals } from "./Check.js";
 import { basename, writeText, dirname, mkdirp, toJson, path, readText, exists, pluginRoot, join, readJson, fs } from "./Node.js";
-import { Py_flush, Py_print, Py_fail, Py_str, Py_reprStr, Py_get } from "./Check.js";
-import { comparePrimitives, int32ToString, stringHash, defaultOf, equals } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { FSharpResult$2 } from "./fable_modules/fable-library-js.5.19.0/Result.js";
 import { tryFind as tryFind_1, map } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { toString } from "./fable_modules/fable-library-js.5.19.0/Types.js";
@@ -11,9 +11,32 @@ import { FSharpSet__Contains, ofList } from "./fable_modules/fable-library-js.5.
 import { FSharpMap__get_Item, ofList as ofList_1 } from "./fable_modules/fable-library-js.5.19.0/Map.js";
 import { singleton, append as append_1, collect, delay, toList } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
 
-const LENGTHS = ofArray([["short", ofArray([["MINUTES", "3-5 minutes, hard cap 5.5"], ["WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"], ["CHAPTERS", "2-3 chapters"], ["SCENES", "2-3 content scenes per chapter, each 20-40 s"], ["THINKS", "no pause-and-think scene (a short video)"], ["DOC", "120-250 lines"]])], ["tour", ofArray([["MINUTES", "6-10 minutes, hard cap 11"], ["WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"], ["CHAPTERS", "3-4 chapters"], ["SCENES", "2-4 content scenes per chapter, each 25-50 s"], ["THINKS", "one pause-and-think scene in each of two chapters"], ["DOC", "200-400 lines"]])], ["deep", ofArray([["MINUTES", "20-28 minutes, hard cap 29"], ["WORDS", "about 2,600-3,200 spoken words"], ["CHAPTERS", "5-7 chapters"], ["SCENES", "3-6 content scenes per chapter, each 30-60 s"], ["THINKS", "exactly one pause-and-think scene per chapter"], ["DOC", "500-900 lines"]])]]);
+function grouped(n) {
+    if (n < 1000) {
+        return int32ToString(n);
+    }
+    else {
+        return (`${~~(n / 1000)},`) + padLeft(int32ToString(n % 1000), 3, "0");
+    }
+}
 
-const PROGRESS_LENGTHS = ofArray([["short", ofArray([["MINUTES", "3-5 minutes, hard cap 5.5"], ["WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"], ["CHAPTERS", "an \"At a glance\" chapter, 2 theme chapters and an \"In flight\" chapter"], ["SCENES", "1-3 content scenes per chapter, each 15-40 s"], ["THINKS", "no pause-and-think scene"], ["DOC", "150-300 lines"]])], ["tour", ofArray([["MINUTES", "6-10 minutes, hard cap 11"], ["WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"], ["CHAPTERS", "an \"At a glance\" chapter, 3-4 theme chapters and an \"In flight\" chapter"], ["SCENES", "2-3 content scenes per chapter, each 20-45 s"], ["THINKS", "no pause-and-think scene"], ["DOC", "300-500 lines"]])]]);
+function goal(length) {
+    return find((arg) => (length === arg[0]), lengthGoals)[1];
+}
+
+function minutes(length, range) {
+    return concat(range, " minutes, hard cap ", Py_g(goal(length).Cap));
+}
+
+function words(length) {
+    const patternInput = goal(length).Words;
+    const most = patternInput[1] | 0;
+    return `about ${grouped(patternInput[0])}-${grouped(most)} spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; \`check\` prints the real length, warns above ${grouped(most)} words and fails a video over the hard cap)`;
+}
+
+const LENGTHS = ofArray([["short", ofArray([["MINUTES", minutes("short", "3-5")], ["WORDS", words("short")], ["CHAPTERS", "2-3 chapters"], ["SCENES", "2-3 content scenes per chapter, each 20-40 s"], ["THINKS", "no pause-and-think scene (a short video)"], ["DOC", "120-250 lines"]])], ["tour", ofArray([["MINUTES", minutes("tour", "6-10")], ["WORDS", words("tour")], ["CHAPTERS", "3-4 chapters"], ["SCENES", "2-4 content scenes per chapter, each 25-50 s"], ["THINKS", "one pause-and-think scene in each of two chapters"], ["DOC", "200-400 lines"]])], ["deep", ofArray([["MINUTES", minutes("deep", "20-28")], ["WORDS", words("deep")], ["CHAPTERS", "5-7 chapters"], ["SCENES", "3-6 content scenes per chapter, each 30-60 s"], ["THINKS", "exactly one pause-and-think scene per chapter"], ["DOC", "500-900 lines"]])]]);
+
+const PROGRESS_LENGTHS = ofArray([["short", ofArray([["MINUTES", minutes("short", "3-5")], ["WORDS", words("short")], ["CHAPTERS", "an \"At a glance\" chapter, 2 theme chapters and an \"In flight\" chapter"], ["SCENES", "1-3 content scenes per chapter, each 15-40 s"], ["THINKS", "no pause-and-think scene"], ["DOC", "150-300 lines"]])], ["tour", ofArray([["MINUTES", minutes("tour", "6-10")], ["WORDS", words("tour")], ["CHAPTERS", "an \"At a glance\" chapter, 3-4 theme chapters and an \"In flight\" chapter"], ["SCENES", "2-3 content scenes per chapter, each 20-45 s"], ["THINKS", "no pause-and-think scene"], ["DOC", "300-500 lines"]])]]);
 
 const FOCUS = ofArray([["shipped", "**What shipped.** The features and fixes that exist at the end of the range and did not at its start, in plain language, each shown before and after. This is the spine of the video."], ["effort", "**Where the effort went.** Which areas of the codebase saw the most change and which were left alone, from the area table of the history file. Say it as where the work went, never as how hard anyone worked."], ["goals", "**Progress against goals.** Each goal of the goals file, quoted, with what the history shows for it: done, partly done, or nothing found, each with its commits. A goal is done only when the diff shows it."], ["people", "**Who worked on what.** By area, which people committed there and how many commits, exactly as the history file gives it. No ranking, no totals per person across the project, no word that judges a person or compares two."]]);
 

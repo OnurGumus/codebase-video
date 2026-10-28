@@ -37,6 +37,11 @@ Not sure yet? Ask for a preview. Claude stops once the script has been checked, 
 the checked document and the narration to listen to, without pictures. It is much quicker and cheaper, and if you
 like it, Claude carries on to the full video without redoing anything.
 
+Want pictures quickly? Ask for a fast video (`--fast`, `short` or `tour`). The agents that write the document, the
+script and the scenes check their own work, and no fresh Claude audits it, so it takes about a third of the agent
+work. The run report says plainly that the video was not audited; you can have the audits run later on the same
+video.
+
 ## Where the files are
 
 Everything is in `.codebase-video/<name>/` inside your project:

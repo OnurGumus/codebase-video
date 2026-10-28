@@ -136,6 +136,9 @@ let sha1Hex (s: string) : string = crypto?createHash("sha1")?update(s, "utf8")?d
 /// sha1 of a file's bytes.
 let sha1File (p: string) : string = crypto?createHash("sha1")?update(fs?readFileSync(p))?digest("hex")
 
+/// sha256 of a file's bytes.
+let sha256File (p: string) : string = crypto?createHash("sha256")?update(fs?readFileSync(p))?digest("hex")
+
 // Child processes ----------------------------------------------------------------------------------------------
 
 /// Runs a command with inherited stdio and returns its exit status.

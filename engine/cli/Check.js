@@ -5,7 +5,7 @@ import { max as max_1, min as min_1, compare, arrayHash, equalArrays, disposeSaf
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
 import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_2, truncate, pairwise, tryPick as tryPick_1, concat as concat_1, sumBy, exists as exists_1, tryFindBack, contains, zip as zip_1, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, filter, fold, map as map_3, sortWith, toArray, tail as tail_1, head, isEmpty, indexed, mapFold, ofArray, empty, reverse, ofArrayWithTail, cons } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Union, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
-import { union_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
+import { float64_type, tuple_type, union_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
 import { pairwise as pairwise_1, fold as fold_1, sumBy as sumBy_1, pick, tryPick, indexed as indexed_1, last as last_2, map as map_1, item } from "./fable_modules/fable-library-js.5.19.0/Array.js";
 import { empty as empty_1, singleton as singleton_1, collect, append, delay, findIndex, reverse as reverse_1, toList, zip, tryFind, map as map_2 } from "./fable_modules/fable-library-js.5.19.0/Seq.js";
@@ -1497,39 +1497,51 @@ function reportBreathing(timing, longVideo) {
     }
 }
 
-export const lengthCaps = ofArray([["short", 5.5], ["tour", 11], ["deep", 29]]);
+/**
+ * What a length asks for: the spoken words the writer aims at, and the hard cap on the running time in minutes.
+ */
+export class LengthGoal extends Record {
+    constructor(Words, Cap) {
+        super();
+        this.Words = Words;
+        this.Cap = Cap;
+    }
+}
 
-function reportDuration(clip, timing) {
-    if (timing != null) {
-        const minutes = num(value_1(timing), "duration") / 60;
-        Py_print(concat("video:  ", Py_fmtF(1, minutes), " min with pauses, cards and recaps"));
-        const briefPath = join_1(ofArray([clip, "brief.json"]));
-        if (exists(briefPath)) {
-            const length = Py_str(Py_get(readJson(briefPath), "length"));
-            const matchValue = tryFind_2((tupledArg) => (tupledArg[0] === length), lengthCaps);
-            let matchResult, cap_1;
-            if (matchValue != null) {
-                if (minutes > matchValue[1]) {
-                    matchResult = 0;
-                    cap_1 = matchValue[1];
-                }
-                else {
-                    matchResult = 1;
-                }
-            }
-            else {
-                matchResult = 1;
-            }
-            switch (matchResult) {
-                case 0:
-                    return singleton(new Finding(/* Warning */ 1, [`the video runs ${Py_fmtF(1, minutes)} min, over the ${Py_g(cap_1)} min cap of a '${length}' video: cut sentences or a scene`]));
-                default:
-                    return empty();
-            }
-        }
-        else {
-            return empty();
-        }
+export function LengthGoal_$reflection() {
+    return record_type("Check.LengthGoal", [], LengthGoal, () => [["Words", tuple_type(int32_type, int32_type)], ["Cap", float64_type]]);
+}
+
+export const lengthGoals = ofArray([["short", new LengthGoal([360, 560], 5.5)], ["tour", new LengthGoal([700, 1150], 11)], ["deep", new LengthGoal([2600, 3200], 29)]]);
+
+function lengthGoal(clip) {
+    const briefPath = join_1(ofArray([clip, "brief.json"]));
+    if (exists(briefPath)) {
+        const length = Py_str(Py_get(readJson(briefPath), "length"));
+        return tryFind_2((tupledArg) => (tupledArg[0] === length), lengthGoals);
+    }
+    else {
+        return undefined;
+    }
+}
+
+function reportBudget(clip, words, timing) {
+    let minutes;
+    const option_1 = timing;
+    minutes = ((option_1 != null) ? (num(value_1(option_1), "duration") / 60) : undefined);
+    const option_3 = minutes;
+    if (option_3 != null) {
+        Py_print(concat("video:  ", Py_fmtF(1, option_3), " min with pauses, cards and recaps"));
+    }
+    const matchValue = lengthGoal(clip);
+    if (matchValue != null) {
+        const length = matchValue[0];
+        const goal = matchValue[1];
+        const most = goal.Words[1] | 0;
+        return toList(delay(() => {
+            let matchValue_1, m_2;
+            return append((matchValue_1 = minutes, (matchValue_1 != null) ? ((matchValue_1 > goal.Cap) ? ((m_2 = matchValue_1, singleton_1(new Finding(/* Error */ 0, [`the video runs ${Py_fmtF(1, m_2)} min, over the ${Py_g(goal.Cap)} min cap of a '${length}' video: cut sentences or a scene`])))) : (empty_1())) : (empty_1())), delay(() => ((words > most) ? singleton_1(new Finding(/* Warning */ 1, [`${words} spoken words, over the about ${most} of a '${length}' video: it will run long; cut before you narrate`])) : empty_1())));
+        }));
     }
     else {
         return empty();
@@ -1559,15 +1571,16 @@ function reportLength(glossary, script, longVideo) {
             disposeSafe(enumerator);
         }
     }
+    return total | 0;
 }
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401061 = [1.2, 1.9];
+export const patternInput$00401079 = [1.2, 1.9];
 
-export const VISIT_TAIL = patternInput$00401061[1];
+export const VISIT_TAIL = patternInput$00401079[1];
 
-const VISIT_LEAD = patternInput$00401061[0];
+const VISIT_LEAD = patternInput$00401079[0];
 
 function checkMap(script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
@@ -1635,8 +1648,11 @@ function checkMap(script, jsFiles, lesson) {
                 }, [["col", 3], ["row", 2]]), delay(() => {
                     const badge = field(p_3, "badge");
                     return append((!Operators_IsNull(badge) && (!Py_isStr(badge) ? true : (Py_len(Py_str(badge)) > 10))) ? singleton_1(new Finding(/* Error */ 0, [concat("map: the badge of ", name, " is a word of at most 10 characters (\"new\", \"changed\")")])) : empty_1(), delay(() => {
-                        const label = text(p_3, "label");
-                        return (Py_len(label) > 12) ? singleton_1(new Finding(/* Error */ 0, [`map: the label ${Py_reprStr(label)} of ${name} is ${Py_len(label)} characters; at most 12 fit a box`])) : empty_1();
+                        const dashed = field(p_3, "dashed");
+                        return append((!Operators_IsNull(dashed) && ((typeof dashed) !== "boolean")) ? singleton_1(new Finding(/* Error */ 0, [concat("map: \"dashed\" of ", name, " is true or false, not ", JSON.stringify(dashed))])) : empty_1(), delay(() => {
+                            const label = text(p_3, "label");
+                            return (Py_len(label) > 12) ? singleton_1(new Finding(/* Error */ 0, [`map: the label ${Py_reprStr(label)} of ${name} is ${Py_len(label)} characters; at most 12 fit a box`])) : empty_1();
+                        }));
                     }));
                 }))));
             }));
@@ -1819,8 +1835,7 @@ export function run(ws, args) {
     const cueFindings = checkCues(timing, jsFiles);
     const lessonFindings = (lesson == null) ? empty() : checkLesson(glossary, script, jsFiles, readText(lesson));
     const mapFindings = checkMap(script, jsFiles, (option_1 = lesson, (option_1 != null) ? readText(option_1) : undefined));
-    reportLength(glossary, script, longVideo);
-    const durationFindings = reportDuration(clip, timing);
+    const durationFindings = reportBudget(clip, reportLength(glossary, script, longVideo), timing);
     const breathingFindings = reportBreathing(timing, longVideo);
     const flowFindings = reportFlow(glossary, script, longVideo);
     reportGlossary(glossary, script);

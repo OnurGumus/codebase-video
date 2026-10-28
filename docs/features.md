@@ -32,6 +32,7 @@ you give is never asked about.
 | `--length short\|tour\|deep` | the length | `tour`; `short` for progress, which has no `deep` |
 | `--audience "<who>"` | who will watch | a developer joining the team |
 | `--captions` | captions drawn into the picture | off |
+| `--fast` | a quick look: about 3 agent tasks, the checks by fresh agents left out (`short` and `tour` only); the report says the video was not audited | off |
 | `--since`, `--until` | progress: the range (a tag, commit or date) | from where the last progress video ended, else the latest tag, else 30 days back; until now |
 | `--focus` | progress: `shipped`, `effort`, `goals`, `people` | `shipped,effort` |
 | `--goals <file>` | progress: the goals to compare with | none |
@@ -70,8 +71,9 @@ A `model` in a voice's settings is used by ElevenLabs and OpenAI only; Azure and
 ## Requirements
 
 - [Node.js](https://nodejs.org) 22.12 or newer, [ffmpeg](https://ffmpeg.org) with the `libx264`, `libvpx-vp9` and
-  `libopus` encoders, and Google Chrome or Chromium. The first run checks all three and says how to install what is
-  missing.
+  `libopus` encoders, and Google Chrome, Chromium, Microsoft Edge or Brave. The first run checks all three and says how
+  to install what is missing. To use another browser built on Chromium, or one installed somewhere unusual, set
+  `CHROME` to its executable, e.g. `CHROME="/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"`.
 - About 800 MB downloaded once, the first time: mostly the voice. See
   [What runs on your computer](how-it-works.md#what-runs-on-your-computer).
 

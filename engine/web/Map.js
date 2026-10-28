@@ -46,23 +46,23 @@ export function View_$reflection() {
 
 export const BOUND = new Box(36, 218, 1848, 804);
 
-export const patternInput$004062 = [1.2, 1.9];
+export const patternInput$004064 = [1.2, 1.9];
 
-export const ZOOM_OUT = patternInput$004062[1];
+export const ZOOM_OUT = patternInput$004064[1];
 
-export const ZOOM_IN = patternInput$004062[0];
+export const ZOOM_IN = patternInput$004064[0];
 
-export const patternInput$004064$002D1 = [60, 240, 450, 253, 96];
+export const patternInput$004066$002D1 = [60, 240, 450, 253, 96];
 
-export const Y0 = patternInput$004064$002D1[1];
+export const Y0 = patternInput$004066$002D1[1];
 
-const X0 = patternInput$004064$002D1[0];
+const X0 = patternInput$004066$002D1[0];
 
-export const CELL_W = patternInput$004064$002D1[2];
+export const CELL_W = patternInput$004066$002D1[2];
 
-export const CELL_H = patternInput$004064$002D1[3];
+export const CELL_H = patternInput$004066$002D1[3];
 
-export const BOX_H = patternInput$004064$002D1[4];
+export const BOX_H = patternInput$004066$002D1[4];
 
 const DIM = 0.35;
 
@@ -144,7 +144,7 @@ export function build(parent, def) {
         const cy = Y0 + (CELL_H * (p.row + 0.5));
         const cx = matchValue_2;
         const icon = (!!(kind.icon)) ? concat("<span class=\"k-node-icon\">", kind.icon, "</span>") : "";
-        const el = mk(layer, "div", "k-node k-actor", concat(icon, esc(p.label)), `left:${cx}px;top:${cy - (BOX_H / 2)}px;transform:translateX(-50%)`);
+        const el = mk(layer, "div", (!!(p.dashed)) ? "k-node k-actor k-node-dashed" : "k-node k-actor", concat(icon, esc(p.label)), `left:${cx}px;top:${cy - (BOX_H / 2)}px;transform:translateX(-50%)`);
         const badge = (!!(p.badge)) ? mk(layer, "div", "k-edge-label k-map-badge", esc(p.badge), defaultOf()) : defaultOf();
         const part = new PartEl(p, tone(kind.tone), icon, cx, cy, el, badge, new Box(cx, cy - (BOX_H / 2), 0, BOX_H));
         byId[p.id] = part;
@@ -361,7 +361,8 @@ export function build(parent, def) {
             const l = clamp01(s.lit(q_2.p.id));
             const v = clamp01(s.vis(q_2.p.id)) * ((q_2.p.id === zoomed) ? 0 : others);
             show(q_2.el, v * lerp(DIM, 1, l), 0, "translateX(-50%)");
-            q_2.el.style.borderColor = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--border))`);
+            const unlit = (!!(q_2.p.dashed)) ? "var(--muted)" : "var(--border)";
+            q_2.el.style.borderColor = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, ${unlit})`);
             q_2.el.style.color = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--ink))`);
             if (!Operators_IsNull(q_2.badge)) {
                 const bv = (q_2.p.id === zoomed) ? (clamp01(s.vis(q_2.p.id)) * (1 - clamp01(z_2 * 4))) : v;
@@ -390,7 +391,7 @@ export function build(parent, def) {
             bound.style.top = (`${lerp(b_4.y, BOUND.y, z_2)}px`);
             bound.style.width = (`${lerp(b_4.w, BOUND.w, z_2)}px`);
             bound.style.height = (`${lerp(b_4.h, BOUND.h, z_2)}px`);
-            bound.style.border = ((z_2 < 0.2) ? concat("3px solid ", q_3.tone) : concat("4px dashed color-mix(in srgb, ", q_3.tone, " 70%, transparent)"));
+            bound.style.border = (((z_2 < 0.2) && !(!!(q_3.p.dashed))) ? concat("3px solid ", q_3.tone) : concat("4px dashed color-mix(in srgb, ", q_3.tone, " 70%, transparent)"));
             bound.style.background = (`color-mix(in srgb, var(--card) ${(1 - clamp01(z_2 * 2)) * 100}%, transparent)`);
             if (tagged !== zoomed) {
                 tagged = zoomed;

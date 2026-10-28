@@ -320,7 +320,7 @@ export function run(ws, args) {
                 }));
             }
             else {
-                eprint("no Chrome found: set CHROME to the browser\'s executable");
+                eprint("no Chrome, Chromium, Edge or Brave found: set CHROME to the browser\'s executable");
                 return singleton_2.Return(2);
             }
         }

@@ -16,6 +16,7 @@ committed, which is why users need only Node.js.
 | `engine/glossary.json` | how technical terms are said aloud ("JSON" as "jason"); hand-written, read by `src/Engine/Glossary.fs` |
 | `engine/kit/gallery` | a small sample video that uses every kit component |
 | `test/voice` | tests of the voice providers against a local fake server and local commands (run `node --test 'test/voice/*.test.mjs'`; they need ffmpeg) |
+| `test/engine` | tests of engine parts on their own: the glossary, the model download (run `node --test 'test/engine/*.test.mjs'`) |
 | `test/golden` | a baseline harness: records every output of the engine, then shows what a change altered |
 | `docs/` | the guides for users (the README links each one), the [reference](docs/features.md) and [how it works](docs/how-it-works.md) |
 | branch `gh-pages` | the project page and the promo video (kept off `main` so installs stay small) |

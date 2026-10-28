@@ -276,6 +276,13 @@ export function sha1File(p) {
 }
 
 /**
+ * sha256 of a file's bytes.
+ */
+export function sha256File(p) {
+    return ((crypto.createHash("sha256")).update(fs.readFileSync(p))).digest("hex");
+}
+
+/**
  * Runs a command with inherited stdio and returns its exit status.
  */
 export function run(cmd, args) {
