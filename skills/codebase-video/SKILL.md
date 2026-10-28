@@ -80,13 +80,22 @@ path with the video's. In CI it is what a person reads before the video goes to 
   It needs Node 22.12+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome, Chromium, Edge or Brave (`CHROME=<path>`
   names any other Chromium browser). If something is missing it says how to install it: tell the user and stop.
 - Before agreeing the scope, skim the README, docs and top-level source folders and list the codebase's core
-  features (e.g. for an event-sourcing library: aggregates, sagas, projections, hosting). Show the list and ask which
-  belong in the video; never silently leave out a core feature (say plainly which ones a tour will skip).
+  features (e.g. for an event-sourcing library: aggregates, sagas, projections, hosting). Show the list so the user
+  can pick what the video is about, and say plainly which ones it will leave out; never leave one out silently. The
+  list is for choosing, not for covering: a video that touches every feature explains none of them.
+- Agree the **goal**: one sentence that says what the viewer can do after watching ("follow one command from your
+  decide function to a stored event and a row in a query table"). It is the video's spine: the explorer documents
+  the path to it, the writer cuts everything that does not lead there, and the audits measure the script against it.
+  One goal, one path. When the user wants several topics that are not steps of one path (sagas AND projections AND
+  hosting), say that a single video will skim them, and suggest one video per topic, or the next length up with one
+  goal that really covers them. If they still want them together, the goal says so ("know the four parts of X and
+  what each is for"), and each chapter is one of them.
 - Agree the scope with the user in one short exchange (sensible defaults if they do not care):
   - the repository (default: the current directory) and what to teach: the whole repo as a tour, or one flow ("how a
     request reaches the database");
   - length: `short` (3-5 min, an overview or promo), `tour` (6-10 min, default) or `deep` (20-28 min);
   - audience (default: "a developer joining the team");
+  - the goal (above), in the user's words where they gave some;
   - which part should go deepest: ask "what are you most curious about?". The default is the codebase's core
     mechanism, which the explorer identifies. Put the answer in `brief.json` `care` ("go deepest on ..."). A video
     that tours everything evenly answers nobody's "but how does it actually work?";
@@ -152,7 +161,8 @@ path with the video's. In CI it is what a person reads before the video goes to 
 Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g. `request-flow`). Create
 `<repo>/.codebase-video/.gitignore` containing `*` so nothing is committed by accident.
 
-1. **Brief.** Write `WS/brief.json`: `name`, `subject`, `repo` (absolute path), `length`, `audience`, `colours` (the
+1. **Brief.** Write `WS/brief.json`: `name`, `subject`, `goal` (the agreed one sentence), `repo` (absolute path),
+   `length`, `audience`, `colours` (the
    drawing table below, adapted to this codebase), and optionally `care` (what to check with special care here: e.g.
    "async ordering", "the retry and timeout defaults") and `visual`. Run `CV fill` (it writes `WS/build/brief-*.txt`;
    re-run it after step 3, so briefs know the doc length).
@@ -303,6 +313,10 @@ uses for the parts of the shared map; builders use the same table for everything
 ## Rules that keep the videos right (learned the hard way)
 
 - No new claims: every sentence and label traces to the verified document, and through its citation to the code.
+- One goal: every chapter moves the viewer toward the brief's `goal`, and background comes just before the step that
+  needs it. True, interesting material off that path is cut and named as left for later (the first FCQRS video spent
+  a quarter of its time on sagas, which its goal never mentioned; another spent two fifths on background before the
+  flow it promised).
 - Depth before breadth: the core mechanism is followed to its bottom layer with one worked example and real values,
   and shown happening on screen. A principle alone is not an explanation. When the video runs long, cut an area,
   never the bottom of the core mechanism (the first engine-internals video cut the three helpers that turn a time

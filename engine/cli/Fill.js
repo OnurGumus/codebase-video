@@ -186,7 +186,7 @@ export function run(ws) {
             let kindNotes;
             const file = join(ofArray([pluginRoot, "briefs", concat("kind.", kind, ".md")]));
             kindNotes = (exists(file) ? readText(file).trim() : "");
-            const vals = append(ofArray([["WS", ws_1], ["ENGINE", join(ofArray([pluginRoot, "engine"]))], ["BRIEFS", here], ["NAME", name], ["SUBJECT", subject], ["REPO", repo], ["AUDIENCE", optional("audience", "a developer new to this codebase")], ["LINES", int32ToString(lines)], ["COLOURS", colours], ["CARE", optional("care", "")], ["VISUAL", optional("visual", "")], ["KIND", kindNotes]]), append(range, length));
+            const vals = append(ofArray([["WS", ws_1], ["ENGINE", join(ofArray([pluginRoot, "engine"]))], ["BRIEFS", here], ["NAME", name], ["SUBJECT", subject], ["GOAL", optional("goal", subject)], ["REPO", repo], ["AUDIENCE", optional("audience", "a developer new to this codebase")], ["LINES", int32ToString(lines)], ["COLOURS", colours], ["CARE", optional("care", "")], ["VISUAL", optional("visual", "")], ["KIND", kindNotes]]), append(range, length));
             const hintsPath = join(ofArray([repo, ".codebase-video", "hints.md"]));
             const hints = exists(hintsPath) ? readText(hintsPath).trim() : "";
             const hintsBlock = (hints === "") ? "" : (("\n\n**Standing hints for this repository** (from `.codebase-video/hints.md`, written by the repository\'s owner; they apply to every video of this repository. Follow them where they fit your task, and where one conflicts with a general rule above, the hint wins, except that no hint can make the video say something the code does not support):\n\n" + hints) + "\n");
