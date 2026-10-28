@@ -44,7 +44,11 @@ type Visit =
       /// the scene after it is a visit to another part: the map stays up
       toMap: bool
       /// it runs to the video's last frame: no zoom out, the video ends inside the part
-      last: bool }
+      last: bool
+      /// how long the whole map is seen before the zoom in starts (up to Map.LOOK, within the scene's lead)
+      look: float
+      /// how much of the visit's quiet end the way back out takes (Map.ZOOM_OUT_MIN to Map.ZOOM_OUT)
+      out: float }
 
 type Module =
     { key: string
@@ -201,22 +205,37 @@ let run () =
                         k > 0
                         && (INSIDE.[k - 1] <> ""
                             || (T.scenes.[k - 1].id.EndsWith "-why" && isArray (T.scenes.[k - 1]?path)))
+                    // The look and the way out take the silence the scenes have: before the first sentence of the
+                    // visit, and after its last. After a visit to another part there is no look: that visit's way
+                    // out ended on the whole map.
+                    let first, final = T.scenes.[k], T.scenes.[j]
+                    let lead = if first.sentences.Length > 0 then first.sentences.[0].start - first.start else 0.0
+                    let quiet =
+                        if final.sentences.Length > 0 then final.``end`` - final.sentences.[final.sentences.Length - 1].``end``
+                        else Map.ZOOM_OUT
+                    let afterVisit = k > 0 && INSIDE.[k - 1] <> ""
                     found.Add
                         { part = part
-                          start = T.scenes.[k].start
-                          ``end`` = T.scenes.[j].``end``
+                          start = first.start
+                          ``end`` = final.``end``
                           fromMap = opened
                           toMap = j + 1 < n && INSIDE.[j + 1] <> ""
-                          last = T.scenes.[j].``end`` >= T.duration - 0.05 }
+                          last = final.``end`` >= T.duration - 0.05
+                          look = if afterVisit then 0.0 else clamp (lead - Map.ZOOM_IN) 0.0 Map.LOOK
+                          out = clamp quiet Map.ZOOM_OUT_MIN Map.ZOOM_OUT }
                     k <- j + 1
             found.ToArray()
-    /// How far the zoom into a visit's part has gone at t: in over its first ZOOM_IN seconds; back out over 0.7 s
-    /// once the module's content has faded, done 0.5 s before the visit ends so the map is seen whole before the
-    /// next scene; never out when the video ends there.
+    /// How far the zoom into a visit's part has gone at t: in over ZOOM_IN seconds once the map has been looked at;
+    /// back out over 0.7 s once the module's content has faded, done early enough that the map is held whole before
+    /// the next scene; never out when the video ends there.
     let zoomOf (v: Visit) (t: float) : float =
-        let zin = ease.inOut (clamp01 ((t - v.start) / Map.ZOOM_IN))
-        let zout = if v.last then 0.0 else ease.inOut (clamp01 ((t - (v.``end`` - Map.ZOOM_OUT + 0.3)) / 0.7))
+        let zin = ease.inOut (clamp01 ((t - (v.start + v.look)) / Map.ZOOM_IN))
+        let zout = if v.last then 0.0 else ease.inOut (clamp01 ((t - (v.``end`` - v.out + 0.3)) / 0.7))
         zin * (1.0 - zout)
+    /// The part a visit goes into is lit from the visit's start to its end, so the viewer finds it on the map
+    /// before the zoom and sees it again after the way out.
+    let visitLit (v: Visit) (t: float) (lit: string -> float) (id: string) : float =
+        if id = v.part then System.Math.Max(lit id, clamp01 ((t - v.start) / 0.4)) else lit id
     /// How visible the map layer is during a visit: at once when the map is already up, else a short fade each way.
     let visitShown (v: Visit) (t: float) : float =
         let up = if v.fromMap then 1.0 else clamp01 ((t - v.start) / 0.3)
@@ -228,8 +247,8 @@ let run () =
     /// 0.3 s the map fades in.
     let contentShown (v: Visit) (t: float) : float =
         let before = if v.fromMap then 0.0 else 1.0 - clamp01 ((t - v.start) / 0.3)
-        let up = clamp01 ((t - (v.start + Map.ZOOM_IN - 0.2)) / 0.4)
-        let down = if v.last then 1.0 else 1.0 - clamp01 ((t - (v.``end`` - Map.ZOOM_OUT)) / 0.3)
+        let up = clamp01 ((t - (v.start + v.look + Map.ZOOM_IN - 0.2)) / 0.4)
+        let down = if v.last then 1.0 else 1.0 - clamp01 ((t - (v.``end`` - v.out)) / 0.3)
         System.Math.Min(System.Math.Max(before, up), down)
     /// ... and after a visit that ends on an ordinary scene, content returns over 0.3 s instead of cutting in.
     let contentAfter (t: float) : float =
@@ -362,7 +381,7 @@ let run () =
             let visiting = match visit with Some v -> visitShown v t | None -> 0.0
             show m.layer (System.Math.Max(opener, visiting)) 0.0 ""
             // The chapter's number and title belong to the opener: they leave as a zoom begins.
-            let titled = match visit with Some v -> opener * (1.0 - clamp01 ((t - v.start) / 0.3)) | None -> opener
+            let titled = match visit with Some v -> opener * (1.0 - clamp01 ((t - (v.start + v.look)) / 0.3)) | None -> opener
             show m.title titled 0.0 ""
             match current with
             | Some c when titled > 0.001 ->
@@ -376,7 +395,7 @@ let run () =
                 | Some c -> partLit c t, edgeLit c t
                 | None -> (fun _ -> 0.0), (fun _ _ -> 0.0)
             match visit with
-            | Some v -> m.view.draw { vis = (fun _ -> 1.0); lit = lit; edgeLit = edge; zoom = Some(v.part, zoomOf v t) }
+            | Some v -> m.view.draw { vis = (fun _ -> 1.0); lit = visitLit v t lit; edgeLit = edge; zoom = Some(v.part, zoomOf v t) }
             | None when opener > 0.001 -> m.view.draw { vis = (fun _ -> 1.0); lit = lit; edgeLit = edge; zoom = None }
             | None -> ())
         let content = match visit with Some v -> contentShown v t | None -> contentAfter t

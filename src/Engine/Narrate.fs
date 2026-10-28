@@ -1272,15 +1272,40 @@ let private synth (settings: Settings) (usage: Usage) (code: string option) (tex
         | _ -> return! synthOther settings usage voice code text where
     }
 
+/// The silence a visit to a part of the shared map needs (src/Kit/Frame.fs draws it, with the LOOK, ZOOM_IN and
+/// ZOOM_OUT of src/Kit/Map.fs). Before the first scene's first sentence: the whole map looked at with the part lit,
+/// then the zoom in; after a visit to another part only the zoom, as that visit ended on the whole map. After the
+/// last scene's last sentence: the way back out, with the whole map held before the next scene.
+let VISIT_LEAD, VISIT_LEAD_AFTER_VISIT, VISIT_TAIL = 3.2, 1.4, 2.8
+
+/// The least lead and the least quiet end (pad plus hold) scene si gets for where it stands in a visit: none for a
+/// scene outside one, or in a script without a map.
+let private visitSilence (script: obj) (si: int) : float * float =
+    let scenes: obj[] = script?scenes
+    let inside i =
+        if i < 0 || i >= scenes.Length then ""
+        else match get scenes[i] "inside" with Some v when jsTypeof v = "string" -> unbox<string> v | _ -> ""
+    let part = inside si
+    match get script "map" with
+    | Truthy _ when part <> "" ->
+        let lead =
+            if inside (si - 1) = part then 0.0
+            elif inside (si - 1) <> "" then VISIT_LEAD_AFTER_VISIT
+            else VISIT_LEAD
+        let tail = if si = scenes.Length - 1 || inside (si + 1) = part then 0.0 else VISIT_TAIL
+        lead, tail
+    | _ -> 0.0, 0.0
+
 /// One scene's turn: the track and the scenes timed so far (the latest first) in, the same with this scene out.
 /// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
-/// with silence up to a whole frame.
+/// with silence up to a whole frame. A scene where a visit starts or ends gets at least the silence it needs.
 let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track, finished: Scene list) (si, sc: obj) =
     asyncResult {
         let id: obj = sc?id
         do! finished |> List.exists (fun f -> toJson f.id = toJson id) |> Result.requireFalse (DuplicateSceneId id)
         let startFrame = track.pos / FRAME // every scene ends on a whole frame, and the next starts there
-        let track = silence (getFloat sc "lead" 0.4) track
+        let leastLead, leastTail = visitSilence settings.Script si
+        let track = silence (max (getFloat sc "lead" 0.4) leastLead) track
         // Terms the glossary knows (engine/glossary.json, <repo>/.codebase-video/glossary.json) are said its way:
         // "JSON" becomes [JSON](jason) here, so the caption keeps the term and the voice gets the word.
         let say =
@@ -1349,7 +1374,8 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
             }
 
         let! track, lines, sceneBreaks = foldAR sentence (track, [], []) (List.indexed (sentences say))
-        let track = silence (getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)) track
+        let quiet = getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)
+        let track = silence (max quiet leastTail) track
         // End on a whole frame (and never on the frame the scene started on).
         let over = track.pos % FRAME
         let track = if over <> 0 || track.pos = startFrame * FRAME then lay (Silence(FRAME - over)) track else track

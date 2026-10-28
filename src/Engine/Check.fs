@@ -1075,9 +1075,6 @@ let private jsonOf (v: obj) : string = jsNative
 [<Emit("($0 !== null && typeof $0 === 'object' && !Array.isArray($0))")>]
 let private isObject (v: obj) : bool = jsNative
 
-/// The zoom into a part and back out of it (ZOOM_IN in src/Kit/Map.fs, and the quiet end a zoom out needs).
-let private VISIT_LEAD, VISIT_TAIL = 1.2, 1.9
-
 /// The shared map (script.json "map"), each chapter's "path" across it and each scene's "inside": the frame draws
 /// them (src/Kit/Map.fs, src/Kit/Frame.fs), so everything it relies on is checked here first.
 let private checkMap (script: Json) (jsFiles: string list) (lesson: string option) : Finding list =
@@ -1193,19 +1190,6 @@ let private checkMap (script: Json) (jsFiles: string list) (lesson: string optio
                   if not (known inside) then yield Error $"{sid}: \"inside\": {Py.reprStr inside} is not a part of the map"
                   if isWhy sid || Py.truthy (Py.get s "recap") then
                       yield Error $"{sid}: \"inside\" cannot be on a bridge or recap scene (the frame draws those; no module is inside anything there)"
-          // A visit: consecutive scenes inside the same part. The zoom in plays in the first one's lead, the zoom out
-          // in the quiet end of the last one.
-          for k, s in Array.indexed arr do
-              let inside = insideOf s
-              if inside <> "" then
-                  let first = k = 0 || insideOf arr.[k - 1] <> inside
-                  let last = k = arr.Length - 1 || insideOf arr.[k + 1] <> inside
-                  let lead = number s "lead" 0.4
-                  let tail = number s "pad" 0.9 + number s "hold" 0.0
-                  if first && lead < VISIT_LEAD then
-                      yield Warning $"{idOf s}: the zoom into {inside} takes {VISIT_LEAD} s; give this scene \"lead\": {VISIT_LEAD} or more (it has {lead})"
-                  if last && k < arr.Length - 1 && tail < VISIT_TAIL then
-                      yield Warning $"{idOf s}: the zoom out of {inside} needs \"pad\" plus \"hold\" of {VISIT_TAIL} s or more (it has {tail})"
           if not (scenes |> List.exists hasPath) then
               yield Warning "map: no bridge scene has a \"path\", so the map never opens a chapter"
           match lesson with

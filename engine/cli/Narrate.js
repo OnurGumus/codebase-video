@@ -1856,6 +1856,66 @@ function synth(settings, usage, code, text, where) {
     });
 }
 
+export const patternInput$00401279 = [3.2, 1.4, 2.8];
+
+export const VISIT_TAIL = patternInput$00401279[2];
+
+export const VISIT_LEAD_AFTER_VISIT = patternInput$00401279[1];
+
+export const VISIT_LEAD = patternInput$00401279[0];
+
+function visitSilence(script, si) {
+    const scenes = script.scenes;
+    const inside = (i) => {
+        let v;
+        if ((i < 0) ? true : (i >= scenes.length)) {
+            return "";
+        }
+        else {
+            const matchValue = get$(item(i, scenes), "inside");
+            let matchResult, v_1;
+            if (matchValue != null) {
+                if ((v = value_19(matchValue), (typeof v) === "string")) {
+                    matchResult = 0;
+                    v_1 = value_19(matchValue);
+                }
+                else {
+                    matchResult = 1;
+                }
+            }
+            else {
+                matchResult = 1;
+            }
+            switch (matchResult) {
+                case 0:
+                    return v_1;
+                default:
+                    return "";
+            }
+        }
+    };
+    const part = inside(si);
+    const matchValue_1 = get$(script, "map");
+    let matchResult_1;
+    if ($007CTruthy$007C_$007C(matchValue_1) != null) {
+        if (part !== "") {
+            matchResult_1 = 0;
+        }
+        else {
+            matchResult_1 = 1;
+        }
+    }
+    else {
+        matchResult_1 = 1;
+    }
+    switch (matchResult_1) {
+        case 0:
+            return [(inside(si - 1) === part) ? 0 : ((inside(si - 1) !== "") ? VISIT_LEAD_AFTER_VISIT : VISIT_LEAD), ((si === (scenes.length - 1)) ? true : (inside(si + 1) === part)) ? 0 : VISIT_TAIL];
+        default:
+            return [0, 0];
+    }
+}
+
 function voiceScene(settings, markedScenes, track, finished, si, sc) {
     return singleton_2.Delay(() => {
         const id = sc.id;
@@ -1870,6 +1930,7 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
             }
             else {
                 const startFrame = ~~(track.pos / FRAME) | 0;
+                const patternInput = visitSilence(settings.Script, si);
                 const x_6 = foldAR((tupledArg_2, tupledArg_3) => {
                     const track_6 = tupledArg_2[0];
                     const i_1 = tupledArg_3[0] | 0;
@@ -1918,23 +1979,23 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
                             return collect((matchValue_1) => singleton_1([matchValue_1[1][0], matchValue_1[1][1], (matchValue_1[0] === (length(ps) - 1)) ? matchValue[1] : 0]), indexed(ps));
                         }, rests(s_1))))));
                         return singleton_2.Bind(x_4, (x$0027_2) => {
-                            let _arg_4, track_8, line_1, patternInput;
+                            let _arg_4, track_8, line_1, patternInput_1;
                             let value_13;
                             const input_11 = x$0027_2;
-                            value_13 = ((input_11.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_11.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_4 = input_11.fields[0], (track_8 = _arg_4[0], (line_1 = (new Sentence(shown(s_1), heard(s_1), sentenceStart, now(startFrame, track_8), reverse(_arg_4[1]))), (patternInput = mapFold((track_9, tupledArg_4) => {
+                            value_13 = ((input_11.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_11.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_4 = input_11.fields[0], (track_8 = _arg_4[0], (line_1 = (new Sentence(shown(s_1), heard(s_1), sentenceStart, now(startFrame, track_8), reverse(_arg_4[1]))), (patternInput_1 = mapFold((track_9, tupledArg_4) => {
                                 const breakStart = now(startFrame, track_9);
                                 const track_10 = silence(tupledArg_4[1], track_9);
                                 return [new Break(tupledArg_4[0], i_1, breakStart, now(startFrame, track_10)), track_10];
-                            }, track_8, after), [patternInput[1], cons(line_1, tupledArg_2[1]), append(reverse(patternInput[0]), tupledArg_2[2])]))))])));
+                            }, track_8, after), [patternInput_1[1], cons(line_1, tupledArg_2[1]), append(reverse(patternInput_1[0]), tupledArg_2[2])]))))])));
                             return singleton_2.Return(value_13);
                         });
                     });
-                }, [silence(getFloat(sc, "lead", 0.4), track), empty(), empty()], indexed(sentences(apply(settings.Glossary, defaultArg((input_1 = ((option_1 = get$(sc, "say"), (option_1 != null) ? (!Operators_IsNull(value_19(option_1)) ? option_1 : undefined) : undefined)), (input_1 == null) ? undefined : value_19(input_1)), "")))));
+                }, [silence(max(getFloat(sc, "lead", 0.4), patternInput[0]), track), empty(), empty()], indexed(sentences(apply(settings.Glossary, defaultArg((input_1 = ((option_1 = get$(sc, "say"), (option_1 != null) ? (!Operators_IsNull(value_19(option_1)) ? option_1 : undefined) : undefined)), (input_1 == null) ? undefined : value_19(input_1)), "")))));
                 return singleton_2.Bind(x_6, (x$0027_3) => {
                     let _arg_5, sceneBreaks_1, lines_1, track_13, over, track_14, endFrame, msc, passthrough, breaksJson;
                     let value_15;
                     const input_15 = x$0027_3;
-                    value_15 = ((input_15.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_15.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_5 = input_15.fields[0], (sceneBreaks_1 = _arg_5[2], (lines_1 = _arg_5[1], (track_13 = silence(getFloat(sc, "hold", 0) + getFloat(sc, "pad", isEmpty(lines_1) ? 0 : 0.9), _arg_5[0]), (over = ((track_13.pos % FRAME) | 0), (track_14 = (((over !== 0) ? true : (track_13.pos === (startFrame * FRAME))) ? lay(new Audio(/* Silence */ 0, [FRAME - over]), track_13) : track_13), (endFrame = (~~(track_14.pos / FRAME) | 0), (msc = item(si, markedScenes), (passthrough = ((key) => {
+                    value_15 = ((input_15.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_15.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_5 = input_15.fields[0], (sceneBreaks_1 = _arg_5[2], (lines_1 = _arg_5[1], (track_13 = silence(max(getFloat(sc, "hold", 0) + getFloat(sc, "pad", isEmpty(lines_1) ? 0 : 0.9), patternInput[1]), _arg_5[0]), (over = ((track_13.pos % FRAME) | 0), (track_14 = (((over !== 0) ? true : (track_13.pos === (startFrame * FRAME))) ? lay(new Audio(/* Silence */ 0, [FRAME - over]), track_13) : track_13), (endFrame = (~~(track_14.pos / FRAME) | 0), (msc = item(si, markedScenes), (passthrough = ((key) => {
                         const matchValue_2 = get$(sc, key);
                         if ($007CTruthy$007C_$007C(matchValue_2) != null) {
                             return singleton([key, Py_ofJs(msc[key])]);

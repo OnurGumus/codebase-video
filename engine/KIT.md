@@ -102,14 +102,16 @@ in order while the bridge line is spoken. Consecutive parts of a path must be jo
 without `path` keeps the plain card.
 
 **Inside a part.** On a content scene, `"inside": "journal"` draws the scene inside that part. Over the scene's lead
-the map returns, the part's box grows into a dashed boundary around the content area, and its icon and label become a
-tag at the top right. Consecutive scenes inside the same part are one visit: the boundary holds for all of them, and
-shrinks back to the box at the end of the last. The module draws its content exactly as usual and never draws a
-boundary of its own.
+the map returns with the part lit and is held whole for a moment, so the viewer finds the part; then its box grows
+into a dashed boundary around the content area, and its icon and label become a tag at the top right. Consecutive
+scenes inside the same part are one visit: the boundary holds for all of them, and shrinks back to the box at the
+end of the last, where the whole map is held again before the next scene. The module draws its content exactly as
+usual and never draws a boundary of its own.
 
-- The first scene of a visit needs `"lead": 1.4` (1.2 at least): nothing of the module is shown during the zoom.
-- The last scene needs `"pad": 2.2` (`pad` plus `hold` of 1.9 s at least), for the way back out: the content fades,
-  the boundary shrinks to the box, and the whole map is held for a moment before the next scene.
+- The silence this takes is added by narrate: the first scene of a visit gets a lead of at least 3.2 s (1.4 s
+  straight after a visit to another part, which ended on the map), the last a quiet end (`pad` plus `hold`) of at
+  least 2.8 s. Do not set them yourself; a larger value you set is kept. Nothing of the module is shown until the
+  zoom is done, and it leaves before the way back out.
 - In an `inside` scene keep the heading under about 60 characters, so the row's right end is free for the tag.
 - Not on a bridge or recap scene. A think scene may be inside.
 
