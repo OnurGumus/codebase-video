@@ -211,11 +211,23 @@ type Packet =
     abstract fromPos: float option
     abstract toPos: float option
 
+/// A labelled region around some of a flow's nodes: a process, a transaction, a service, a trust boundary.
+type FlowGroup =
+    abstract nodes: string[]
+    abstract label: string
+    abstract at: Spec
+    abstract until: Spec
+    abstract tone: string
+    abstract toneAt: Spec
+    abstract dashed: bool
+    abstract pad: float option
+
 type FlowOpts =
     inherit Opts
     abstract nodes: obj
     abstract edges: FlowEdge[]
     abstract packets: Packet[]
+    abstract groups: FlowGroup[]
 
 type SeqActor =
     abstract id: string
@@ -252,12 +264,30 @@ type Glow =
     abstract until: Spec
     abstract tone: string
 
+/// A note beside one line of a code card, pointing at it.
+type CodeNote =
+    abstract line: int
+    abstract html: string
+    abstract at: Spec
+    abstract until: Spec
+    abstract tone: string
+
+/// Lines line..to of a code card added ("add": they open in) or deleted ("del": struck through, and gone at `until`).
+type CodeChange =
+    abstract line: int
+    abstract ``to``: int option
+    abstract kind: string
+    abstract at: Spec
+    abstract until: Spec
+
 type CodeOpts =
     inherit Opts
     abstract title: string
     abstract lines: string[]
     abstract lang: string option
     abstract glow: Glow[]
+    abstract notes: CodeNote[]
+    abstract changes: CodeChange[]
     abstract font: float
     abstract slide: float option
 
@@ -387,6 +417,13 @@ let private CSS =
 .k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
 .k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
 .k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }
+.k-code .k-cl.k-cl-changed { overflow: hidden; }
+.k-code-note { font-size: 44px; line-height: 1.25; padding: 6px 22px; border-left: 5px solid var(--nc, var(--accent)); background: var(--bg2); border-radius: 0 14px 14px 0; }
+.k-code-wire { height: 4px; border-radius: 2px; background: var(--nc, var(--accent)); transform-origin: 0 50%; }
+.k-group { border: 3px solid var(--border); border-radius: 26px; box-sizing: border-box; }
+.k-group.k-group-dashed { border-style: dashed; border-color: var(--muted); }
+.k-group .k-group-label { position: absolute; left: 26px; top: 0; transform: translateY(-50%); font-size: 44px; font-weight: 650;
+  color: var(--muted); background: var(--bg); padding: 0 16px; white-space: nowrap; }
 .k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
 .k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
 .k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }
@@ -924,6 +961,8 @@ let kitFor (root: HTMLElement) : IKit =
         /// "none"); packets travel centre to centre.
         /// `fromPos` / `toPos` (edges and packets) move an end along the side it meets: 0..1, left to right on a top or
         /// bottom side, top to bottom on a left or right side; left out = 0.5, the side's centre.
+        /// `groups: [{ nodes, label, at, until, tone, toneAt, dashed, pad }]` draw a labelled border `pad` px (34)
+        /// outside the named nodes, under the arrows: a process, a transaction, a service, a trust boundary.
         member _.flow o =
             let o = opts o
             let LANE = 40.0
@@ -958,6 +997,23 @@ let kitFor (root: HTMLElement) : IKit =
             let box (id: string) : Box =
                 let e: HTMLElement = (get<obj> nodes id)?el
                 { x = e.offsetLeft; y = e.offsetTop; w = e.offsetWidth; h = e.offsetHeight }
+            // Groups go under everything else in the layer, so arrows and boxes are drawn over their borders.
+            let groups =
+                jsOr o.groups [||]
+                |> Array.rev
+                |> Array.map (fun g ->
+                    let ids = jsOr g.nodes [||]
+                    let name = stringify (jsOr g.label "")
+                    if ids.Length = 0 then fail $"flow: the group {name} names no nodes"
+                    for id in ids do
+                        if isNil (get<obj> nodes id) then
+                            fail $"flow: the group {name} names node {stringify id}, which is not in nodes"
+                    let cls = if truthy g.dashed then "k-abs k-group k-group-dashed" else "k-abs k-group"
+                    let el = mk layer "div" cls null null
+                    let label = if truthy g.label then mk el "div" "k-group-label" g.label null else null
+                    layer?prepend (el)
+                    {| g = g; ids = ids; el = el; label = label; at = T0 g.at; toneAt = T0 g.toneAt; until = partUntil g.until |})
+                |> Array.rev
             let edges =
                 jsOr o.edges [||]
                 |> Array.map (fun e ->
@@ -1011,6 +1067,19 @@ let kitFor (root: HTMLElement) : IKit =
                         ed.label.style.top <- $"{r.label.y}px"
                         ed.label.style.transform <- r.labelTransform
                     ed.len <- ed.path?getTotalLength ()
+                // A group's border runs `pad` outside its nodes, a little further above them when its label sits on it.
+                for gr in groups do
+                    let bs = gr.ids |> Array.map box
+                    let pad = defaultArg gr.g.pad 34.0
+                    let top = if isNull gr.label then pad else pad + 16.0
+                    let x0 = (bs |> Array.map (fun b -> b.x) |> Array.min) - pad
+                    let y0 = (bs |> Array.map (fun b -> b.y) |> Array.min) - top
+                    let x1 = (bs |> Array.map (fun b -> b.x + b.w) |> Array.max) + pad
+                    let y1 = (bs |> Array.map (fun b -> b.y + b.h) |> Array.max) + pad
+                    gr.el.style.left <- $"{x0}px"
+                    gr.el.style.top <- $"{y0}px"
+                    gr.el.style.width <- $"{x1 - x0}px"
+                    gr.el.style.height <- $"{y1 - y0}px"
                 laidOut <- true
             add
                 {| el = layer
@@ -1018,6 +1087,11 @@ let kitFor (root: HTMLElement) : IKit =
                     fun t ->
                         if not laidOut then layout ()
                         layer.style?opacity <- vis' t layerAt layerUntil
+                        for gr in groups do
+                            show gr.el (vis' t gr.at gr.until) 0.0 ""
+                            let on = isOn gr.g.tone gr.toneAt t
+                            gr.el.style.borderColor <- if on then tone gr.g.tone else ""
+                            if not (isNull gr.label) then gr.label.style.color <- if on then tone gr.g.tone else ""
                         for nd in values nodes do
                             let nd: {| n: FlowNode; el: HTMLElement; at: Time; toneAt: Time; dimAt: Time; until: Time |} = nd
                             let p = vis' t nd.at nd.until
@@ -1250,6 +1324,9 @@ let kitFor (root: HTMLElement) : IKit =
         /// A code card whose lines glow as they run: { title, lines: [...], glow: [{ line, from, until, tone }] }.
         /// `font` (px, default 44) shrinks the lines so verbatim tool output keeps its real indentation.
         /// `slide: 0` fades in without the 20 px rise: for a card that replaces an identical-looking one in place.
+        /// `notes: [{ line, html, at, until, tone }]` sit right of the card, level with their line, which glows while
+        /// its note is up. `changes: [{ line, to, kind: "add" | "del", at, until }]` show an edit: added lines open
+        /// in at `at`; deleted lines are struck through at `at` and close at `until`.
         member _.code o =
             let o = opts o
             let card = mk (host o) "div" "k-code" null null
@@ -1257,23 +1334,67 @@ let kitFor (root: HTMLElement) : IKit =
             if truthy o.title then mk card "div" "k-code-title" o.title null |> ignore
             let lang = defaultArg o.lang "csharp"
             let ls = o.lines |> Array.map (fun l -> mk card "div" "k-cl" (highlight l lang) null)
+            let lineH = if truthy o.font then round (o.font * 60.0 / 44.0) else 60.0
             if truthy o.font then
                 for l in ls do
                     l.style.fontSize <- $"{o.font}px"
-                    let lh = $"{round (o.font * 60.0 / 44.0)}px"
+                    let lh = $"{lineH}px"
                     l.style.height <- lh
                     l.style.lineHeight <- lh
+            let lineIndex (what: string) (i: int) =
+                if isNil (box i) || i < 0 || i >= ls.Length then
+                    fail $"code: {what} names line {jsStr i}, but the card's lines are 0 to {ls.Length - 1}"
             let glows =
                 jsOr o.glow [||]
                 |> Array.map (fun g ->
                     let from = T0 g.from
                     {| g = g; from = from; until = TUntil g.until |})
+            // Each changed line, with when it changes: an added line opens in at `at`; a deleted line is struck
+            // through at `at`, and closes at `until` if it has one. A later change of the same line wins.
+            let changed =
+                let all =
+                    jsOr o.changes [||]
+                    |> Array.collect (fun c ->
+                        if c.kind <> "add" && c.kind <> "del" then
+                            fail $"code: a change's kind is \"add\" or \"del\", not {stringify c.kind}"
+                        let last = defaultArg c.``to`` c.line
+                        lineIndex "a change" c.line
+                        lineIndex "a change" last
+                        if last < c.line then fail $"code: a change runs from line {c.line} back to line {last}"
+                        let at = T0 c.at
+                        if isNil at then fail $"code: the change of line {c.line} has no `at`"
+                        [| for i in c.line .. last -> i, {| add = (c.kind = "add"); at = at; until = T0 c.until |} |])
+                Array.init ls.Length (fun i -> all |> Array.tryFindBack (fun (j, _) -> j = i) |> Option.map snd)
+            changed
+            |> Array.iteri (fun i ch ->
+                match ch with
+                | Some c ->
+                    let l = ls.[i]
+                    l.classList.add "k-cl-changed"
+                    if not c.add then
+                        // The strike runs across the text, not the whole card: the line's text goes in a span of its
+                        // own width.
+                        l.innerHTML <- $"""<span class="k-rel">{l.innerHTML}<span class="k-strike"></span></span>"""
+                | None -> ())
+            let strikes = ls |> Array.map (fun l -> l.querySelector ".k-strike" :?> HTMLElement)
+            // Notes sit right of the card, each level with its line and joined to it by a short wire.
+            let notes =
+                jsOr o.notes [||]
+                |> Array.map (fun n ->
+                    lineIndex "a note" n.line
+                    let colour = jsOr (tone n.tone) "var(--accent)"
+                    let el = mk (host o) "div" "k-abs k-code-note" n.html $"--nc:{colour}"
+                    let wire = mk (host o) "div" "k-abs k-code-wire" null $"--nc:{colour}"
+                    {| n = n; el = el; wire = wire; colour = colour; at = TAt n.at; until = TUntil n.until |})
             let at, until = TAt o.at, TUntil o.until
             add
                 {| el = card
                    render =
                     fun t ->
-                        show card (vis' t at until) (defaultArg o.slide 20.0) ""
+                        let cardShown = vis' t at until
+                        show card cardShown (defaultArg o.slide 20.0) ""
+                        let noteOn i =
+                            notes |> Array.tryFind (fun nt -> nt.n.line = i && vis' t nt.at nt.until > 0.0)
                         ls
                         |> Array.iteri (fun i l ->
                             let mutable p = 0.0
@@ -1284,8 +1405,53 @@ let kitFor (root: HTMLElement) : IKit =
                                     if q > p then
                                         p <- q
                                         colour <- jsOr (tone gl.g.tone) colour
-                            l.style.background <-
-                                if p > 0.0 then $"color-mix(in srgb, {colour} {round (p * 22.0)}%%, transparent)" else "") |}
+                            // A line with a note on screen glows in the note's colour.
+                            match noteOn i with
+                            | Some nt ->
+                                let q = vis' t nt.at nt.until
+                                if q > p then
+                                    p <- q
+                                    colour <- nt.colour
+                            | None -> ()
+                            match changed.[i] with
+                            | None ->
+                                l.style.background <-
+                                    if p > 0.0 then $"color-mix(in srgb, {colour} {round (p * 22.0)}%%, transparent)" else ""
+                            | Some c ->
+                                // How open the line is, and how far it has turned green or red.
+                                let opened, marked =
+                                    if c.add then
+                                        let q = progIO t c.at 0.5
+                                        q, q
+                                    else
+                                        let gone = if isNil c.until then 0.0 else progIO t c.until 0.5
+                                        1.0 - gone, progIO t c.at 0.4
+                                let mark = if c.add then "var(--good)" else "var(--bad)"
+                                l.style.height <- $"{lineH * opened}px"
+                                l.style?opacity <- opened * (if c.add then 1.0 else lerp 1.0 0.55 marked)
+                                l.style.background <-
+                                    if p > 0.0 then $"color-mix(in srgb, {colour} {round (p * 22.0)}%%, transparent)"
+                                    elif marked > 0.0 then $"color-mix(in srgb, {mark} {round (marked * 16.0)}%%, transparent)"
+                                    else ""
+                                l.style?boxShadow <- if marked > 0.0 then $"inset 6px 0 0 color-mix(in srgb, {mark} {round (marked * 100.0)}%%, transparent)" else ""
+                                let strike = strikes.[i]
+                                if not (isNull strike) then strike.style.transform <- $"scaleX({marked})")
+                        // Notes are placed from where the card and its line are now: lines above may be opening or
+                        // closing.
+                        let right = card.offsetLeft + card.offsetWidth
+                        for nt in notes do
+                            let p = cardShown * vis' t nt.at nt.until
+                            let l = ls.[nt.n.line]
+                            let y = card.offsetTop + l.offsetTop + l.offsetHeight / 2.0
+                            nt.wire.style.left <- $"{right + 10.0}px"
+                            nt.wire.style.top <- $"{y - 2.0}px"
+                            nt.wire.style.width <- "50px"
+                            nt.wire.style?opacity <- p
+                            nt.wire.style.transform <- $"scaleX({p})"
+                            nt.el.style.left <- $"{right + 60.0}px"
+                            nt.el.style.top <- $"{y}px"
+                            nt.el.style?maxWidth <- $"{1860.0 - right - 60.0}px"
+                            show nt.el p 0.0 "translateY(-50%)" |}
 
         /// A whiteboard of worked lines, typed as they are said: { title, rows: [{ label, text, at, dur, result,
         /// resultAt }] }. `text` types across dur seconds (default 1.2); `result` appears under it at resultAt.

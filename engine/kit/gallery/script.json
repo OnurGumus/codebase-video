@@ -150,6 +150,12 @@
       "say": "An edge can choose where it meets a box. The service reads the cache from the left of its bottom side, and writes to the database from the right, so the two pairs never cross."
     },
     {
+      "id": "fl-groups",
+      "lead": 0.6,
+      "pad": 1.0,
+      "say": "A group draws a boundary around some boxes. The service and its database write in one transaction, and the cache stays outside it."
+    },
+    {
       "id": "sq-demo",
       "lead": 0.6,
       "pad": 1.2,
@@ -167,6 +173,18 @@
       "lead": 0.6,
       "pad": 0.8,
       "say": "Code lines glow as they run: read, [rest] then handle, [rest] then commit."
+    },
+    {
+      "id": "cd-notes",
+      "lead": 0.6,
+      "pad": 0.8,
+      "say": "A note points at one line: this one reads the next message, and this one marks it done."
+    },
+    {
+      "id": "cd-diff",
+      "lead": 0.6,
+      "pad": 1.0,
+      "say": "A change shows what an edit did: the old call is struck through, and the new one opens in below it. Then the old line goes."
     },
     {
       "id": "wb-demo",

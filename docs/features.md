@@ -11,8 +11,11 @@ from the [README](../README.md#what-do-you-want-to-do) instead.
 - One map of the project's main parts for the whole video. A chapter that follows a path opens on the map with that
   path lit, and a scene about the inside of one part zooms into that part. A progress video marks parts as new or
   changed.
-- Diagrams drawn on the words that describe them: boxes and arrows that follow the real calls, sequence diagrams of
-  who calls whom in what order, tables, bars, timelines, counters and numbered steps.
+- Diagrams drawn on the words that describe them: boxes and arrows that follow the real calls, with a labelled
+  border round the parts that share a boundary (a process, a transaction), sequence diagrams of who calls whom in
+  what order, tables, bars, timelines, counters and numbered steps.
+- Code on screen with notes that point at a line, and edits shown as they happen: the new lines open in, the old ones
+  are struck through.
 - The core mechanism followed to the bottom with one worked example and real values, shown happening on screen.
 - A recap after each chapter, and in longer videos a few "pause and think" questions that show the question, not
   the answer.

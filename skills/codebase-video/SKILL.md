@@ -290,7 +290,10 @@ publish anything and never write outside WS (the repository itself is read-only 
 - an external service or API the code calls = violet ☁️;
 - configuration and environment = muted ⚙️; tests = muted 🧪;
 - a request or message travelling a flow = a muted packet;
-- code = K.code cards titled with the file path, real indentation, the spoken line glowing in accent;
+- code = K.code cards titled with the file path, real indentation, the spoken line glowing in accent; a short note
+  on a line with `notes`, an edit (a commit, a fix) with `changes`, never two cards labelled before and after;
+- a boundary in the code (a process, a transaction, a service, a container) = a flow `groups` border round its
+  nodes, labelled with what it is;
 - verdict colours only for verdicts: green ✓ the right choice, red ✕ the mistake or an error path the narration calls
   an error, amber a caution.
 

@@ -38,4 +38,21 @@ Kit.module("fl", (K) => {
     });
     K.text("fromPos, toPos: 0 to 1 along a box side", { size: "small", tone: "muted", x: 60, y: 920, at: S + "|where it meets" });
   });
+
+  // groups: a labelled boundary around some of the nodes, under the arrows
+  K.scene("fl-groups", () => {
+    const S = "fl-groups";
+    K.flow({
+      nodes: {
+        service: { label: "service", icon: "⚙️", tone: "accent", x: 260, y: 420 },
+        db: { label: "database", icon: "🗄️", tone: "cyan", x: 820, y: 420 },
+        cache: { label: "cache", icon: "⚡", tone: "violet", x: 290, y: 800, at: S + "|the cache" },
+      },
+      edges: [
+        { from: "service", to: "db", label: "writes", at: S + "|The service" },
+        { from: "service", to: "cache", label: "fills", at: S + "|the cache" },
+      ],
+      groups: [{ nodes: ["service", "db"], label: "one transaction", at: S + "|one transaction", tone: "good", pad: 60 }],
+    });
+  });
 });

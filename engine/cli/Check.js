@@ -3,7 +3,7 @@ import { readDir, resolve, readText, basename, mtime, exists, readJson, join as 
 import { concat, split, trimStart, trimEnd, padLeft, replicate, padRight, replace, indexOf, substring, join } from "./fable_modules/fable-library-js.5.19.0/String.js";
 import { max as max_1, min as min_1, compare, arrayHash, equalArrays, disposeSafe, getEnumerator, stringHash, equals, defaultOf, int32ToString, comparePrimitives, clear } from "./fable_modules/fable-library-js.5.19.0/Util.js";
 import { isDigit } from "./fable_modules/fable-library-js.5.19.0/Char.js";
-import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_2, truncate, pairwise, tryPick as tryPick_1, concat as concat_1, sumBy, exists as exists_1, tryFindBack, contains, zip as zip_1, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, filter, fold, map as map_3, sortWith, toArray, tail as tail_1, head, isEmpty, indexed, mapFold, ofArray, empty, reverse, ofArrayWithTail, cons } from "./fable_modules/fable-library-js.5.19.0/List.js";
+import { choose, item as item_1, tryFindIndex, sortBy, find, sum, tryFind as tryFind_2, truncate, pairwise, tryPick as tryPick_1, concat as concat_1, sumBy, exists as exists_1, tryFindBack, contains, zip as zip_1, collect as collect_1, append as append_1, mapIndexed, length as length_1, singleton, filter, fold, map as map_3, sortWith, toArray, tail, head, isEmpty, indexed, mapFold, ofArray, empty, reverse, ofArrayWithTail, cons } from "./fable_modules/fable-library-js.5.19.0/List.js";
 import { Union, Record } from "./fable_modules/fable-library-js.5.19.0/Types.js";
 import { float64_type, tuple_type, union_type, int32_type, array_type, option_type, record_type, string_type } from "./fable_modules/fable-library-js.5.19.0/Reflection.js";
 import { some, defaultArg, value as value_1 } from "./fable_modules/fable-library-js.5.19.0/Option.js";
@@ -326,7 +326,7 @@ export function Py_splitlines(s) {
     if (!isEmpty(matchValue)) {
         if (head(matchValue) === "") {
             matchResult = 0;
-            rest = tail_1(matchValue);
+            rest = tail(matchValue);
         }
         else {
             matchResult = 1;
@@ -495,10 +495,10 @@ function Py_roundAt(ds, q) {
     const carry = (digits) => {
         if (!isEmpty(digits)) {
             if (head(digits) === "9") {
-                return cons("0", carry(tail_1(digits)));
+                return cons("0", carry(tail(digits)));
             }
             else {
-                return cons(String.fromCharCode((~~head(digits).charCodeAt(0) + 1) & 0xFFFF), tail_1(digits));
+                return cons(String.fromCharCode((~~head(digits).charCodeAt(0) + 1) & 0xFFFF), tail(digits));
             }
         }
         else {
@@ -822,7 +822,7 @@ export function sentences(say_1) {
         if (matchValue != null) {
             if (!isEmpty(found)) {
                 matchResult = 0;
-                before = tail_1(found);
+                before = tail(found);
                 last = head(found);
                 m_3 = matchValue;
             }
@@ -1576,12 +1576,6 @@ function reportLength(glossary, script, longVideo) {
 
 const K_MAP = Py_rx("\\bK\\.map\\s*\\(");
 
-export const patternInput$00401079 = [1.2, 1.9];
-
-export const VISIT_TAIL = patternInput$00401079[1];
-
-const VISIT_LEAD = patternInput$00401079[0];
-
 function checkMap(script, jsFiles, lesson) {
     const scenes = Py_list(script, "scenes");
     const map = Py_get(script, "map");
@@ -1612,7 +1606,6 @@ function checkMap(script, jsFiles, lesson) {
         }
     };
     const hasPath = (s_1) => !Operators_IsNull(Py_get(s_1, "path"));
-    const insideOf = (s_2) => text(s_2, "inside");
     if (!Py_truthy(map)) {
         return toList(delay(() => append(collect((s_3) => append(hasPath(s_3) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_3), ": \"path\" needs a top-level \"map\" in script.json")])) : empty_1(), delay(() => (!Operators_IsNull(Py_get(s_3, "inside")) ? singleton_1(new Finding(/* Error */ 0, [concat(idOf(s_3), ": \"inside\" needs a top-level \"map\" in script.json")])) : empty_1()))), scenes), delay(() => collect((file) => ((Py_search(K_MAP, readText(file)) != null) ? singleton_1(new Finding(/* Error */ 0, [concat(basename(file), ": K.map needs a top-level \"map\" in script.json")])) : empty_1()), jsFiles)))));
     }
@@ -1630,7 +1623,7 @@ function checkMap(script, jsFiles, lesson) {
             GetHashCode: (x_2) => (stringHash(x_2) | 0),
         });
         const byId = (id_1) => find((p_2) => (text(p_2, "id") === id_1), parts);
-        const arr = toArray(scenes);
+        toArray(scenes);
         return toList(delay(() => append(notObjects("part", rawParts), delay(() => append(notObjects("edge", rawEdges), delay(() => append(((length_1(parts) < 2) ? true : (length_1(parts) > 7)) ? singleton_1(new Finding(/* Error */ 0, [`map: ${length_1(parts)} parts; a map has 2 to 7 (more do not fit at a readable size)`])) : empty_1(), delay(() => append(Py_truthy(kinds) ? collect((k_3) => {
             const kind = Py_get(kinds, k_3);
             return (!Py_truthy(Py_get(kind, "tone")) ? true : !Py_truthy(Py_get(kind, "icon"))) ? singleton_1(new Finding(/* Error */ 0, [concat("map: kind ", Py_reprStr(k_3), " needs a \"tone\" and an \"icon\"")])) : empty_1();
@@ -1746,36 +1739,22 @@ function checkMap(script, jsFiles, lesson) {
                     }
                 }, edges))))) && (text(script, "kind") !== "progress")) ? singleton_1(new Finding(/* Error */ 0, [`${sid}: the path goes from ${a_2} to ${b_2}, but the map has no edge between them`])) : empty_1();
             }, pairwise(path)))))))))) : empty_1(), delay(() => {
-                const inside = insideOf(s_4);
+                const inside = text(s_4, "inside");
                 return append(((inside === "") && !Operators_IsNull(Py_get(s_4, "inside"))) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"inside\" is the id of one part of the map, as a string")])) : empty_1(), delay(() => ((inside !== "") ? append(!known(inside) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"inside\": ", Py_reprStr(inside), " is not a part of the map")])) : empty_1(), delay(() => ((isWhy(sid) ? true : Py_truthy(Py_get(s_4, "recap"))) ? singleton_1(new Finding(/* Error */ 0, [concat(sid, ": \"inside\" cannot be on a bridge or recap scene (the frame draws those; no module is inside anything there)")])) : empty_1()))) : empty_1())));
             }));
-        }, scenes), delay(() => append(collect((matchValue_14) => {
-            const s_5 = matchValue_14[1];
-            const k_6 = matchValue_14[0] | 0;
-            const inside_1 = insideOf(s_5);
-            if (inside_1 !== "") {
-                const first = (k_6 === 0) ? true : (insideOf(item(k_6 - 1, arr)) !== inside_1);
-                const last = (k_6 === (arr.length - 1)) ? true : (insideOf(item(k_6 + 1, arr)) !== inside_1);
-                const lead = number(s_5, "lead", 0.4);
-                const tail = number(s_5, "pad", 0.9) + number(s_5, "hold", 0);
-                return append((first && (lead < VISIT_LEAD)) ? singleton_1(new Finding(/* Warning */ 1, [`${idOf(s_5)}: the zoom into ${inside_1} takes ${VISIT_LEAD} s; give this scene "lead": ${VISIT_LEAD} or more (it has ${lead})`])) : empty_1(), delay(() => (((last && (k_6 < (arr.length - 1))) && (tail < VISIT_TAIL)) ? singleton_1(new Finding(/* Warning */ 1, [`${idOf(s_5)}: the zoom out of ${inside_1} needs "pad" plus "hold" of ${VISIT_TAIL} s or more (it has ${tail})`])) : empty_1())));
-            }
-            else {
-                return empty_1();
-            }
-        }, indexed_1(arr)), delay(() => append(!exists_1(hasPath, scenes) ? singleton_1(new Finding(/* Warning */ 1, ["map: no bridge scene has a \"path\", so the map never opens a chapter"])) : empty_1(), delay(() => {
-            const matchValue_15 = lesson;
-            if (matchValue_15 == null) {
+        }, scenes), delay(() => append(!exists_1(hasPath, scenes) ? singleton_1(new Finding(/* Warning */ 1, ["map: no bridge scene has a \"path\", so the map never opens a chapter"])) : empty_1(), delay(() => {
+            const matchValue_14 = lesson;
+            if (matchValue_14 == null) {
                 return empty_1();
             }
             else {
-                const doc_1 = lower(matchValue_15);
+                const doc_1 = lower(matchValue_14);
                 return collect((p_6) => {
                     const label_1 = text(p_6, "label");
                     return ((label_1 !== "") && !(doc_1.indexOf(lower(label_1)) >= 0)) ? singleton_1(new Finding(/* Warning */ 1, [concat("map: the label ", Py_reprStr(label_1), " does not appear in the document")])) : empty_1();
                 }, parts);
             }
-        }))))))))))))))))))))))));
+        }))))))))))))))))))))));
     }
 }
 

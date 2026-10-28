@@ -102,14 +102,16 @@ in order while the bridge line is spoken. Consecutive parts of a path must be jo
 without `path` keeps the plain card.
 
 **Inside a part.** On a content scene, `"inside": "journal"` draws the scene inside that part. Over the scene's lead
-the map returns, the part's box grows into a dashed boundary around the content area, and its icon and label become a
-tag at the top right. Consecutive scenes inside the same part are one visit: the boundary holds for all of them, and
-shrinks back to the box at the end of the last. The module draws its content exactly as usual and never draws a
-boundary of its own.
+the map returns with the part lit and is held whole for a moment, so the viewer finds the part; then its box grows
+into a dashed boundary around the content area, and its icon and label become a tag at the top right. Consecutive
+scenes inside the same part are one visit: the boundary holds for all of them, and shrinks back to the box at the
+end of the last, where the whole map is held again before the next scene. The module draws its content exactly as
+usual and never draws a boundary of its own.
 
-- The first scene of a visit needs `"lead": 1.4` (1.2 at least): nothing of the module is shown during the zoom.
-- The last scene needs `"pad": 2.2` (`pad` plus `hold` of 1.9 s at least), for the way back out: the content fades,
-  the boundary shrinks to the box, and the whole map is held for a moment before the next scene.
+- The silence this takes is added by narrate: the first scene of a visit gets a lead of at least 3.2 s (1.4 s
+  straight after a visit to another part, which ended on the map), the last a quiet end (`pad` plus `hold`) of at
+  least 2.8 s. Do not set them yourself; a larger value you set is kept. Nothing of the module is shown until the
+  zoom is done, and it leaves before the way back out.
 - In an `inside` scene keep the heading under about 60 characters, so the row's right end is free for the tag.
 - Not on a bridge or recap scene. A think scene may be inside.
 
@@ -150,7 +152,7 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   toneAt, format }], x, y, w, gap })` - bars on one scale, a dashed capacity tick, values that count and move.
 - `K.timeline({ total, segments: [{ label, value, show, at, tone, toneAt }], sum: { text, at }, x, y, w })`
 - `K.flow({ nodes: { id: { label, sub, icon, x, y, w, at, tone, fill, toneAt, dimAt, until, rise, dashed } }, edges: [{ from, to,
-  at, label, dashed, tone, toneAt, arrow, fromPos, toPos }], packets: [{ from, to, at, dur, label, tone, fadeAt, lift,
+  at, label, dashed, tone, toneAt, arrow, fromPos, toPos }], groups, packets: [{ from, to, at, dur, label, tone, fadeAt, lift,
   fromPos, toPos }] })` - boxes
   (`icon`: an emoji before the label; `fill: true` tints the box in its tone; `dashed: true` draws a part that does
   not exist yet: a dashed border round a see-through box), arrows drawn on their word with an
@@ -171,6 +173,11 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   A packet takes the same two fields, to travel beside such an edge. Do not add hidden nodes to act as anchors.
   A node or edge with no `until` leaves with the flow, at the same rate as text beside it; give one its own
   `until` only to remove it earlier.
+  `groups: [{ nodes: ["service", "db"], label: "one transaction", at, until, tone, toneAt, dashed, pad }]` draws a
+  labelled border round the named nodes, `pad` px (default 34) outside them, under the arrows, with the label on its
+  top-left edge: for a boundary the code has (a process, a transaction, a service, a container, a trust boundary).
+  Never draw such a border with `K.custom` or a big empty node. Leave `pad` plus 40 px free above the top node for the
+  label, and keep nodes that are not in the group outside the border: an edge may cross it, a box may not.
 - `K.sequence({ actors: [{ id, label, icon, tone, fill, toneAt, at }], messages: [{ from, to, label, at, reply, tone,
   toneAt }], x, y, w, gap, dim })` - a sequence diagram: who calls whom, in what order. Use it when the narration
   walks through an exchange step by step; use `K.flow` when it describes how parts are connected. Actors stand in a
@@ -186,8 +193,17 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
   about 400 px (some 16 characters). Split a longer exchange across two scenes, repeating the actors.
   No activation bars, notes or `alt` / `loop` frames: say those in the narration, or show the branch as its own diagram.
 - `K.map({ reveal: { partId: at }, at, until })` - the video's shared map, see "The shared map" above.
-- `K.code({ title, lines, lang, glow: [{ line, from, until, tone }], x, y })` - syntax-highlighted
+- `K.code({ title, lines, lang, glow: [{ line, from, until, tone }], notes, changes, x, y })` - syntax-highlighted
   (`lang`: "csharp" default, "fsharp", "javascript" (also for TypeScript), "python" (also for Bazel BUILD files), "nix", "dockerfile", "sql", "json", "yaml", "bash", "plain"); `glow` lights a line's background.
+  `notes: [{ line, html, at, until, tone }]` points at a line: a short note right of the card, level with the line
+  and joined to it by a wire, while the line glows in the note's tone (accent by default). Use it in place of a
+  `K.text` caption placed by hand beside the card. A note has the room from the card's right edge to x 1860 and wraps
+  inside it: keep notes to a few words, and a card with notes to about 45 characters a line.
+  `changes: [{ line, to, kind, at, until }]` shows an edit: give the card every line, old and new, in order. Lines
+  `line` to `to` (`to` left out: one line) with `kind: "add"` are closed until `at`, then open in green; with
+  `kind: "del"` they are struck through in red at `at`, and close at `until` if it is given (left out: they stay,
+  struck through). Use it for what a commit or a fix changed, in place of two cards labelled "before" and "after".
+  `line` is counted from 0, as in `glow`.
   Leave out `w`: a width narrower than the longest line does not wrap or clip, the line runs past the card.
   Two cards side by side rarely fit; show them one after the other. Size to plan around: about 151 + 60 px per line
   tall, and about 26 px per character of the longest line wide.
