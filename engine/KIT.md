@@ -86,6 +86,8 @@ you in two places, always the same picture, so the viewer keeps their bearings f
   by 3 rows (`row` 0-2). Lay the main flow out left to right along one row; put what it branches to above and below.
 - A part may carry `"badge"`: one word of at most 10 characters ("new", "changed"), drawn beside its box wherever
   the map is shown. It is for a video about how the code changed.
+- A part may carry `"dashed": true`: a part that does not exist yet (planned, not built), drawn with a dashed border
+  round a see-through box. Say so in the narration too; the dashes alone do not tell the viewer why.
 - `edges`: `from` → `to` is the real direction, `label` a verb. An arrow between two parts of one row or one column
   is straight. An arrow that changes row and column makes one turn: it leaves its box from the top or bottom and
   arrives level, or, when a part is in that way, leaves level and arrives from above or below; `check` warns when
@@ -147,10 +149,11 @@ thing, `good bad warn` for verdicts, `muted ink` for text.
 - `K.bars({ max, line: { value, label }, rows: [{ label, sub, value, at, steps: [{ value, at }], tone,
   toneAt, format }], x, y, w, gap })` - bars on one scale, a dashed capacity tick, values that count and move.
 - `K.timeline({ total, segments: [{ label, value, show, at, tone, toneAt }], sum: { text, at }, x, y, w })`
-- `K.flow({ nodes: { id: { label, sub, icon, x, y, w, at, tone, fill, toneAt, dimAt, until, rise } }, edges: [{ from, to,
+- `K.flow({ nodes: { id: { label, sub, icon, x, y, w, at, tone, fill, toneAt, dimAt, until, rise, dashed } }, edges: [{ from, to,
   at, label, dashed, tone, toneAt, arrow, fromPos, toPos }], packets: [{ from, to, at, dur, label, tone, fadeAt, lift,
   fromPos, toPos }] })` - boxes
-  (`icon`: an emoji before the label; `fill: true` tints the box in its tone), arrows drawn on their word with an
+  (`icon`: an emoji before the label; `fill: true` tints the box in its tone; `dashed: true` draws a part that does
+  not exist yet: a dashed border round a see-through box), arrows drawn on their word with an
   optional short `label` (a verb: "writes", "fetches"), packets that travel (`fadeAt: 0.6` = lost 60% of the way;
   `lift` offsets a return lane). Every edge gets an arrowhead at `to` (`arrow: "both"` or `"none"` to change it),
   so `from` → `to` must be the real direction: who sends, writes or calls whom. Label the edge with that verb.

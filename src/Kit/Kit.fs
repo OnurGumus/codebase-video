@@ -182,6 +182,8 @@ type FlowNode =
     abstract toneAt: Spec
     abstract dimAt: Spec
     abstract rise: float option
+    /// a dashed border and a see-through box: a part that does not exist yet
+    abstract dashed: bool
 
 type FlowEdge =
     abstract from: string
@@ -373,6 +375,7 @@ let private CSS =
 .k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }
 .k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }
 .k-node .k-node-icon { margin-right: 14px; }
+.k-node.k-node-dashed { border-style: dashed; border-color: var(--muted); background: color-mix(in srgb, var(--card) 40%, transparent); }
 .k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }
 .k-seq-label { color: var(--ink); }
 .k-seq-label.k-seq-reply { color: var(--muted); }
@@ -914,7 +917,7 @@ let kitFor (root: HTMLElement) : IKit =
                             g.el.style.background <- if on then $"color-mix(in srgb, {tone g.s.tone} 16%%, var(--card))" else ""
                         if not (isNull sum) then show sum (vis' t sumAt noTime) 10.0 "" |}
 
-        /// Boxes, arrows and moving packets: { nodes: { id: { label, sub, x, y, at, tone, toneAt, dimAt, until } },
+        /// Boxes, arrows and moving packets: { nodes: { id: { label, sub, x, y, at, tone, toneAt, dimAt, until, dashed } },
         /// edges: [{ from, to, at, label, dashed, tone, toneAt, until, arrow }], packets: [{ from, to, at, dur, label,
         /// tone, fadeAt (0..1 of the trip, where it fades: a lost reply), until }] }.
         /// Edges run between the nearest sides of two boxes, with an arrowhead at `to` (arrow: "end" default, "both",
@@ -945,7 +948,8 @@ let kitFor (root: HTMLElement) : IKit =
             for (id, n: FlowNode) in entries (jsOr o.nodes (createEmpty)) do
                 let icon = if truthy n.icon then $"""<span class="k-node-icon">{n.icon}</span>""" else ""
                 let sub = if truthy n.sub then $"""<span class="k-node-sub">{n.sub}</span>""" else ""
-                let el = mk layer "div" "k-node" $"{icon}{n.label}{sub}" $"left:{n.x}px;top:{n.y}px"
+                let cls = if truthy n.dashed then "k-node k-node-dashed" else "k-node"
+                let el = mk layer "div" cls $"{icon}{n.label}{sub}" $"left:{n.x}px;top:{n.y}px"
                 if truthy n.w then el.style.width <- $"{n.w}px"
                 let at = T0 n.at
                 let toneAt = T0 n.toneAt
