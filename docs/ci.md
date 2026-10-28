@@ -12,8 +12,9 @@ defaults in its report. Below: what the job needs, the commands, and an example 
 - **The full history.** The video covers a range of commits, so the checkout must reach its start. Most CI systems
   fetch only the latest commit; the history step then stops with "this clone is shallow". In GitHub Actions use
   `fetch-depth: 0`.
-- **Node.js 22.12 or later, ffmpeg** (with libx264, libvpx-vp9 and libopus) **and Chrome or Chromium.** The engine's
-  `setup` step checks all three and says what is missing.
+- **Node.js 22.12 or later, ffmpeg** (with libx264, libvpx-vp9 and libopus) **and Chrome, Chromium, Edge or Brave**
+  (`CHROME` names the executable if it is somewhere else). The engine's `setup` step checks all three and says what
+  is missing.
 - **The tool home**, where the voice model and the browser driver are installed (about 800 MB, downloaded once).
   Keep it in the job's cache. The skill uses the plugin's own data folder for it,
   `~/.claude/plugins/data/codebase-video-codebase-video`.

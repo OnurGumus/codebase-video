@@ -36,6 +36,7 @@ the file).
 | `--length short\|tour\|deep` | length | `tour` for teach; `short` for progress (which has no `deep`) |
 | `--audience "<who>"` | the audience | teach: a developer joining the team; progress: someone following this project's progress who does not read its code every day |
 | `--captions` | draw captions into the picture | off |
+| `--fast` | a quick look: about 3 agent tasks, no audits (see "Fast"); `short` and `tour` only | off |
 | `--since <tag, commit or date>` | progress: where the range starts | where the last progress video of this repository ended; else the latest tag; else 30 days back |
 | `--until <tag, commit or date>` | progress: where it ends | `HEAD` |
 | `--focus shipped,effort,goals,people` | progress: what to bring out | `shipped,effort` |
@@ -76,8 +77,8 @@ path with the video's. In CI it is what a person reads before the video goes to 
   Fable; the compiled files ship with the plugin, so only Node is needed to run it.)
 - One-time setup (skips finished steps; downloads about 800 MB the first time):
   `CODEBASE_VIDEO_HOME="${CLAUDE_PLUGIN_DATA}" node ${CLAUDE_PLUGIN_ROOT}/engine/cli/Cv.js setup`
-  It needs Node 22.12+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome or Chromium. If something is missing it says
-  how to install it: tell the user and stop.
+  It needs Node 22.12+, ffmpeg with libx264/libvpx-vp9/libopus, and Chrome, Chromium, Edge or Brave (`CHROME=<path>`
+  names any other Chromium browser). If something is missing it says how to install it: tell the user and stop.
 - Before agreeing the scope, skim the README, docs and top-level source folders and list the codebase's core
   features (e.g. for an event-sourcing library: aggregates, sagas, projections, hosting). Show the list and ask which
   belong in the video; never silently leave out a core feature (say plainly which ones a tour will skip).
@@ -91,7 +92,26 @@ path with the video's. In CI it is what a person reads before the video goes to 
     that tours everything evenly answers nobody's "but how does it actually work?";
   - optionally a **preview** first (see "Preview" below): the checked document and the narrated script, no
     visuals. Offer it when the user is trying the plugin for the first time or is unsure about the cost.
-  Tell them the cost honestly: a tour runs about 12 agent tasks, a deep dive about 30; most of it is auditing.
+- Weigh the subject against the length before agreeing it. A video holds about 126 spoken words a minute with its
+  pauses: about 360-560 words for `short`, 700-1,150 for `tour`, 2,600-3,200 for `deep`, and `check` fails a video
+  over its length's hard cap. A `short` video follows one flow to its bottom layer; a `tour` 2 or 3. When the core
+  features chosen or the flow asked for will not fit, say so now and suggest the next length up or a narrower
+  subject, rather than letting the writer cut the core mechanism later.
+- Once the scope is agreed (for either kind), before step 1, tell the user what this run will take, in one line,
+  from this table (e.g. "about 12 agent tasks, an hour or more, about 2 to 3 million Claude tokens"), and offer
+  `--fast` and the preview as the cheaper ways in. Drawing and encoding add about one and a half times the video's
+  length, on this computer. With `--yes`, write the line into `out/REPORT.md` instead.
+
+  | Run | Agent tasks | Time | Claude tokens |
+  |---|---|---|---|
+  | preview | about 4 (6 for `deep`) | about half an hour | about 0.4 to 0.5 million |
+  | `--fast`, `short` or `tour` | about 3 or 4 | about half an hour, then the render | about 0.6 to 0.9 million (estimated) |
+  | `short` | about 10 | under an hour | about 1.2 to 1.3 million |
+  | `tour` | about 12 | an hour or more | about 2 to 3 million |
+  | `deep` | about 30 | several hours | about 6 to 8 million |
+
+  A progress video: about 9 agent tasks for `short`, about 3 with `--fast`. Most of the work is auditing; a bigger
+  project costs more.
 - Pronunciation: the engine says technical terms from a glossary (`ENGINE/glossary.json`: "JSON" as "jason", "C#"
   as "C sharp", "Render.fs" as "Render dot F S", several hundred terms including common .NET, AWS and Azure
   names). A repository's own terms and the owner's preferences go in `<repo>/.codebase-video/glossary.json`, the
@@ -157,12 +177,16 @@ Workspace: `<repo>/.codebase-video/<name>/` (WS below; `<name>` kebab-case, e.g.
    parallel builders by screen time (2 for a tour, 3-4 for deep).
 7. **Build** (parallel agents, one per part): each gets `brief-builder.txt` plus its module keys. Never let two builders
    own the same module.
-8. **Visual audit** (fresh agents, one per builder part, in parallel): `brief-visual-audit.txt` plus the part. Route each
-   report's fixes to the builder that owns those modules.
+8. **First cut, and visual audit** (fresh agents, one per builder part, in parallel): once every builder is done and
+   `CV check` is clean, start `CV video` in the background (`caffeinate -is` on macOS) and, at the same time, the
+   visual audits: `brief-visual-audit.txt` plus the part. They only read, so they run while it draws. When the render
+   ends, give the user `WS/out/<name>.mp4` as a first cut to watch, saying it is not audited yet. Hold each report's
+   fixes until the render has ended (a module changed while it is drawn can leave a scene half old), then route them
+   to the builder that owns those modules.
 9. **Re-audit** (one fresh agent): `brief-reaudit.txt`. It scans the whole video every 0.25 s (`CV scan`, then
    `CV report`) and checks stills. Route fixes to the builders; then look at stills of the changed frames yourself.
-10. **Render**: `CV video` (several minutes the first time; the machine must stay awake: on macOS wrap it in
-    `caffeinate -is`). Output: `WS/out/<name>.mp4` (+ webm, poster jpg, captions vtt, chapters vtt). Look at a few
+10. **Render** again: `CV video` draws only the scenes the audits' fixes changed (the machine must stay awake: on
+    macOS wrap it in `caffeinate -is`). Output: `WS/out/<name>.mp4` (+ webm, poster jpg, captions vtt, chapters vtt). Look at a few
     frames of the mp4 (`ffmpeg -ss <t> -i ... -frames:v 1`), write `WS/out/REPORT.md` (see "The run report"), then give
     the user the path, the length, the chapters, what the audits caught, and anything left unverified.
     A fix after the render is cheap: the video is kept as one piece per scene in `WS/build/segments/`, and `CV video`
@@ -220,6 +244,28 @@ at the top level of `script.json`, narrate again, and each sentence is shown at 
 off otherwise; it covers the lowest part of the scene.
 To attach the video, the user edits the README on github.com and drags `WS/out/<name>.mp4` into the editor; a link
 to a file in the repository does not play.
+
+## Fast (a quick look)
+
+`--fast` (or "a quick video") trades the fresh-agent audits for time: about 3 agent tasks instead of 10 to 12, in
+the same workspace and with the same briefs. Only for `short` and `tour`: with `deep`, stop and say that a deep video
+needs its audits. A progress video runs `CV history` after the brief, as always, and gives its agents the progress
+briefs.
+
+1. **Brief**: as step 1.
+2. **Explore and self-check** (one agent): `brief-explore.txt`; once `build/lesson.md` is written, the same agent
+   checks it as `brief-verify.txt` says (every citation and code block against the repository) and applies its own
+   `build/lesson-fixes.json` with `CV fix --apply`. No separate verify. Re-run `CV fill`.
+3. **Script and its audit** (one agent): `CV new-long`, then `brief-writer.txt`; once `check` is clean, the same agent
+   goes through `brief-narration-audit.txt` against its own script and applies what it finds (re-narrate, re-check).
+4. **Build** (one agent): it first writes the scene plan of step 6 itself, then builds every module with
+   `brief-builder.txt`, until `check` is clean. Look at its `CV sheet` stills yourself. No visual audit, no re-audit.
+5. **Render**: `CV video`, then `WS/out/REPORT.md`, whose first line says plainly: "Fast mode: this video was not
+   audited. Its document, narration and pictures were checked only by the agents that made them." Say the same when
+   you give the user the video.
+
+To audit a fast video later, run the steps it skipped (3, 5, 8 and 9 of "The steps") in the same workspace and render
+again: only the scenes the fixes change are drawn again.
 
 ## Preview (cheap first look)
 

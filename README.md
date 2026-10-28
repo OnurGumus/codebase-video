@@ -18,9 +18,10 @@ system, or to show what changed since a release.
 ## Get started
 
 1. **Install three things**, if you do not have them yet: [Node.js](https://nodejs.org) 22.12 or newer,
-   [ffmpeg](https://ffmpeg.org) (with the x264, VP9 and Opus encoders; Homebrew's has them), and Google Chrome or
-   Chromium. On a Mac: `brew install node ffmpeg`. On Linux, take Node.js from nodejs.org: the one most
-   distributions ship is older.
+   [ffmpeg](https://ffmpeg.org) (with the x264, VP9 and Opus encoders; Homebrew's has them), and Google Chrome,
+   Chromium, Microsoft Edge or Brave (another browser built on Chromium works too: set `CHROME` to its executable).
+   On a Mac: `brew install node ffmpeg`. On Linux, take Node.js from nodejs.org: the one most distributions ship is
+   older.
 2. **Add the plugin.** In Claude Code, type:
    ```
    /plugin marketplace add OnurGumus/codebase-video

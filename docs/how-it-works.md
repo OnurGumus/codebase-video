@@ -44,6 +44,7 @@ is careful checking, not a proof.
 | Length | Video | Agent tasks | Claude tokens |
 |---|---|---|---|
 | preview (no pictures) | the document and the narration | about 4 (6 for `deep`) | about 0.4 to 0.5 million, measured |
+| `--fast` (`short` or `tour`) | the video, not audited | about 3 or 4 | about 0.6 to 0.9 million, estimated |
 | `short` | 3 to 5 minutes | about 10 | about 1.2 to 1.3 million, measured |
 | `tour` | 6 to 10 minutes | about 12 | about 2 to 3 million, estimated |
 | `deep` | 20 to 28 minutes | about 30 | about 6 to 8 million, estimated |
