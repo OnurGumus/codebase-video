@@ -7,6 +7,12 @@ and number must match it exactly. When in doubt, open the cited file in the repo
 
 **Audience:** {{AUDIENCE}}.
 
+**The goal:** {{GOAL}}
+
+This is the video's spine. The intro states it in plain words, every chapter moves the viewer
+toward it, and the outro shows it reached. The document has more in it than the goal needs: it is your material, not
+your outline.
+
 **Read first:** {{ENGINE}}/KIT.md (the whole file; especially "Toasts" and "Breathing room"). The example script
 {{ENGINE}}/kit/gallery/script.json shows the format.
 
@@ -18,10 +24,15 @@ last frame will make a good still), `readsFine` (a list), `source`
 set it}, and `scenes`.
 
 **Structure:**
-- `title` (one line naming the subject and the repository), `intro` (the goal: what the viewer will be able to do after
-  watching), `intro-path` (preview the steps and say what the video assumes the viewer knows).
-- {{CHAPTERS}}, following the document's `##` sections in order (merge short ones). Each chapter has:
-  - a bridge scene `kN-why` with `"chapter": "<card title>"`, `"lead": 1.0, "pad": 0.5`, one line on why this comes next;
+- `title` (one line naming the subject and the repository), `intro` (the goal above: what the viewer will be able to
+  do after watching), `intro-path` (preview the steps toward it, say what the video assumes the viewer knows, and
+  name in one sentence what is left for later: the document's `## Beyond this video`, and anything else you cut).
+- {{CHAPTERS}} along the goal's path: the steps of the flow or mechanism the goal follows, in the order they really
+  happen. Draw on the document's sections for each step; do not turn its sections into chapters one for one. There
+  is no chapter of background up front: each idea from `## The ideas it builds on` is introduced in a scene or two
+  just before the first step that needs it (still before any code or diagram that relies on it). Each chapter has:
+  - a bridge scene `kN-why` with `"chapter": "<card title>"`, `"lead": 1.0, "pad": 0.5`, one line on what this
+    chapter adds toward the goal;
   - content scenes `<module>-<name>`, where the module key is a letter plus the chapter number (for example `m1-entry`,
     `f2-retry`), {{SCENES}};
   - pause-and-think scenes: {{THINKS}}. A think scene is `<module>-think`: a question, `[think 10]`, then the answer
@@ -33,11 +44,17 @@ set it}, and `scenes`.
   document's `## The map` section: the same names, kinds and directions, nothing added. Put the main flow left to
   right along one row. `kinds` gives each kind the tone and icon of this video's colour table: {{COLOURS}}.
   On the bridge scene of each chapter that follows a flow, add `"path"`: the parts that flow touches, in the order it
-  reaches them. On each content scene that is about the inside of one part, add `"inside": "<part id>"`; give the
-  first scene of such a run `"lead": 1.4` and the last one `"pad": 2.2`. Leave `inside` off scenes that are about how
-  parts talk to each other.
+  reaches them. On each content scene that is about the inside of one part, add `"inside": "<part id>"` (narrate
+  adds the silence the zoom needs). Leave `inside` off scenes that are about how parts talk to each other.
 - Target {{MINUTES}}: {{WORDS}}. File paths, identifiers and flags cost several spoken words each. Plan the cut before
   you write: follow one flow end to end rather than skimming all of them, and say in `intro-path` what is left for later.
+- Focus: at least 80% of the spoken words either move along the goal's path or set up a step of it that comes in
+  the same or the next chapter. Everything else (other features, conventions met elsewhere, history, what the code
+  could also do) is cut, however true or interesting, and named once as left for later. Before you narrate, list
+  each planned scene with the goal step it serves; a scene that serves none goes. Two kinds slip through: a precise
+  rule or "tricky part" that nothing later on the path uses (a naming rule, a threshold, a snapshot setting), and a
+  scene that only restates the route `intro-path` already gave. Cut both. An idea set up for a step two chapters
+  away belongs just before that step instead.
 - The chapter on the document's `## The core mechanism` section is the heart of the video: give it about a quarter
   of the running time and keep every layer of its worked example, down to the last one. When the draft runs long,
   cut a whole flow or area and say so in `intro-path`; never thin the core mechanism, and never cut the bottom layer
@@ -101,5 +118,6 @@ Repeat until `check` shows no warnings and its only errors are "module has no <k
 `intro` and `outro` included: builders write those files later). Then re-read the whole script
 once against the document, sentence by sentence, and fix anything that goes beyond it.
 
-**Report:** the chapters with module keys and scene ids, the document lines each module draws from, the total length,
+**Report:** the chapters with module keys and scene ids and the goal step each serves, the document lines each module
+draws from, the total length,
 each think question with its answer, what you left out, and anything in the document that looks wrong.

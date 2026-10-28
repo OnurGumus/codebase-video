@@ -13,6 +13,7 @@ Files (in {{WS}}/):
 - {{ENGINE}}/KIT.md, section "Toasts", for what each toast kind means.
 
 The audience: {{AUDIENCE}}.
+The goal (what a viewer should be able to do after watching): {{GOAL}}
 {{CARE}}
 
 Find, with the scene id and the exact sentence:
@@ -48,6 +49,16 @@ M. Depth: for each chapter, write the two or three "but how does that actually h
    is a must-fix: give the sentences that answer it, taken from the document's worked example, and name what to cut
    to make room (a flow or an area, never a pause). Also flag a principle stated without its worked example, a trace
    that stops above the document's last layer, and a core-mechanism chapter with well under a quarter of the video.
+
+N. Focus, against the goal above: put every content scene (not the title, bridges, recaps or the outro) in one of
+   three groups, with its spoken words counted: ON (moves the viewer along the goal), NEEDED (sets up a step of it in
+   the same or the next chapter: name the step), SIDE (true, maybe useful, but the goal does not need it). Give the
+   three shares. SIDE over 20% is a must-fix, and so is a chapter that is mostly SIDE: say what to cut, and the one
+   sentence that names it as left for later. Also flag background placed far from the step that needs it (a concepts
+   chapter up front used only two chapters later), an intro whose goal does not match the goal above, a bridge that
+   does not say what its chapter adds toward the goal, an outro that does not show the goal reached (or widens it to
+   cover a chapter the goal never promised), a precise rule or "tricky part" no later scene uses, and a scene that
+   only restates the route `intro-path` gave.
 
 For each finding give replacement wording. Keep each scene's sentence count where you can. Rank must-fix / should-fix /
 nit. Also list what you checked and found correct. Do not pad. Write the report to `build/audit-narration.md` (or

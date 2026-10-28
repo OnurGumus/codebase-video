@@ -192,6 +192,8 @@ let run (ws: string) : int =
               "BRIEFS", here
               "NAME", name
               "SUBJECT", subject
+              // The one thing a viewer can do after watching; a brief written before "goal" existed has the subject.
+              "GOAL", optional "goal" subject
               "REPO", repo
               "AUDIENCE", optional "audience" "a developer new to this codebase"
               "LINES", string lines
