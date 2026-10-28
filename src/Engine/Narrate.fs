@@ -433,9 +433,11 @@ let voicePackages = [ "kokoro-js"; "@echogarden/espeak-ng-emscripten" ]
 let packageInstalled (name: string) : bool =
     exists (join [ toolHome; "node"; "node_modules"; name; "package.json" ])
 
+/// The command that runs setup.
+let setupCommand () : string = "node " + join [ engineDir; "cli"; "Cv.js" ] + " setup"
+
 let setupHint () : string =
-    let cv = join [ engineDir; "cli"; "Cv.js" ]
-    $"the tool is not set up yet: run: node {cv} setup (installs the Kokoro voice and puppeteer-core into {toolHome})"
+    $"the tool is not set up yet: run: {setupCommand ()} (installs the Kokoro voice and puppeteer-core into {toolHome})"
 
 /// The setup hint as the error when a package is missing from the tool home.
 let requirePackages (names: string list) : Result<unit, string> =
@@ -691,6 +693,71 @@ let modelDir () = join [ toolHome; "models" ]
 
 /// The model file once it is downloaded.
 let modelFile () = join [ modelDir (); "onnx-community"; "Kokoro-82M-v1.0-ONNX"; "onnx"; "model.onnx" ]
+
+/// The model file as Hugging Face keeps it, from the commit that last changed it, so that its size and hash below
+/// stay its own. transformers.js writes a download straight to model.onnx and takes any file there as complete, so a
+/// stopped download would look ready; setup downloads it instead (`downloadModel`).
+let private modelUrl =
+    $"https://huggingface.co/{MODEL}/resolve/468588286ebb2dd77c25b9771e5d165896538cce/onnx/model.onnx"
+
+/// The model file's size in bytes and its SHA-256 (the oid of its Git LFS pointer).
+let private modelBytes = 325532232.0
+let private modelSha256 = "8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb"
+
+/// Whether the model file is there in full. Only its size is compared (cheap enough for every step): a stopped
+/// download leaves a shorter file; the hash is checked once, when setup downloads it.
+type ModelState =
+    | ModelReady
+    | ModelMissing
+    | ModelIncomplete of bytes: float
+
+let modelState () : ModelState =
+    let file = modelFile ()
+    if not (exists file) then ModelMissing
+    elif fileSize file = modelBytes then ModelReady
+    else ModelIncomplete(fileSize file)
+
+/// A size for people: "222 MB".
+let megabytes (bytes: float) : string = $"{int (System.Math.Round(bytes / 1e6))} MB"
+
+/// The model file's state in words, for a model that is not ready.
+let modelProblem (state: ModelState) : string =
+    match state with
+    | ModelReady -> ""
+    | ModelMissing -> $"the Kokoro model is not in {modelDir ()}"
+    | ModelIncomplete bytes ->
+        $"the Kokoro model in {modelDir ()} is incomplete ({megabytes bytes} of {megabytes modelBytes}), from a download that was stopped"
+
+[<Emit("fetch($0)")>]
+let private fetchUrl (address: string) : obj = jsNative
+
+let private streams: obj = importAll "node:stream"
+let private streamPromises: obj = importAll "node:stream/promises"
+
+/// Downloads `address` to `dest` through `dest`.part, which becomes `dest` only once it has `bytes` bytes and the
+/// SHA-256 `sha256`; a download that is stopped or comes out wrong leaves no `dest`.
+let downloadChecked (address: string) (bytes: float) (sha256: string) (dest: string) : Async<unit> =
+    async {
+        let part = dest + ".part"
+        mkdirp (dirname dest)
+        remove part
+        let! (response: obj) = fromJs (fetchUrl address)
+        if not (response?ok: bool) then failwith $"downloading {address} failed: HTTP {response?status}"
+        do! fromJs (streamPromises?pipeline (streams?Readable?fromWeb (response?body), fs?createWriteStream (part)))
+        let got = fileSize part
+        let problem =
+            if got <> bytes then Some $"{megabytes got} of {megabytes bytes} arrived"
+            elif sha256File part <> sha256 then Some "its SHA-256 is not the expected one"
+            else None
+        match problem with
+        | Some why ->
+            remove part
+            failwith $"downloading {address} failed: {why}"
+        | None -> rename part dest
+    }
+
+/// Downloads the model file (about 330 MB) into the tool home, replacing an incomplete one.
+let downloadModel () : Async<unit> = downloadChecked modelUrl modelBytes modelSha256 (modelFile ())
 
 // The model runs in a worker thread (this same module, started with workerData {kokoro: true}). onnxruntime-node
 // aborts the process ("libc++abi: ... mutex lock failed") when process.exit() is called while it is loaded in the
@@ -1499,11 +1566,20 @@ let private chosen
         | other -> return other, others
     }
 
+/// The Kokoro voice ready to speak: its packages installed and its model there in full.
+let private requireKokoro () : Result<unit, string> =
+    requirePackages voicePackages
+    |> Result.bind (fun () ->
+        match modelState () with
+        | ModelReady -> Ok()
+        | ModelMissing -> Error(setupHint ())
+        | incomplete -> Error $"{modelProblem incomplete}. Run setup again: {setupCommand ()}")
+
 /// Voices the workspace. Reading and checking script.json and the voice settings happen as `run` is called, before
 /// the Async starts: what throws there reaches the caller at once, and a failed check (the Kokoro voice not
 /// installed, the name, the chosen voice, a Kokoro language) is the Error the Async returns, before any work is done.
 let run (ws: string) : Async<Result<unit, Failure>> =
-    match requirePackages voicePackages with
+    match requireKokoro () with
     | Error hint when not (spokenElsewhere ws) -> async.Return(Error(VoiceNotInstalled hint))
     | _ ->
         let clip = resolve ws

@@ -28,25 +28,39 @@ open Fable.Core.JsInterop
 open Node
 open Check
 
+/// 1150 as "1,150".
+let private grouped (n: int) : string =
+    if n < 1000 then string n else $"{n / 1000}," + (string (n % 1000)).PadLeft(3, '0')
+
+let private goal (length: string) : LengthGoal = lengthGoals |> List.find (fst >> (=) length) |> snd
+
+/// A length's minutes with its hard cap, which `check` holds the video to.
+let private minutes (length: string) (range: string) : string = $"{range} minutes, hard cap {Py.g (goal length).Cap}"
+
+/// A length's spoken words, as `check` counts them.
+let private words (length: string) : string =
+    let least, most = (goal length).Words
+    $"about {grouped least}-{grouped most} spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length, warns above {grouped most} words and fails a video over the hard cap)"
+
 /// What each length asks of the writer: (placeholder, value), in the order they are filled.
 let private LENGTHS =
     [ "short",
-      [ "MINUTES", "3-5 minutes, hard cap 5.5"
-        "WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
+      [ "MINUTES", minutes "short" "3-5"
+        "WORDS", words "short"
         "CHAPTERS", "2-3 chapters"
         "SCENES", "2-3 content scenes per chapter, each 20-40 s"
         "THINKS", "no pause-and-think scene (a short video)"
         "DOC", "120-250 lines" ]
       "tour",
-      [ "MINUTES", "6-10 minutes, hard cap 11"
-        "WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
+      [ "MINUTES", minutes "tour" "6-10"
+        "WORDS", words "tour"
         "CHAPTERS", "3-4 chapters"
         "SCENES", "2-4 content scenes per chapter, each 25-50 s"
         "THINKS", "one pause-and-think scene in each of two chapters"
         "DOC", "200-400 lines" ]
       "deep",
-      [ "MINUTES", "20-28 minutes, hard cap 29"
-        "WORDS", "about 2,600-3,200 spoken words"
+      [ "MINUTES", minutes "deep" "20-28"
+        "WORDS", words "deep"
         "CHAPTERS", "5-7 chapters"
         "SCENES", "3-6 content scenes per chapter, each 30-60 s"
         "THINKS", "exactly one pause-and-think scene per chapter"
@@ -55,15 +69,15 @@ let private LENGTHS =
 /// What a progress video asks of the writer. It is shorter and has no deep form.
 let private PROGRESS_LENGTHS =
     [ "short",
-      [ "MINUTES", "3-5 minutes, hard cap 5.5"
-        "WORDS", "about 360-560 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
+      [ "MINUTES", minutes "short" "3-5"
+        "WORDS", words "short"
         "CHAPTERS", "an \"At a glance\" chapter, 2 theme chapters and an \"In flight\" chapter"
         "SCENES", "1-3 content scenes per chapter, each 15-40 s"
         "THINKS", "no pause-and-think scene"
         "DOC", "150-300 lines" ]
       "tour",
-      [ "MINUTES", "6-10 minutes, hard cap 11"
-        "WORDS", "about 700-1,150 spoken words (pauses, chapter cards and recaps add about a quarter to the spoken time; `check` prints the real length)"
+      [ "MINUTES", minutes "tour" "6-10"
+        "WORDS", words "tour"
         "CHAPTERS", "an \"At a glance\" chapter, 3-4 theme chapters and an \"In flight\" chapter"
         "SCENES", "2-3 content scenes per chapter, each 20-45 s"
         "THINKS", "no pause-and-think scene"

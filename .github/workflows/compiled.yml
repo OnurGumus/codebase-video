@@ -29,3 +29,5 @@ jobs:
         run: sudo apt-get install -y ffmpeg
       - name: the voice providers work against their fake servers
         run: node --test 'test/voice/*.test.mjs'
+      - name: the engine's parts work on their own
+        run: node --test 'test/engine/*.test.mjs'

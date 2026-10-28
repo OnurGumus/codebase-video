@@ -39,20 +39,33 @@ let private error2 (a: string) (b: obj) : unit = jsNative
 
 // Chrome -------------------------------------------------------------------------------------------------------
 
-let private chromePaths =
+/// Where Chrome is usually installed, then the other browsers built on Chromium that puppeteer drives as well
+/// (Microsoft Edge, Brave), on macOS, Linux and Windows. Setup searches the same list.
+let browserPaths =
     [ "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       "/Applications/Chromium.app/Contents/MacOS/Chromium"
       "/usr/bin/google-chrome"
       "/usr/bin/google-chrome-stable"
       "/usr/bin/chromium"
       "/usr/bin/chromium-browser"
-      "C:/Program Files/Google/Chrome/Application/chrome.exe" ]
+      "/snap/bin/chromium"
+      "C:/Program Files/Google/Chrome/Application/chrome.exe"
+      "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+      "/usr/bin/microsoft-edge"
+      "/usr/bin/microsoft-edge-stable"
+      "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+      "C:/Program Files/Microsoft/Edge/Application/msedge.exe"
+      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+      "/usr/bin/brave-browser"
+      "/usr/bin/brave-browser-stable"
+      "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe" ]
 
 /// CHROME, else the first browser found in the usual places.
 let findChrome () : string option =
     match env "CHROME" with
     | Some c -> Some c
-    | None -> chromePaths |> List.tryFind exists
+    | None -> browserPaths |> List.tryFind exists
 
 /// After browser.close(): Chrome's crash handler and updater inherit its stdout and stderr and can outlive it by many
 /// seconds; puppeteer keeps reading both, so they would keep the process alive after the step. Nothing is read from
@@ -560,7 +573,7 @@ let private withChrome (clip: string) (job: Session -> obj -> Async<int>) : Asyn
         let! server = startServer clip ForRender
         match findChrome () with
         | None ->
-            eprint "no Chrome found: set CHROME to the browser's executable"
+            eprint "no Chrome, Chromium, Edge or Brave found: set CHROME to the browser's executable"
             server.Close()
             return 2
         | Some chrome ->

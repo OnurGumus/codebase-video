@@ -1007,27 +1007,44 @@ let private reportBreathing (timing: Json option) (longVideo: bool) : Finding li
 
 // ── length ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// The hard cap of each length, in minutes (the writer brief states the same caps: Fill.LENGTHS).
-let lengthCaps = [ "short", 5.5; "tour", 11.0; "deep", 29.0 ]
+/// What a length asks for: the spoken words the writer aims at, and the hard cap on the running time in minutes.
+type LengthGoal = { Words: int * int; Cap: float }
 
-/// The real running time (narration plus pauses, cards and recap holds) against the cap of the length that
-/// <workspace>/brief.json asks for. Words alone under-count: a video runs at about 2.15 words a second overall.
-let private reportDuration (clip: string) (timing: Json option) : Finding list =
-    match timing with
+/// Each length's goal (the writer brief states the same: Fill.LENGTHS). At the writer's speed of 0.87 a video runs at
+/// about 126 words a minute with its pauses, chapter cards and recap holds, so the top of the words lands inside the
+/// length's minutes and the cap leaves a tenth over them.
+let lengthGoals =
+    [ "short", { Words = 360, 560; Cap = 5.5 }
+      "tour", { Words = 700, 1150; Cap = 11.0 }
+      "deep", { Words = 2600, 3200; Cap = 29.0 } ]
+
+/// The length that <workspace>/brief.json asks for, with its goal, when it names one.
+let private lengthGoal (clip: string) : (string * LengthGoal) option =
+    let briefPath = join [ clip; "brief.json" ]
+    if exists briefPath then
+        let length = Py.str (Py.get (readJson briefPath) "length")
+        lengthGoals |> List.tryFind (fun (name, _) -> name = length)
+    else None
+
+/// The spoken words against the top of the length's budget (a warning, before anything is voiced), and the real
+/// running time (narration plus pauses, cards and recap holds) against its hard cap: an error, so the writer cuts
+/// until it fits. Words alone under-count: a video runs at about 2.1 words a second overall.
+let private reportBudget (clip: string) (words: int) (timing: Json option) : Finding list =
+    let minutes = timing |> Option.map (fun t -> num t "duration" / 60.0)
+    minutes |> Option.iter (fun m -> Py.print $"video:  {Py.fmtF 1 m} min with pauses, cards and recaps")
+    match lengthGoal clip with
     | None -> []
-    | Some t ->
-        let minutes = num t "duration" / 60.0
-        Py.print $"video:  {Py.fmtF 1 minutes} min with pauses, cards and recaps"
-        let briefPath = join [ clip; "brief.json" ]
-        if exists briefPath then
-            let length = Py.str (Py.get (readJson briefPath) "length")
-            match List.tryFind (fun (name, _) -> name = length) lengthCaps with
-            | Some(_, cap) when minutes > cap ->
-                [ Warning $"the video runs {Py.fmtF 1 minutes} min, over the {Py.g cap} min cap of a '{length}' video: cut sentences or a scene" ]
-            | _ -> []
-        else []
+    | Some(length, goal) ->
+        let _, most = goal.Words
+        [ match minutes with
+          | Some m when m > goal.Cap ->
+              yield Error $"the video runs {Py.fmtF 1 m} min, over the {Py.g goal.Cap} min cap of a '{length}' video: cut sentences or a scene"
+          | _ -> ()
+          if words > most then
+              yield Warning $"{words} spoken words, over the about {most} of a '{length}' video: it will run long; cut before you narrate" ]
 
-let private reportLength (glossary: Glossary.Glossary) (script: Json) (longVideo: bool) =
+/// Prints the spoken words and their minutes, per chapter for a long video; returns the words.
+let private reportLength (glossary: Glossary.Glossary) (script: Json) (longVideo: bool) : int =
     let rows =
         chapters (Py.list script "scenes") (fun s -> (Py.words (shown (say glossary s))).Length)
         |> List.map (fun (name, ws) -> name, List.sum ws)
@@ -1037,6 +1054,7 @@ let private reportLength (glossary: Glossary.Glossary) (script: Json) (longVideo
     if longVideo then
         for name, w in rows do
             Py.print $"  {(string w).PadLeft 5} words  ≈ {Py.fixedW 4 1 (float w / WPS / 60.0)} min  {name}"
+    total
 
 // ── the shared map ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1117,6 +1135,9 @@ let private checkMap (script: Json) (jsFiles: string list) (lesson: string optio
               let badge = field p "badge"
               if not (isNull badge) && (not (Py.isStr badge) || Py.len (Py.str badge) > 10) then
                   yield Error $"map: the badge of {name} is a word of at most 10 characters (\"new\", \"changed\")"
+              let dashed = field p "dashed"
+              if not (isNull dashed) && jsTypeof dashed <> "boolean" then
+                  yield Error $"map: \"dashed\" of {name} is true or false, not {jsonOf dashed}"
               let label = text p "label"
               if Py.len label > 12 then
                   yield Error $"map: the label {Py.reprStr label} of {name} is {Py.len label} characters; at most 12 fit a box"
@@ -1245,8 +1266,8 @@ let run (ws: string) (args: string list) : int =
         | Some p -> checkLesson glossary script jsFiles (readText p)
         | None -> []
     let mapFindings = checkMap script jsFiles (lesson |> Option.map readText)
-    reportLength glossary script longVideo
-    let durationFindings = reportDuration clip timing
+    let words = reportLength glossary script longVideo
+    let durationFindings = reportBudget clip words timing
     let breathingFindings = reportBreathing timing longVideo
     let flowFindings = reportFlow glossary script longVideo
     reportGlossary glossary script

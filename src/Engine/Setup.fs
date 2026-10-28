@@ -1,11 +1,13 @@
 /// One-time setup: installs everything the engine needs that is not a system tool, into the tool home
 /// (CODEBASE_VIDEO_HOME, default ~/.cache/codebase-video; the plugin passes its persistent data dir).
 ///   - kokoro-js (the local, offline text-to-speech voice) and the full eSpeak NG it gets phonemes from
-///   - the Kokoro v1.0 model (about 330 MB, downloaded once from Hugging Face into <tool home>/models)
-///   - puppeteer-core (drives your installed Chrome or Chromium; it does not download a browser)
+///   - the Kokoro v1.0 model (about 330 MB, downloaded once from Hugging Face into <tool home>/models; checked for
+///     its size on every run and its hash after a download, so a download that was stopped is made again)
+///   - puppeteer-core (drives your installed browser; it does not download one)
 ///   - pptxgenjs and jszip (write the .pptx of the `present` step; only that step needs them)
 /// System tools it checks for but does not install: node (22.12+), npm, ffmpeg (with libx264, libvpx-vp9, libopus)
-/// and Chrome or Chromium. Safe to run again: finished steps are skipped. Port of engine/setup.sh (without Python).
+/// and a browser built on Chromium (Chrome, Chromium, Edge or Brave; CHROME names any other). Safe to run again:
+/// finished steps are skipped. Port of engine/setup.sh (without Python).
 module Setup
 
 open Fable.Core
@@ -36,13 +38,7 @@ let private packageJson () =
     + "\n"
 
 let private chromeCandidates () =
-    [ yield! Option.toList (env "CHROME")
-      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      "/Applications/Chromium.app/Contents/MacOS/Chromium"
-      "/usr/bin/google-chrome"
-      "/usr/bin/google-chrome-stable"
-      "/usr/bin/chromium"
-      "/usr/bin/chromium-browser" ]
+    [ yield! Option.toList (env "CHROME"); yield! Render.browserPaths ]
 
 let private executable (p: string) : bool =
     try
@@ -99,7 +95,8 @@ let run () : Async<int> =
             let! chrome =
                 chromeCandidates ()
                 |> List.tryFind (fun c -> c <> "" && executable c)
-                |> Result.requireSome [ "no Chrome or Chromium found: install one, or set CHROME to its executable" ]
+                |> Result.requireSome
+                    [ "no Chrome, Chromium, Edge or Brave found: install one, or set CHROME to its executable" ]
 
             let nodeDir = join [ toolHome; "node" ]
             mkdirp nodeDir
@@ -123,9 +120,15 @@ let run () : Async<int> =
     | Ok chrome ->
         async {
             // The model, fetched once so the first narrate does not stall; the voices (af_heart and the others) ship
-            // inside kokoro-js. Voicing a word checks the whole chain: eSpeak NG, the model and the voice.
-            if not (exists (Narrate.modelFile ())) then
-                printfn "%s" $"downloading the Kokoro model (about 330 MB) into {Narrate.modelDir ()}"
+            // inside kokoro-js. Its size is checked on every run, so a download that was stopped is made again.
+            // Voicing a word checks the whole chain: eSpeak NG, the model and the voice.
+            match Narrate.modelState () with
+            | Narrate.ModelReady -> ()
+            | state ->
+                match state with
+                | Narrate.ModelIncomplete _ -> printfn "%s" $"{Narrate.modelProblem state}. Downloading it again"
+                | _ -> printfn "%s" $"downloading the Kokoro model (about 330 MB) into {Narrate.modelDir ()}"
+                do! Narrate.downloadModel ()
                 do! Narrate.selfTest ()
             printfn "%s" $"ready: voice, renderer and encoder are set up in {toolHome} (browser: {chrome})"
             return 0

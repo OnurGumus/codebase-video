@@ -33,7 +33,7 @@ function build(terms, extensions) {
         Compare: (x, y) => (comparePrimitives(x, y) | 0),
     }));
     const term = isEmpty(alternatives) ? "(?!)" : join("|", alternatives);
-    return new Glossary(terms, extensions, new RegExp((`${"(?<![\\p{L}\\p{N}_/#+-])"}(?:(${DOTTED})|((?<!\\.)${term}))${"(?![\\p{L}\\p{N}_/#+])"}`), "gu"));
+    return new Glossary(terms, extensions, new RegExp((`${"(?<![\\p{L}\\p{N}_/#+])(?<!(?<![\\p{L}\\p{N}])-)"}(?:(${DOTTED})|((?<!\\.)${term}))${"(?![\\p{L}\\p{N}_/#+])"}`), "gu"));
 }
 
 function stringMap(o) {

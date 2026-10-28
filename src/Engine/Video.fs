@@ -167,7 +167,7 @@ let run (ws: string) (args: string list) : Async<int> =
         | [] ->
             match Render.findChrome () with
             | None ->
-                eprint "no Chrome found: set CHROME to the browser's executable"
+                eprint "no Chrome, Chromium, Edge or Brave found: set CHROME to the browser's executable"
                 return 2
             | Some chrome ->
                 let fps = Narrate.FPS

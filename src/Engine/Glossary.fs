@@ -6,7 +6,8 @@
 /// The words come from engine/glossary.json ("terms" and "extensions"), with a repository's own
 /// <repo>/.codebase-video/glossary.json laid over it: its entries win, and an empty string leaves a term as written.
 ///
-///   - A term is matched as a whole word, in its exact case, longest first ("ASP.NET" before ".NET").
+///   - A term is matched as a whole word, in its exact case, longest first ("ASP.NET" before ".NET"). A hyphen
+///     between two words parts them: "213" is found in "ABC-213", but not in "-213" (a minus sign) or "--json".
 ///   - A dotted name (Render.fs, window.render, el.style.color) is said with "dot" for each dot, and each part by
 ///     "terms", else by "extensions" (the part in lower case), else as written. Not when every part is one letter
 ///     ("e.g."), and not next to a slash: a path is the writer's to spell.
@@ -58,8 +59,10 @@ let private build (terms: Map<string, string>) (extensions: Map<string, string>)
         |> List.sortByDescending (fun t -> t.Length)
         |> List.map escapeRx
     // Group 1 is a dotted name, group 2 a term. Neither may touch a letter, a digit or a slash on either side; a
-    // term may be followed by a dot (the end of a sentence), a dotted name was tried first.
-    let before, after = """(?<![\p{L}\p{N}_/#+-])""", """(?![\p{L}\p{N}_/#+])"""
+    // term may be followed by a dot (the end of a sentence), a dotted name was tried first. A hyphen inside a word
+    // parts it like a space ("ABC-213", "session-ID"); one that opens a word is a minus sign or a flag ("-213",
+    // "--json") and keeps the term as written.
+    let before, after = """(?<![\p{L}\p{N}_/#+])(?<!(?<![\p{L}\p{N}])-)""", """(?![\p{L}\p{N}_/#+])"""
     let term = if alternatives.IsEmpty then "(?!)" else String.concat "|" alternatives
     { Terms = terms
       Extensions = extensions
