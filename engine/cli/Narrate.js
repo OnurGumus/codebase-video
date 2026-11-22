@@ -456,7 +456,7 @@ function timeAt(frame, pos) {
     return ((200 * frame) + (6 * Py_roundInt(((pos - (frame * FRAME)) * 1000) / 24000))) / 6000;
 }
 
-const GAP = 0.42;
+const GAP = 1.2;
 
 const PART_GAP = 0.12;
 
@@ -472,7 +472,7 @@ const BREAK = new RegExp("\\s*\\[(pause|think)(?:\\s+(\\d+(?:\\.\\d+)?))?\\]", "
 
 function breakDefault(kind) {
     if (kind === "pause") {
-        return 1.5;
+        return 2.25;
     }
     else {
         return 8;
@@ -481,7 +481,7 @@ function breakDefault(kind) {
 
 const REST = new RegExp("\\s*\\[rest(?:\\s+(\\d+(?:\\.\\d+)?))?\\]", "g");
 
-const REST_DEFAULT = 0.35;
+const REST_DEFAULT = 0.5;
 
 const NAME_PATTERN = "\\A[A-Za-z0-9][A-Za-z0-9_-]*\\Z";
 
@@ -1916,6 +1916,34 @@ function visitSilence(script, si) {
     }
 }
 
+export const patternInput$00401302$002D1 = [4.8, 2.7];
+
+export const SETTLE_CARD = patternInput$00401302$002D1[1];
+
+export const SETTLE = patternInput$00401302$002D1[0];
+
+function settleSilence(sc) {
+    let matchValue_1, v, v_1;
+    const has = (key) => {
+        const matchValue = get$(sc, key);
+        if ($007CTruthy$007C_$007C(matchValue) != null) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+    if ((((matchValue_1 = get$(sc, "id"), (matchValue_1 != null) ? (((v = value_19(matchValue_1), (typeof v) === "string")) ? ((v_1 = value_19(matchValue_1), v_1)) : "") : "")) === "title") ? true : has("recap")) {
+        return 0;
+    }
+    else if (has("chapter")) {
+        return SETTLE_CARD;
+    }
+    else {
+        return SETTLE;
+    }
+}
+
 function voiceScene(settings, markedScenes, track, finished, si, sc) {
     return singleton_2.Delay(() => {
         const id = sc.id;
@@ -1992,10 +2020,10 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
                     });
                 }, [silence(max(getFloat(sc, "lead", 0.4), patternInput[0]), track), empty(), empty()], indexed(sentences(apply(settings.Glossary, defaultArg((input_1 = ((option_1 = get$(sc, "say"), (option_1 != null) ? (!Operators_IsNull(value_19(option_1)) ? option_1 : undefined) : undefined)), (input_1 == null) ? undefined : value_19(input_1)), "")))));
                 return singleton_2.Bind(x_6, (x$0027_3) => {
-                    let _arg_5, sceneBreaks_1, lines_1, track_13, over, track_14, endFrame, msc, passthrough, breaksJson;
+                    let _arg_5, sceneBreaks_1, lines_1, quiet, track_13, over, track_14, endFrame, msc, passthrough, breaksJson;
                     let value_15;
                     const input_15 = x$0027_3;
-                    value_15 = ((input_15.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_15.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_5 = input_15.fields[0], (sceneBreaks_1 = _arg_5[2], (lines_1 = _arg_5[1], (track_13 = silence(max(getFloat(sc, "hold", 0) + getFloat(sc, "pad", isEmpty(lines_1) ? 0 : 0.9), patternInput[1]), _arg_5[0]), (over = ((track_13.pos % FRAME) | 0), (track_14 = (((over !== 0) ? true : (track_13.pos === (startFrame * FRAME))) ? lay(new Audio(/* Silence */ 0, [FRAME - over]), track_13) : track_13), (endFrame = (~~(track_14.pos / FRAME) | 0), (msc = item(si, markedScenes), (passthrough = ((key) => {
+                    value_15 = ((input_15.tag === 1) ? (new FSharpResult$2(/* Error */ 1, [input_15.fields[0]])) : (new FSharpResult$2(/* Ok */ 0, [(_arg_5 = input_15.fields[0], (sceneBreaks_1 = _arg_5[2], (lines_1 = _arg_5[1], (quiet = (getFloat(sc, "hold", 0) + getFloat(sc, "pad", isEmpty(lines_1) ? 0 : 0.9)), (track_13 = silence(max(isEmpty(lines_1) ? quiet : max(quiet, settleSilence(sc)), patternInput[1]), _arg_5[0]), (over = ((track_13.pos % FRAME) | 0), (track_14 = (((over !== 0) ? true : (track_13.pos === (startFrame * FRAME))) ? lay(new Audio(/* Silence */ 0, [FRAME - over]), track_13) : track_13), (endFrame = (~~(track_14.pos / FRAME) | 0), (msc = item(si, markedScenes), (passthrough = ((key) => {
                         const matchValue_2 = get$(sc, key);
                         if ($007CTruthy$007C_$007C(matchValue_2) != null) {
                             return singleton([key, Py_ofJs(msc[key])]);
@@ -2006,7 +2034,7 @@ function voiceScene(settings, markedScenes, track, finished, si, sc) {
                     }), (breaksJson = (isEmpty(sceneBreaks_1) ? empty() : singleton(["breaks", new Py_Json(/* List */ 5, [toList(delay(() => map((b_1) => {
                         const b = b_1;
                         return new Py_Json(/* Obj */ 6, [ofArray([["kind", new Py_Json(/* Str */ 4, [b.kind])], ["sentence", new Py_Json(/* Int */ 2, [b.sentence])], ["start", num(b.start)], ["end", num(b.finish)]])]);
-                    }, reverse(sceneBreaks_1))))])])), [track_14, cons(new Scene(id, Py_ofJs(msc.id), startFrame / 30, endFrame / 30, reverse(lines_1), append(passthrough("chapter"), append(passthrough("toasts"), append(breaksJson, append(passthrough("recap"), append(passthrough("path"), passthrough("inside"))))))), finished)]))))))))))])));
+                    }, reverse(sceneBreaks_1))))])])), [track_14, cons(new Scene(id, Py_ofJs(msc.id), startFrame / 30, endFrame / 30, reverse(lines_1), append(passthrough("chapter"), append(passthrough("toasts"), append(breaksJson, append(passthrough("recap"), append(passthrough("path"), passthrough("inside"))))))), finished)])))))))))))])));
                     return singleton_2.Return(value_15);
                 });
             }

@@ -377,6 +377,8 @@ let private CSS =
 .k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }
 .k-muted { color: var(--muted); }
 .k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.k-heading::after { content: ""; position: absolute; left: 2px; bottom: -12px; width: 92px; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--violet)); box-shadow: 0 0 16px -2px var(--accent); }
 .k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }
 .k-lines { display: flex; flex-direction: column; }
 .k-line { font-size: 48px; line-height: 1.3; }
@@ -386,25 +388,33 @@ let private CSS =
 .k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }
 .k-rel { position: relative; display: inline-block; }
 .k-chips { display: flex; flex-wrap: wrap; gap: 18px; }
-.k-table { display: grid; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }
+.k-table { display: grid; background: var(--surface); box-shadow: var(--lift); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }
 .k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }
 .k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }
 .k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }
 .k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }
 .k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }
-.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%; }
+.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tc, var(--accent)) 45%, transparent), var(--tc, var(--accent)));
+  box-shadow: 0 0 26px -6px var(--tc, var(--accent)); }
 .k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }
 .k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }
-.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--card);
+.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--lift);
   display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
 .k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }
 .k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }
-.k-node { position: absolute; background: var(--card); border: 3px solid var(--border); border-radius: 18px; padding: 16px 26px;
-  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap; }
+/* A box is a raised surface; with a tone (--tc, set while the tone is on) it also glows in that colour. */
+.k-node { position: absolute; background: var(--surface); border: 3px solid var(--edge); border-radius: 18px; padding: 16px 26px;
+  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap;
+  box-shadow: var(--lift), 0 0 46px -10px color-mix(in srgb, var(--tc, transparent) 70%, transparent); }
 .k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }
-.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }
-.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }
-.k-node .k-node-icon { margin-right: 14px; }
+.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 10px 26px #000a, 0 0 30px -6px currentColor; }
+.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: #0f1522; padding: 2px 16px;
+  border-radius: 14px; border: 2px solid #ffffff0d; }
+/* The icon sits in a small tile tinted in the box's tone; the negative margins keep the box's height. */
+.k-node .k-node-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px;
+  margin: -8px 18px -8px -10px; border-radius: 16px; font-size: 40px; vertical-align: middle;
+  background: color-mix(in srgb, var(--tc, var(--muted)) 20%, transparent); }
 .k-node.k-node-dashed { border-style: dashed; border-color: var(--muted); background: color-mix(in srgb, var(--card) 40%, transparent); }
 .k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }
 .k-seq-label { color: var(--ink); }
@@ -414,17 +424,21 @@ let private CSS =
 .k-map-tag { font-size: 46px; font-weight: 650; white-space: nowrap; padding: 2px 22px; border-radius: 14px; transform: translate(-50%, -50%); }
 .k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }
 .k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }
-.k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
+.k-code { background: var(--surface); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; box-shadow: var(--lift); }
 .k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+.k-code .k-code-title::before { content: ""; display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: middle;
+  margin: -6px 82px 0 4px; background: #ff6b6b; box-shadow: 30px 0 #f5c16c, 60px 0 #8fd6a8; opacity: .85; }
 .k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }
 .k-code .k-cl.k-cl-changed { overflow: hidden; }
-.k-code-note { font-size: 44px; line-height: 1.25; padding: 6px 22px; border-left: 5px solid var(--nc, var(--accent)); background: var(--bg2); border-radius: 0 14px 14px 0; }
+.k-code-note { font-size: 44px; line-height: 1.25; padding: 6px 22px; border-left: 5px solid var(--nc, var(--accent)); border-radius: 0 14px 14px 0;
+  background: color-mix(in srgb, var(--nc, var(--accent)) 12%, var(--bg2)); box-shadow: 0 14px 34px -12px #000c; }
 .k-code-wire { height: 4px; border-radius: 2px; background: var(--nc, var(--accent)); transform-origin: 0 50%; }
-.k-group { border: 3px solid var(--border); border-radius: 26px; box-sizing: border-box; }
+.k-group { border: 3px solid var(--tc, var(--border)); border-radius: 26px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--tc, var(--border)) 7%, transparent); }
 .k-group.k-group-dashed { border-style: dashed; border-color: var(--muted); }
 .k-group .k-group-label { position: absolute; left: 26px; top: 0; transform: translateY(-50%); font-size: 44px; font-weight: 650;
-  color: var(--muted); background: var(--bg); padding: 0 16px; white-space: nowrap; }
-.k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
+  color: var(--muted); background: #121927; padding: 0 18px; border-radius: 12px; white-space: nowrap; }
+.k-board { background: var(--surface); box-shadow: var(--lift); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }
 .k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
 .k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }
 .k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }
@@ -432,6 +446,7 @@ let private CSS =
 .k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }
 .k-steps { display: flex; gap: 22px; }
 .k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }
+.k-step.k-step-on { box-shadow: 0 0 34px -8px var(--accent); }
 .k-step b { color: var(--accent); margin-right: 12px; }
 .k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }
 .k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;
@@ -443,7 +458,7 @@ let private CSS =
 .k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }
 .k-toast .k-ring circle { fill: none; stroke-width: 7; }
 .k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }
-.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--card); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }
+.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--surface); box-shadow: var(--lift), 0 0 80px -30px var(--accent); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }
 .k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
 .k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }
 .k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }
@@ -457,6 +472,10 @@ let private injectCss () =
         document.head?append (st)
 
 // ── Small helpers ────────────────────────────────────────────────────────────────────────────────────────
+
+/// Hands an element its tone as --tc while the tone is on (the CSS tints and glows from it), and takes it away after.
+let private setTc (el: HTMLElement) (on: bool) (colour: string) =
+    if on then el.style.setProperty ("--tc", colour) else el.style?removeProperty ("--tc") |> ignore
 
 /// `{ ...defaults, ...o }`: o's own fields win, even when they hold undefined.
 [<Emit("({ ...$0, ...$1 })")>]
@@ -636,6 +655,9 @@ type private EdgeState =
       path: Element
       label: HTMLElement
       heads: Head[]
+      /// A wide faint copy of the path under it (the glow), and dots that run along it, from → to.
+      halo: Element
+      dots: Element
       at: Time
       toneAt: Time
       until: Time
@@ -913,7 +935,7 @@ let kitFor (root: HTMLElement) : IKit =
                             row.fill.style.transform <- $"scaleX({clamp (scale v / jsOr trackW 1.0) 0.0 10.0})"
                             row.fill.style.width <- $"{trackW}px"
                             let on = isOn row.r.tone row.toneAt t
-                            row.fill.style.background <- if on then tone row.r.tone else "var(--accent)"
+                            setTc row.fill on (tone row.r.tone)
                             row.value.style.left <- $"{trackX + scale v + 22.0}px"
                             row.value?textContent <- fmt row.r v
                             row.value.style.color <- if on then tone row.r.tone else "" |}
@@ -966,6 +988,7 @@ let kitFor (root: HTMLElement) : IKit =
         member _.flow o =
             let o = opts o
             let LANE = 40.0
+            let DOT_GAP, DOT_SPEED = 34.0, 68.0
             let layer = mk (host o) "div" "k-abs" null "left:0;top:0;width:1920px;height:1080px"
             let svg = createSvg "svg"
             svg.setAttribute ("class", "layer")
@@ -1017,8 +1040,12 @@ let kitFor (root: HTMLElement) : IKit =
             let edges =
                 jsOr o.edges [||]
                 |> Array.map (fun e ->
+                    let halo = createSvg "path"
+                    svg?append (halo)
                     let path = createSvg "path"
                     svg?append (path)
+                    let dots = createSvg "path"
+                    svg?append (dots)
                     let label = if truthy e.label then mk layer "div" "k-edge-label" e.label null else null
                     let ends =
                         match defaultArg e.arrow "end" with
@@ -1033,8 +1060,8 @@ let kitFor (root: HTMLElement) : IKit =
                             { ``end`` = en; el = el })
                     let at = T0 e.at
                     let toneAt = T0 e.toneAt
-                    { e = e; path = path; label = label; heads = heads; at = at; toneAt = toneAt; until = partUntil e.until
-                      lane = 0.0; len = 0.0 })
+                    { e = e; path = path; label = label; heads = heads; halo = halo; dots = dots; at = at; toneAt = toneAt
+                      until = partUntil e.until; lane = 0.0; len = 0.0 })
             let packets =
                 jsOr o.packets [||]
                 |> Array.map (fun p ->
@@ -1062,6 +1089,11 @@ let kitFor (root: HTMLElement) : IKit =
                     ed.path?style?strokeWidth <- "5"
                     ed.path?style?strokeLinecap <- "round"
                     if truthy ed.e.dashed then ed.path?style?strokeDasharray <- "14 12"
+                    ed.halo.setAttribute ("d", r.d)
+                    ed.halo?style?strokeWidth <- "18"
+                    ed.dots.setAttribute ("d", r.d)
+                    ed.dots?style?strokeWidth <- "8"
+                    ed.dots?style?strokeDasharray <- $"0 {DOT_GAP}"
                     if not (isNull ed.label) then
                         ed.label.style.left <- $"{r.label.x}px"
                         ed.label.style.top <- $"{r.label.y}px"
@@ -1090,13 +1122,14 @@ let kitFor (root: HTMLElement) : IKit =
                         for gr in groups do
                             show gr.el (vis' t gr.at gr.until) 0.0 ""
                             let on = isOn gr.g.tone gr.toneAt t
-                            gr.el.style.borderColor <- if on then tone gr.g.tone else ""
+                            setTc gr.el on (tone gr.g.tone)
                             if not (isNull gr.label) then gr.label.style.color <- if on then tone gr.g.tone else ""
                         for nd in values nodes do
                             let nd: {| n: FlowNode; el: HTMLElement; at: Time; toneAt: Time; dimAt: Time; until: Time |} = nd
                             let p = vis' t nd.at nd.until
                             show nd.el p (defaultArg nd.n.rise 12.0) ""
                             let on = isOn nd.n.tone nd.toneAt t
+                            setTc nd.el on (tone nd.n.tone)
                             nd.el.style.borderColor <- if on then tone nd.n.tone else ""
                             nd.el.style.color <- if on && not (truthy nd.n.fill) then tone nd.n.tone else ""
                             nd.el.style.background <-
@@ -1104,13 +1137,23 @@ let kitFor (root: HTMLElement) : IKit =
                             if not (isNil nd.dimAt) then nd.el.style?opacity <- p * lerp 1.0 0.35 (progIO t nd.dimAt 0.4)
                         for ed in edges do
                             let p = vis' t ed.at ed.until
-                            let drawn = if isNil ed.at then 1.0 else progIO t ed.at 0.5
+                            let drawn = if isNil ed.at then 1.0 else progIO t ed.at 0.8
                             ed.path?style?opacity <- p
                             if not (truthy ed.e.dashed) then
                                 ed.path?style?strokeDasharray <- $"{ed.len}"
                                 ed.path?style?strokeDashoffset <- $"{ed.len * (1.0 - drawn)}"
                             let on = isOn ed.e.tone ed.toneAt t
-                            ed.path?style?stroke <- if on then tone ed.e.tone else "var(--faint)"
+                            ed.path?style?stroke <- if on then tone ed.e.tone else "var(--wire)"
+                            // The glow follows the line as it is drawn; the dots start once it is whole, on a one-way
+                            // solid edge only, and run from → to at a pace that depends on t alone.
+                            ed.halo?style?stroke <- ed.path?style?stroke
+                            ed.halo?style?strokeDasharray <- ed.path?style?strokeDasharray
+                            ed.halo?style?strokeDashoffset <- ed.path?style?strokeDashoffset
+                            ed.halo?style?opacity <- p * (if on then 0.22 else 0.12)
+                            let running = not (truthy ed.e.dashed) && defaultArg ed.e.arrow "end" = "end"
+                            ed.dots?style?stroke <- $"color-mix(in srgb, {ed.path?style?stroke} 55%%, white)"
+                            ed.dots?style?strokeDashoffset <- $"{-((t * DOT_SPEED) % DOT_GAP)}"
+                            ed.dots?style?opacity <- if running then p * 0.7 * clamp01 ((drawn - 0.9) / 0.1) else 0.0
                             // A head appears once the line has been drawn to it (the start head with the line's first stroke).
                             for hd in ed.heads do
                                 hd.el?style?fill <- ed.path?style?stroke
@@ -1238,9 +1281,10 @@ let kitFor (root: HTMLElement) : IKit =
                     line.setAttribute ("x2", $"{cx}")
                     line.setAttribute ("y1", $"{y0 + BOX_H}")
                     line.setAttribute ("y2", $"{lifeEnd}")
-                    line?style?stroke <- "var(--border)"
+                    line?style?stroke <- "var(--wire)"
                     line?style?strokeWidth <- "4"
-                    line?style?strokeDasharray <- "4 14"
+                    line?style?strokeDasharray <- "10 12"
+                    line?style?strokeOpacity <- "0.75"
                     let icon = if truthy a.icon then $"""<span class="k-node-icon">{a.icon}</span>""" else ""
                     let el = mk layer "div" "k-node k-actor" $"{icon}{a.label}" $"left:{cx}px;top:{y0}px"
                     {| a = a; el = el; line = line; at = T0 a.at; toneAt = T0 a.toneAt |})
@@ -1254,6 +1298,7 @@ let kitFor (root: HTMLElement) : IKit =
                             show ac.el p 12.0 "translateX(-50%)"
                             ac.line?style?opacity <- p
                             let on = isOn ac.a.tone ac.toneAt t
+                            setTc ac.el on (tone ac.a.tone)
                             ac.el.style.borderColor <- if on then tone ac.a.tone else ""
                             ac.el.style.color <- if on && not (truthy ac.a.fill) then tone ac.a.tone else ""
                             ac.el.style.background <-
@@ -1263,7 +1308,7 @@ let kitFor (root: HTMLElement) : IKit =
                             let next = item messages (i + 1)
                             let dimP = if truthy o.dim && truthy next && not (isNil next.at) then progIO t next.at 0.4 else 0.0
                             let p = vis' t ms.at noTime * lerp 1.0 0.45 dimP
-                            let drawn = if isNil ms.at then 1.0 else progIO t ms.at 0.5
+                            let drawn = if isNil ms.at then 1.0 else progIO t ms.at 0.8
                             let on = isOn ms.m.tone ms.toneAt t
                             let stroke = if on then tone ms.m.tone else if truthy ms.m.reply then "var(--faint)" else "var(--muted)"
                             ms.path?style?opacity <- p
@@ -1507,6 +1552,7 @@ let kitFor (root: HTMLElement) : IKit =
                             let reached = not (isNil ai) && t >= ai
                             let next = atOf (i + 1)
                             let current = reached && (i = els.Length - 1 || isNil next || t < next)
+                            e.classList?toggle ("k-step-on", current) |> ignore
                             e.style.borderColor <- if current then "var(--accent)" else ""
                             e.style.background <- if current then "var(--accent-dim)" else ""
                             e.style.color <- if reached then "var(--ink)" else ""
