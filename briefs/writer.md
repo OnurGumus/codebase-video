@@ -85,7 +85,7 @@ set it}, and `scenes`.
   a scene; never three new facts in a row without a pause, and no stretch of talk over about 30 s without one. One
   idea per sentence. When a sentence lists three or more things, put a `[rest]` after each comma of the list
   ("the endpoint, [rest] the saga, [rest] and the journal"): each item then gets its own beat, and a builder can
-  show each one on its word. The `check` breathe line should show 72-78% talk; it warns over 82%, and over 45 s without a
+  show each one on its word. The `check` breathe line should show 60-70% talk; it warns over 75%, and over 45 s without a
   pause. If the video runs long, cut a fact, not a pause.
 - About one light humour line every two minutes, each adding NO claim and bending none.
 - Technical terms: write them plainly, as they are spelled (`JSON`, `C#`, `.NET`, `S3`, `Render.fs`, `window.render`).

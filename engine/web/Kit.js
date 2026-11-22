@@ -19,7 +19,7 @@ import { rangeDouble } from "./fable_modules/fable-library-js.5.19.0/Range.js";
 
 const noTime = defaultOf();
 
-const CSS = "\n.k-abs { position: absolute; }\n.k-title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }\n.k-big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }\n.k-text { font-size: 48px; line-height: 1.3; }\n.k-small { font-size: 44px; line-height: 1.3; }\n.k-mono { font-family: var(--mono); font-size: 46px; }\n.k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }\n.k-muted { color: var(--muted); }\n.k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }\n.k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }\n.k-lines { display: flex; flex-direction: column; }\n.k-line { font-size: 48px; line-height: 1.3; }\n.k-line .k-note { display: block; font-size: 44px; color: var(--muted); margin-top: 2px; }\n.k-line.k-mono-line { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-bullet { color: var(--accent); margin-right: 18px; font-weight: 700; }\n.k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }\n.k-rel { position: relative; display: inline-block; }\n.k-chips { display: flex; flex-wrap: wrap; gap: 18px; }\n.k-table { display: grid; background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }\n.k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }\n.k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }\n.k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }\n.k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }\n.k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }\n.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%; }\n.k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }\n.k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }\n.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--card);\n  display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }\n.k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }\n.k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }\n.k-node { position: absolute; background: var(--card); border: 3px solid var(--border); border-radius: 18px; padding: 16px 26px;\n  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap; }\n.k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }\n.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 8px 24px #0008; }\n.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: var(--bg); padding: 2px 14px; border-radius: 12px; }\n.k-node .k-node-icon { margin-right: 14px; }\n.k-node.k-node-dashed { border-style: dashed; border-color: var(--muted); background: color-mix(in srgb, var(--card) 40%, transparent); }\n.k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }\n.k-seq-label { color: var(--ink); }\n.k-seq-label.k-seq-reply { color: var(--muted); }\n.k-map-bound { border-radius: 22px; }\n.k-map-tag .k-node-icon { margin-right: 14px; }\n.k-map-tag { font-size: 46px; font-weight: 650; white-space: nowrap; padding: 2px 22px; border-radius: 14px; transform: translate(-50%, -50%); }\n.k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }\n.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }\n.k-code { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }\n.k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }\n.k-code .k-cl.k-cl-changed { overflow: hidden; }\n.k-code-note { font-size: 44px; line-height: 1.25; padding: 6px 22px; border-left: 5px solid var(--nc, var(--accent)); background: var(--bg2); border-radius: 0 14px 14px 0; }\n.k-code-wire { height: 4px; border-radius: 2px; background: var(--nc, var(--accent)); transform-origin: 0 50%; }\n.k-group { border: 3px solid var(--border); border-radius: 26px; box-sizing: border-box; }\n.k-group.k-group-dashed { border-style: dashed; border-color: var(--muted); }\n.k-group .k-group-label { position: absolute; left: 26px; top: 0; transform: translateY(-50%); font-size: 44px; font-weight: 650;\n  color: var(--muted); background: var(--bg); padding: 0 16px; white-space: nowrap; }\n.k-board { background: var(--card); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }\n.k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }\n.k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }\n.k-board .k-br-text { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }\n.k-steps { display: flex; gap: 22px; }\n.k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }\n.k-step b { color: var(--accent); margin-right: 12px; }\n.k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }\n.k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;\n  background: var(--bg2); border: 3px solid var(--tc, var(--accent)); box-shadow: 0 12px 36px #0009;\n  white-space: nowrap; transform-origin: 100% 50%; z-index: 20; }\n.k-toast .k-toast-icon { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n  font-size: 48px; line-height: 1; background: color-mix(in srgb, var(--tc, var(--accent)) 22%, transparent); }\n.k-toast .k-toast-text { font-size: 44px; font-weight: 700; color: var(--tc, var(--accent)); }\n.k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }\n.k-toast .k-ring circle { fill: none; stroke-width: 7; }\n.k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }\n.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--card); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }\n.k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }\n.k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }\n.k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }\n";
+const CSS = "\n.k-abs { position: absolute; }\n.k-title { font-size: 84px; font-weight: 700; letter-spacing: -.035em; line-height: 1.08; }\n.k-big { font-size: 64px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; }\n.k-text { font-size: 48px; line-height: 1.3; }\n.k-small { font-size: 44px; line-height: 1.3; }\n.k-mono { font-family: var(--mono); font-size: 46px; }\n.k-label { font-size: 44px; font-weight: 700; letter-spacing: .04em; }\n.k-muted { color: var(--muted); }\n.k-heading { font-size: 56px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }\n.k-heading::after { content: \"\"; position: absolute; left: 2px; bottom: -12px; width: 92px; height: 6px; border-radius: 3px;\n  background: linear-gradient(90deg, var(--accent), var(--violet)); box-shadow: 0 0 16px -2px var(--accent); }\n.k-heading .k-sub { margin-left: 20px; font-size: 44px; font-weight: 500; color: var(--muted); }\n.k-lines { display: flex; flex-direction: column; }\n.k-line { font-size: 48px; line-height: 1.3; }\n.k-line .k-note { display: block; font-size: 44px; color: var(--muted); margin-top: 2px; }\n.k-line.k-mono-line { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-bullet { color: var(--accent); margin-right: 18px; font-weight: 700; }\n.k-strike { position: absolute; left: -6px; right: -6px; top: 52%; height: 5px; border-radius: 3px; background: var(--bad); transform-origin: 0 50%; }\n.k-rel { position: relative; display: inline-block; }\n.k-chips { display: flex; flex-wrap: wrap; gap: 18px; }\n.k-table { display: grid; background: var(--surface); box-shadow: var(--lift); border: 3px solid var(--border); border-radius: 22px; padding: 10px 26px 14px; }\n.k-table .k-th { font-size: 44px; font-weight: 700; color: var(--accent); letter-spacing: .03em; padding: 12px 14px 12px 0; border-bottom: 3px solid var(--border); }\n.k-table .k-td { font-size: 44px; line-height: 1.25; padding: 14px 14px 14px 0; border-bottom: 2px solid #ffffff10; }\n.k-bars .k-bar-label { font-size: 48px; font-weight: 650; white-space: nowrap; }\n.k-bars .k-bar-sub { font-size: 44px; color: var(--muted); white-space: nowrap; margin-left: 18px; font-weight: 400; }\n.k-bars .k-bar-track { position: absolute; height: 34px; border-radius: 17px; background: var(--border); opacity: .45; }\n.k-bars .k-bar-fill { position: absolute; height: 34px; border-radius: 17px; transform-origin: 0 50%;\n  background: linear-gradient(90deg, color-mix(in srgb, var(--tc, var(--accent)) 45%, transparent), var(--tc, var(--accent)));\n  box-shadow: 0 0 26px -6px var(--tc, var(--accent)); }\n.k-bars .k-bar-value { position: absolute; font-size: 52px; font-weight: 750; white-space: nowrap; }\n.k-bars .k-bar-line { position: absolute; width: 0; border-left: 4px dashed var(--muted); }\n.k-seg { position: absolute; height: 110px; border: 3px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--lift);\n  display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }\n.k-seg .k-seg-label { font-size: 44px; line-height: 1.1; white-space: nowrap; color: var(--muted); }\n.k-seg .k-seg-value { font-size: 48px; font-weight: 700; line-height: 1.1; }\n/* A box is a raised surface; with a tone (--tc, set while the tone is on) it also glows in that colour. */\n.k-node { position: absolute; background: var(--surface); border: 3px solid var(--edge); border-radius: 18px; padding: 16px 26px;\n  font-size: 46px; font-weight: 650; text-align: center; white-space: nowrap;\n  box-shadow: var(--lift), 0 0 46px -10px color-mix(in srgb, var(--tc, transparent) 70%, transparent); }\n.k-node .k-node-sub { display: block; font-size: 44px; font-weight: 400; color: var(--muted); }\n.k-packet { position: absolute; left: 0; top: 0; z-index: 5; box-shadow: 0 10px 26px #000a, 0 0 30px -6px currentColor; }\n.k-edge-label { position: absolute; font-size: 44px; color: var(--muted); white-space: nowrap; background: #0f1522; padding: 2px 16px;\n  border-radius: 14px; border: 2px solid #ffffff0d; }\n/* The icon sits in a small tile tinted in the box\'s tone; the negative margins keep the box\'s height. */\n.k-node .k-node-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px;\n  margin: -8px 18px -8px -10px; border-radius: 16px; font-size: 40px; vertical-align: middle;\n  background: color-mix(in srgb, var(--tc, var(--muted)) 20%, transparent); }\n.k-node.k-node-dashed { border-style: dashed; border-color: var(--muted); background: color-mix(in srgb, var(--card) 40%, transparent); }\n.k-actor { height: 96px; display: flex; align-items: center; justify-content: center; }\n.k-seq-label { color: var(--ink); }\n.k-seq-label.k-seq-reply { color: var(--muted); }\n.k-map-bound { border-radius: 22px; }\n.k-map-tag .k-node-icon { margin-right: 14px; }\n.k-map-tag { font-size: 46px; font-weight: 650; white-space: nowrap; padding: 2px 22px; border-radius: 14px; transform: translate(-50%, -50%); }\n.k-code .k-kw { color: var(--code-kw); } .k-code .k-ty { color: var(--code-type); } .k-code .k-fn { color: var(--code-fn); }\n.k-code .k-str { color: var(--code-str); } .k-code .k-case { color: var(--code-case); } .k-code .k-num { color: var(--code-num); } .k-code .k-com { color: var(--code-com); font-style: italic; }\n.k-code { background: var(--surface); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; box-shadow: var(--lift); }\n.k-code .k-code-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }\n.k-code .k-code-title::before { content: \"\"; display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: middle;\n  margin: -6px 82px 0 4px; background: #ff6b6b; box-shadow: 30px 0 #f5c16c, 60px 0 #8fd6a8; opacity: .85; }\n.k-code .k-cl { font-family: var(--mono); font-size: 44px; line-height: 60px; height: 60px; padding: 0 14px; border-radius: 10px; white-space: pre; }\n.k-code .k-cl.k-cl-changed { overflow: hidden; }\n.k-code-note { font-size: 44px; line-height: 1.25; padding: 6px 22px; border-left: 5px solid var(--nc, var(--accent)); border-radius: 0 14px 14px 0;\n  background: color-mix(in srgb, var(--nc, var(--accent)) 12%, var(--bg2)); box-shadow: 0 14px 34px -12px #000c; }\n.k-code-wire { height: 4px; border-radius: 2px; background: var(--nc, var(--accent)); transform-origin: 0 50%; }\n.k-group { border: 3px solid var(--tc, var(--border)); border-radius: 26px; box-sizing: border-box;\n  background: color-mix(in srgb, var(--tc, var(--border)) 7%, transparent); }\n.k-group.k-group-dashed { border-style: dashed; border-color: var(--muted); }\n.k-group .k-group-label { position: absolute; left: 26px; top: 0; transform: translateY(-50%); font-size: 44px; font-weight: 650;\n  color: var(--muted); background: #121927; padding: 0 18px; border-radius: 12px; white-space: nowrap; }\n.k-board { background: var(--surface); box-shadow: var(--lift); border: 3px solid var(--border); border-radius: 22px; padding: 22px 30px; }\n.k-board .k-board-title { font-size: 44px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }\n.k-board .k-br { display: grid; grid-template-columns: auto 1fr; column-gap: 34px; align-items: baseline; margin: 8px 0; }\n.k-board .k-br-label { font-size: 44px; font-weight: 650; white-space: nowrap; }\n.k-board .k-br-text { font-family: var(--mono); font-size: 46px; white-space: pre; }\n.k-board .k-br-result { font-family: var(--mono); font-size: 46px; color: var(--accent); white-space: pre; grid-column: 2; }\n.k-steps { display: flex; gap: 22px; }\n.k-step { font-size: 44px; font-weight: 650; padding: 12px 26px; border-radius: 999px; border: 3px solid var(--border); background: var(--bg2); color: var(--muted); white-space: nowrap; }\n.k-step.k-step-on { box-shadow: 0 0 34px -8px var(--accent); }\n.k-step b { color: var(--accent); margin-right: 12px; }\n.k-counter { font-size: 96px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }\n.k-toast { display: flex; align-items: center; gap: 18px; padding: 10px 34px 10px 12px; border-radius: 999px;\n  background: var(--bg2); border: 3px solid var(--tc, var(--accent)); box-shadow: 0 12px 36px #0009;\n  white-space: nowrap; transform-origin: 100% 50%; z-index: 20; }\n.k-toast .k-toast-icon { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n  font-size: 48px; line-height: 1; background: color-mix(in srgb, var(--tc, var(--accent)) 22%, transparent); }\n.k-toast .k-toast-text { font-size: 44px; font-weight: 700; color: var(--tc, var(--accent)); }\n.k-toast .k-ring { width: 64px; height: 64px; margin-left: 6px; }\n.k-toast .k-ring circle { fill: none; stroke-width: 7; }\n.k-recap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; z-index: 15; }\n.k-recap .k-recap-box { min-width: 1100px; max-width: 1600px; background: var(--surface); box-shadow: var(--lift), 0 0 80px -30px var(--accent); border: 3px solid var(--border); border-radius: 30px; padding: 44px 60px 50px; }\n.k-recap .k-recap-title { font-size: 44px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }\n.k-recap .k-recap-line { font-size: 56px; font-weight: 600; line-height: 1.3; margin-top: 18px; display: flex; }\n.k-recap .k-recap-line b { color: var(--accent); margin-right: 22px; flex: none; }\n";
 
 function injectCss() {
     if (Operators_IsNull(document.getElementById("stage-kit-css"))) {
@@ -27,6 +27,15 @@ function injectCss() {
         st.id = "stage-kit-css";
         st.textContent = CSS;
         document.head.append(st);
+    }
+}
+
+function setTc(el, on, colour) {
+    if (on) {
+        el.style.setProperty("--tc", colour);
+    }
+    else {
+        el.style.removeProperty("--tc");
     }
 }
 
@@ -274,12 +283,14 @@ function Head_$reflection() {
 }
 
 class EdgeState extends Record {
-    constructor(e, path, label, heads, at, toneAt, until, lane, len) {
+    constructor(e, path, label, heads, halo, dots, at, toneAt, until, lane, len) {
         super();
         this.e = e;
         this.path = path;
         this.label = label;
         this.heads = heads;
+        this.halo = halo;
+        this.dots = dots;
         this.at = at;
         this.toneAt = toneAt;
         this.until = until;
@@ -289,7 +300,7 @@ class EdgeState extends Record {
 }
 
 function EdgeState_$reflection() {
-    return record_type("Kit.EdgeState", [], EdgeState, () => [["e", class_type("Kit.FlowEdge")], ["path", class_type("Browser.Types.Element", undefined)], ["label", class_type("Browser.Types.HTMLElement", undefined)], ["heads", array_type(Head_$reflection())], ["at", float64_type], ["toneAt", float64_type], ["until", float64_type], ["lane", float64_type], ["len", float64_type]]);
+    return record_type("Kit.EdgeState", [], EdgeState, () => [["e", class_type("Kit.FlowEdge")], ["path", class_type("Browser.Types.Element", undefined)], ["label", class_type("Browser.Types.HTMLElement", undefined)], ["heads", array_type(Head_$reflection())], ["halo", class_type("Browser.Types.Element", undefined)], ["dots", class_type("Browser.Types.Element", undefined)], ["at", float64_type], ["toneAt", float64_type], ["until", float64_type], ["lane", float64_type], ["len", float64_type]]);
 }
 
 export function kitFor(root) {
@@ -695,7 +706,7 @@ export function kitFor(root) {
                         row_1.fill.style.transform = (`scaleX(${clamp(scale(v_2) / ((trackW || 1)), 0, 10)})`);
                         row_1.fill.style.width = (`${trackW}px`);
                         const on = isOn(row_1.r.tone, row_1.toneAt, t_7);
-                        row_1.fill.style.background = (on ? tone(row_1.r.tone) : "var(--accent)");
+                        setTc(row_1.fill, on, tone(row_1.r.tone));
                         row_1.value.style.left = (`${(0 + scale(v_2)) + 22}px`);
                         row_1.value.textContent = ((r_4 = row_1.r, (v_1 = v_2, (!!(r_4.format)) ? r_4.format(v_1) : (`${Math.round(v_1)}`))));
                         row_1.value.style.color = (on ? tone(row_1.r.tone) : "");
@@ -712,11 +723,11 @@ export function kitFor(root) {
             let x_1 = 0;
             const segs = map((s_3) => {
                 const sw = (s_3.value / o_18.total) * w_4;
-                const el_39 = mk(box_4, "div", "k-seg", concat((!!(s_3.label)) ? concat("<div class=\"k-seg-label\">", s_3.label, "</div>") : "", "<div class=\"k-seg-value\">", String((s_3.show ?? s_3.value)), "</div>"), `left:${x_1}px;width:${max(sw - 4, 8)}px`);
+                const el_38 = mk(box_4, "div", "k-seg", concat((!!(s_3.label)) ? concat("<div class=\"k-seg-label\">", s_3.label, "</div>") : "", "<div class=\"k-seg-value\">", String((s_3.show ?? s_3.value)), "</div>"), `left:${x_1}px;width:${max(sw - 4, 8)}px`);
                 x_1 = (x_1 + sw);
                 return {
                     at: T0(s_3.at),
-                    el: el_39,
+                    el: el_38,
                     s: s_3,
                     toneAt: T0(s_3.toneAt),
                 };
@@ -751,7 +762,7 @@ export function kitFor(root) {
             svg.setAttribute("width", "1920");
             svg.setAttribute("height", "1080");
             layer.append(svg);
-            const matchValue_23 = TAt(o_20.at);
+            const matchValue_25 = TAt(o_20.at);
             const layerUntil = TUntil(o_20.until);
             const partUntil = (spec_4) => {
                 let c_7;
@@ -759,12 +770,12 @@ export function kitFor(root) {
                     return T0(spec_4);
                 }
                 else {
-                    const matchValue_25 = sceneCtx.contents;
+                    const matchValue_27 = sceneCtx.contents;
                     let matchResult, c_8;
-                    if (matchValue_25 != null) {
-                        if ((c_7 = matchValue_25, ((layerUntil == null)) ? true : (layerUntil > c_7.until))) {
+                    if (matchValue_27 != null) {
+                        if ((c_7 = matchValue_27, ((layerUntil == null)) ? true : (layerUntil > c_7.until))) {
                             matchResult = 0;
-                            c_8 = matchValue_25;
+                            c_8 = matchValue_27;
                         }
                         else {
                             matchResult = 1;
@@ -788,9 +799,9 @@ export function kitFor(root) {
                 const n = forLoopVar[1];
                 const icon = (!!(n.icon)) ? concat("<span class=\"k-node-icon\">", n.icon, "</span>") : "";
                 const sub_3 = (!!(n.sub)) ? concat("<span class=\"k-node-sub\">", n.sub, "</span>") : "";
-                const el_46 = mk(layer, "div", (!!(n.dashed)) ? "k-node k-node-dashed" : "k-node", concat(icon, n.label, sub_3), `left:${n.x}px;top:${n.y}px`);
+                const el_45 = mk(layer, "div", (!!(n.dashed)) ? "k-node k-node-dashed" : "k-node", concat(icon, n.label, sub_3), `left:${n.x}px;top:${n.y}px`);
                 if (!!(n.w)) {
-                    el_46.style.width = (`${n.w}px`);
+                    el_45.style.width = (`${n.w}px`);
                 }
                 const at_12 = T0(n.at);
                 const toneAt_6 = T0(n.toneAt);
@@ -798,7 +809,7 @@ export function kitFor(root) {
                 nodes[forLoopVar[0]] = {
                     at: at_12,
                     dimAt: dimAt,
-                    el: el_46,
+                    el: el_45,
                     n: n,
                     toneAt: toneAt_6,
                     until: partUntil(n.until),
@@ -820,12 +831,12 @@ export function kitFor(root) {
                         (() => { throw new Error(`flow: the group ${name} names node ${JSON.stringify(id_4)}, which is not in nodes`); })();
                     }
                 }
-                const el_48 = mk(layer, "div", (!!(g_3.dashed)) ? "k-abs k-group k-group-dashed" : "k-abs k-group", defaultOf(), defaultOf());
-                const label_2 = (!!(g_3.label)) ? mk(el_48, "div", "k-group-label", g_3.label, defaultOf()) : defaultOf();
-                layer.prepend(el_48);
+                const el_47 = mk(layer, "div", (!!(g_3.dashed)) ? "k-abs k-group k-group-dashed" : "k-abs k-group", defaultOf(), defaultOf());
+                const label_2 = (!!(g_3.label)) ? mk(el_47, "div", "k-group-label", g_3.label, defaultOf()) : defaultOf();
+                layer.prepend(el_47);
                 return {
                     at: T0(g_3.at),
-                    el: el_48,
+                    el: el_47,
                     g: g_3,
                     ids: ids,
                     label: label_2,
@@ -834,21 +845,25 @@ export function kitFor(root) {
                 };
             }, reverse((o_20.groups || []))));
             const edges = map((e_2) => {
-                let matchValue_26;
+                let matchValue_28;
+                const halo = createSvg("path");
+                svg.append(halo);
                 const path = createSvg("path");
                 svg.append(path);
+                const dots = createSvg("path");
+                svg.append(dots);
                 return new EdgeState(e_2, path, (!!(e_2.label)) ? mk(layer, "div", "k-edge-label", e_2.label, defaultOf()) : defaultOf(), map((en) => {
-                    const el_49 = createSvg("polygon");
-                    svg.append(el_49);
-                    return new Head(en, el_49);
-                }, (matchValue_26 = defaultArg(e_2.arrow, "end"), (matchValue_26 === "both") ? ["start", "end"] : ((matchValue_26 === "end") ? ["end"] : []))), T0(e_2.at), T0(e_2.toneAt), partUntil(e_2.until), 0, 0);
+                    const el_48 = createSvg("polygon");
+                    svg.append(el_48);
+                    return new Head(en, el_48);
+                }, (matchValue_28 = defaultArg(e_2.arrow, "end"), (matchValue_28 === "both") ? ["start", "end"] : ((matchValue_28 === "end") ? ["end"] : []))), halo, dots, T0(e_2.at), T0(e_2.toneAt), partUntil(e_2.until), 0, 0);
             }, (o_20.edges || []));
             const packets = map((p_4) => {
-                const el_50 = mk(layer, "div", concat("chip ", (p_4.tone || "accent"), " k-packet"), esc((p_4.label || "")), defaultOf());
+                const el_49 = mk(layer, "div", concat("chip ", (p_4.tone || "accent"), " k-packet"), esc((p_4.label || "")), defaultOf());
                 return {
                     at: T0(p_4.at),
                     dur: defaultArg(p_4.dur, 1),
-                    el: el_50,
+                    el: el_49,
                     p: p_4,
                     until: TUntil(p_4.until),
                 };
@@ -889,6 +904,11 @@ export function kitFor(root) {
                             if (!!(ed_2.e.dashed)) {
                                 ed_2.path.style.strokeDasharray = "14 12";
                             }
+                            ed_2.halo.setAttribute("d", r_6.d);
+                            ed_2.halo.style.strokeWidth = "18";
+                            ed_2.dots.setAttribute("d", r_6.d);
+                            ed_2.dots.style.strokeWidth = "8";
+                            ed_2.dots.style.strokeDasharray = (`0 ${34}`);
                             if (!Operators_IsNull(ed_2.label)) {
                                 ed_2.label.style.left = (`${r_6.label.x}px`);
                                 ed_2.label.style.top = (`${r_6.label.y}px`);
@@ -920,12 +940,12 @@ export function kitFor(root) {
                         }
                         laidOut = true;
                     }
-                    layer.style.opacity = vis$0027(t_9, matchValue_23, layerUntil);
+                    layer.style.opacity = vis$0027(t_9, matchValue_25, layerUntil);
                     for (let idx_12 = 0; idx_12 <= (groups.length - 1); idx_12++) {
                         const gr_1 = item_1(idx_12, groups);
                         show(gr_1.el, vis$0027(t_9, gr_1.at, gr_1.until), 0, "");
                         const on_2 = isOn(gr_1.g.tone, gr_1.toneAt, t_9);
-                        gr_1.el.style.borderColor = (on_2 ? tone(gr_1.g.tone) : "");
+                        setTc(gr_1.el, on_2, tone(gr_1.g.tone));
                         if (!Operators_IsNull(gr_1.label)) {
                             gr_1.label.style.color = (on_2 ? tone(gr_1.g.tone) : "");
                         }
@@ -936,6 +956,7 @@ export function kitFor(root) {
                         const p_5 = vis$0027(t_9, nd_1.at, nd_1.until);
                         show(nd_1.el, p_5, defaultArg(nd_1.n.rise, 12), "");
                         const on_3 = isOn(nd_1.n.tone, nd_1.toneAt, t_9);
+                        setTc(nd_1.el, on_3, tone(nd_1.n.tone));
                         nd_1.el.style.borderColor = (on_3 ? tone(nd_1.n.tone) : "");
                         nd_1.el.style.color = ((on_3 && !(!!(nd_1.n.fill))) ? tone(nd_1.n.tone) : "");
                         nd_1.el.style.background = ((on_3 && (!!(nd_1.n.fill))) ? concat("color-mix(in srgb, ", tone(nd_1.n.tone), " 24%, var(--card))") : "");
@@ -946,14 +967,22 @@ export function kitFor(root) {
                     for (let idx_14 = 0; idx_14 <= (edges.length - 1); idx_14++) {
                         const ed_3 = item_1(idx_14, edges);
                         const p_6 = vis$0027(t_9, ed_3.at, ed_3.until);
-                        const drawn = ((ed_3.at == null)) ? 1 : progIO(t_9, ed_3.at, 0.5);
+                        const drawn = ((ed_3.at == null)) ? 1 : progIO(t_9, ed_3.at, 0.8);
                         ed_3.path.style.opacity = p_6;
                         if (!(!!(ed_3.e.dashed))) {
                             ed_3.path.style.strokeDasharray = (`${ed_3.len}`);
                             ed_3.path.style.strokeDashoffset = (`${ed_3.len * (1 - drawn)}`);
                         }
                         const on_4 = isOn(ed_3.e.tone, ed_3.toneAt, t_9);
-                        ed_3.path.style.stroke = (on_4 ? tone(ed_3.e.tone) : "var(--faint)");
+                        ed_3.path.style.stroke = (on_4 ? tone(ed_3.e.tone) : "var(--wire)");
+                        ed_3.halo.style.stroke = ed_3.path.style.stroke;
+                        ed_3.halo.style.strokeDasharray = ed_3.path.style.strokeDasharray;
+                        ed_3.halo.style.strokeDashoffset = ed_3.path.style.strokeDashoffset;
+                        ed_3.halo.style.opacity = (p_6 * (on_4 ? 0.22 : 0.12));
+                        const running = !(!!(ed_3.e.dashed)) && (defaultArg(ed_3.e.arrow, "end") === "end");
+                        ed_3.dots.style.stroke = (`color-mix(in srgb, ${ed_3.path.style.stroke} 55%, white)`);
+                        ed_3.dots.style.strokeDashoffset = (`${-((t_9 * 68) % 34)}`);
+                        ed_3.dots.style.opacity = (running ? ((p_6 * 0.7) * clamp01((drawn - 0.9) / 0.1)) : 0);
                         const arr_5 = ed_3.heads;
                         for (let idx_15 = 0; idx_15 <= (arr_5.length - 1); idx_15++) {
                             const hd_2 = item_1(idx_15, arr_5);
@@ -967,25 +996,25 @@ export function kitFor(root) {
                     }
                     for (let idx_16 = 0; idx_16 <= (packets.length - 1); idx_16++) {
                         const pk = item_1(idx_16, packets);
-                        const matchValue_27 = box_5(pk.p.from);
+                        const matchValue_29 = box_5(pk.p.from);
                         const B = box_5(pk.p.to);
-                        const A = matchValue_27;
-                        const matchValue_29 = centre(A);
+                        const A = matchValue_29;
+                        const matchValue_31 = centre(A);
                         const cb = centre(B);
-                        const ca = matchValue_29;
+                        const ca = matchValue_31;
                         const w_5 = pk.el.offsetWidth;
                         const h_1 = pk.el.offsetHeight;
-                        let patternInput_12;
+                        let patternInput_13;
                         if ((Math.abs(cb.x - ca.x) * (A.h + B.h)) >= (Math.abs(cb.y - ca.y) * (A.w + B.w))) {
                             const right = cb.x >= ca.x;
-                            patternInput_12 = [new Point(right ? (((A.x + A.w) + 14) + (w_5 / 2)) : ((A.x - 14) - (w_5 / 2)), along(A.y, A.h, ca.y, pk.p.fromPos)), new Point(right ? ((B.x - 14) - (w_5 / 2)) : (((B.x + B.w) + 14) + (w_5 / 2)), along(B.y, B.h, cb.y, pk.p.toPos))];
+                            patternInput_13 = [new Point(right ? (((A.x + A.w) + 14) + (w_5 / 2)) : ((A.x - 14) - (w_5 / 2)), along(A.y, A.h, ca.y, pk.p.fromPos)), new Point(right ? ((B.x - 14) - (w_5 / 2)) : (((B.x + B.w) + 14) + (w_5 / 2)), along(B.y, B.h, cb.y, pk.p.toPos))];
                         }
                         else {
                             const down = cb.y >= ca.y;
-                            patternInput_12 = [new Point(along(A.x, A.w, ca.x, pk.p.fromPos), down ? (((A.y + A.h) + 14) + (h_1 / 2)) : ((A.y - 14) - (h_1 / 2))), new Point(along(B.x, B.w, cb.x, pk.p.toPos), down ? ((B.y - 14) - (h_1 / 2)) : (((B.y + B.h) + 14) + (h_1 / 2)))];
+                            patternInput_13 = [new Point(along(A.x, A.w, ca.x, pk.p.fromPos), down ? (((A.y + A.h) + 14) + (h_1 / 2)) : ((A.y - 14) - (h_1 / 2))), new Point(along(B.x, B.w, cb.x, pk.p.toPos), down ? ((B.y - 14) - (h_1 / 2)) : (((B.y + B.h) + 14) + (h_1 / 2)))];
                         }
-                        const b_4 = patternInput_12[1];
-                        const a = patternInput_12[0];
+                        const b_4 = patternInput_13[1];
+                        const a = patternInput_13[0];
                         const f_1 = prog(t_9, pk.at, pk.dur, ease.inOut);
                         const moving = ((!((pk.at == null)) && (t_9 >= pk.at)) && (t_9 < ((pk.at + pk.dur) + 0.05))) && (((pk.until == null)) ? true : (t_9 < pk.until));
                         const fadeAt = defaultArg(pk.p.fadeAt, 1);
@@ -997,14 +1026,14 @@ export function kitFor(root) {
         },
         sequence(o_21) {
             const o_22 = opts(o_21);
-            const matchValue_39 = defaultArg(o_22.x, 60);
-            const matchValue_40 = defaultArg(o_22.y, 240);
-            const matchValue_41 = defaultArg(o_22.w, 1800);
-            const y0_1 = matchValue_40;
+            const matchValue_41 = defaultArg(o_22.x, 60);
+            const matchValue_42 = defaultArg(o_22.y, 240);
+            const matchValue_43 = defaultArg(o_22.w, 1800);
+            const y0_1 = matchValue_42;
             const gap_1 = defaultArg(o_22.gap, 112);
-            const matchValue_43 = (o_22.actors || []);
-            const matchValue_44 = (o_22.messages || []);
-            const actorOpts = matchValue_43;
+            const matchValue_45 = (o_22.actors || []);
+            const matchValue_46 = (o_22.messages || []);
+            const actorOpts = matchValue_45;
             if (actorOpts.length === 0) {
                 (() => { throw new Error("sequence: no actors"); })();
             }
@@ -1014,11 +1043,11 @@ export function kitFor(root) {
             svg_1.setAttribute("width", "1920");
             svg_1.setAttribute("height", "1080");
             layer_1.append(svg_1);
-            const matchValue_45 = TAt(o_22.at);
-            const matchValue_46 = TUntil(o_22.until);
+            const matchValue_47 = TAt(o_22.at);
+            const matchValue_48 = TUntil(o_22.until);
             const columns = {};
             iterateIndexed((i_3, a_1) => {
-                columns[a_1.id] = (matchValue_39 + ((matchValue_41 * (i_3 + 0.5)) / actorOpts.length));
+                columns[a_1.id] = (matchValue_41 + ((matchValue_43 * (i_3 + 0.5)) / actorOpts.length));
             }, actorOpts);
             const column = (id_5) => {
                 const cx = columns[id_5];
@@ -1032,9 +1061,9 @@ export function kitFor(root) {
             let cursor = (y0_1 + 96) + 10;
             let latest = noTime;
             const messages = mapIndexed((i_4, m) => {
-                const matchValue_47 = column(m.from);
+                const matchValue_49 = column(m.from);
                 const b_5 = column(m.to);
-                const a_3 = matchValue_47;
+                const a_3 = matchValue_49;
                 const self = m.from === m.to;
                 const bottom = cursor + 70;
                 const y_5 = self ? (bottom - 56) : bottom;
@@ -1089,7 +1118,7 @@ export function kitFor(root) {
                     toneAt: T0(m.toneAt),
                     y: y_5,
                 };
-            }, matchValue_44);
+            }, matchValue_46);
             const lifeEnd = (messages.length > 0) ? ((cursor - (gap_1 - 70)) + 24) : ((y0_1 + 96) + 160);
             if (lifeEnd > 1000) {
                 (() => { throw new Error(`sequence: ${messages.length} messages end at y ${Math.round(lifeEnd)}, below the safe area (${1000}): split the exchange across two scenes (about 6 messages fit), or pass a smaller y or gap`); })();
@@ -1102,14 +1131,15 @@ export function kitFor(root) {
                 line_1.setAttribute("x2", `${cx_1}`);
                 line_1.setAttribute("y1", `${y0_1 + 96}`);
                 line_1.setAttribute("y2", `${lifeEnd}`);
-                line_1.style.stroke = "var(--border)";
+                line_1.style.stroke = "var(--wire)";
                 line_1.style.strokeWidth = "4";
-                line_1.style.strokeDasharray = "4 14";
-                const el_73 = mk(layer_1, "div", "k-node k-actor", concat((!!(a_4.icon)) ? concat("<span class=\"k-node-icon\">", a_4.icon, "</span>") : "", a_4.label), `left:${cx_1}px;top:${y0_1}px`);
+                line_1.style.strokeDasharray = "10 12";
+                line_1.style.strokeOpacity = "0.75";
+                const el_71 = mk(layer_1, "div", "k-node k-actor", concat((!!(a_4.icon)) ? concat("<span class=\"k-node-icon\">", a_4.icon, "</span>") : "", a_4.label), `left:${cx_1}px;top:${y0_1}px`);
                 return {
                     a: a_4,
                     at: T0(a_4.at),
-                    el: el_73,
+                    el: el_71,
                     line: line_1,
                     toneAt: T0(a_4.toneAt),
                 };
@@ -1117,13 +1147,14 @@ export function kitFor(root) {
             return add({
                 el: layer_1,
                 render: (t_10) => {
-                    layer_1.style.opacity = vis$0027(t_10, matchValue_45, matchValue_46);
+                    layer_1.style.opacity = vis$0027(t_10, matchValue_47, matchValue_48);
                     for (let idx_17 = 0; idx_17 <= (actors.length - 1); idx_17++) {
                         const ac = item_1(idx_17, actors);
                         const p_7 = vis$0027(t_10, ac.at, noTime);
                         show(ac.el, p_7, 12, "translateX(-50%)");
                         ac.line.style.opacity = p_7;
                         const on_5 = isOn(ac.a.tone, ac.toneAt, t_10);
+                        setTc(ac.el, on_5, tone(ac.a.tone));
                         ac.el.style.borderColor = (on_5 ? tone(ac.a.tone) : "");
                         ac.el.style.color = ((on_5 && !(!!(ac.a.fill))) ? tone(ac.a.tone) : "");
                         ac.el.style.background = ((on_5 && (!!(ac.a.fill))) ? concat("color-mix(in srgb, ", tone(ac.a.tone), " 24%, var(--card))") : "");
@@ -1132,7 +1163,7 @@ export function kitFor(root) {
                         const next_2 = item(messages, i_5 + 1);
                         const dimP_1 = (((!!(o_22.dim)) && (!!(next_2))) && !((next_2.at == null))) ? progIO(t_10, next_2.at, 0.4) : 0;
                         const p_8 = vis$0027(t_10, ms.at, noTime) * lerp(1, 0.45, dimP_1);
-                        const drawn_1 = ((ms.at == null)) ? 1 : progIO(t_10, ms.at, 0.5);
+                        const drawn_1 = ((ms.at == null)) ? 1 : progIO(t_10, ms.at, 0.8);
                         const on_6 = isOn(ms.m.tone, ms.toneAt, t_10);
                         const stroke = on_6 ? tone(ms.m.tone) : ((!!(ms.m.reply)) ? "var(--faint)" : "var(--muted)");
                         ms.path.style.opacity = p_8;
@@ -1165,8 +1196,8 @@ export function kitFor(root) {
         map(o_23) {
             const o_24 = opts(o_23);
             let def;
-            const matchValue_49 = definition();
-            def = ((matchValue_49 == null) ? ((() => { throw new Error("map: this video has no map (add \"map\" to script.json)"); })()) : matchValue_49);
+            const matchValue_51 = definition();
+            def = ((matchValue_51 == null) ? ((() => { throw new Error("map: this video has no map (add \"map\" to script.json)"); })()) : matchValue_51);
             const reveal = {};
             const arr_6 = Object.entries((o_24.reveal || {}));
             for (let idx_18 = 0; idx_18 <= (arr_6.length - 1); idx_18++) {
@@ -1180,12 +1211,12 @@ export function kitFor(root) {
                 reveal[id_6] = T0(forLoopVar_1[1]);
             }
             const view = build_1(host(o_24), def);
-            const matchValue_50 = TAt(o_24.at);
-            const matchValue_51 = TUntil(o_24.until);
+            const matchValue_52 = TAt(o_24.at);
+            const matchValue_53 = TUntil(o_24.until);
             return add({
                 el: view.el,
                 render: (t_11) => {
-                    view.el.style.opacity = vis$0027(t_11, matchValue_50, matchValue_51);
+                    view.el.style.opacity = vis$0027(t_11, matchValue_52, matchValue_53);
                     view.draw(new State((id_7) => {
                         const r_7 = reveal[id_7];
                         return ((r_7 == null)) ? 1 : clamp01(((t_11 - r_7) + 0.05) / 0.4);
@@ -1266,23 +1297,23 @@ export function kitFor(root) {
             const notes = map((n_1) => {
                 lineIndex("a note", n_1.line);
                 const colour = (tone(n_1.tone) || "var(--accent)");
-                const el_84 = mk(host(o_26), "div", "k-abs k-code-note", n_1.html, concat("--nc:", colour));
+                const el_82 = mk(host(o_26), "div", "k-abs k-code-note", n_1.html, concat("--nc:", colour));
                 const wire = mk(host(o_26), "div", "k-abs k-code-wire", defaultOf(), concat("--nc:", colour));
                 return {
                     at: TAt(n_1.at),
                     colour: colour,
-                    el: el_84,
+                    el: el_82,
                     n: n_1,
                     until: TUntil(n_1.until),
                     wire: wire,
                 };
             }, (o_26.notes || []));
-            const matchValue_52 = TAt(o_26.at);
-            const matchValue_53 = TUntil(o_26.until);
+            const matchValue_54 = TAt(o_26.at);
+            const matchValue_55 = TUntil(o_26.until);
             return add({
                 el: card,
                 render: (t_12) => {
-                    const cardShown = vis$0027(t_12, matchValue_52, matchValue_53);
+                    const cardShown = vis$0027(t_12, matchValue_54, matchValue_55);
                     show(card, cardShown, defaultArg(o_26.slide, 20), "");
                     iterateIndexed((i_11, l_4) => {
                         let p_11 = 0;
@@ -1297,7 +1328,7 @@ export function kitFor(root) {
                                 }
                             }
                         }
-                        const matchValue_54 = tryFind_1((nt) => {
+                        const matchValue_56 = tryFind_1((nt) => {
                             if (nt.n.line === i_11) {
                                 return vis$0027(t_12, nt.at, nt.until) > 0;
                             }
@@ -1305,29 +1336,29 @@ export function kitFor(root) {
                                 return false;
                             }
                         }, notes);
-                        if (matchValue_54 == null) {
+                        if (matchValue_56 == null) {
                         }
                         else {
-                            const nt_1 = matchValue_54;
+                            const nt_1 = matchValue_56;
                             const q_1 = vis$0027(t_12, nt_1.at, nt_1.until);
                             if (q_1 > p_11) {
                                 p_11 = q_1;
                                 colour_1 = nt_1.colour;
                             }
                         }
-                        const matchValue_55 = item_1(i_11, changed);
-                        if (matchValue_55 != null) {
-                            const c_11 = matchValue_55;
-                            let patternInput_20;
+                        const matchValue_57 = item_1(i_11, changed);
+                        if (matchValue_57 != null) {
+                            const c_11 = matchValue_57;
+                            let patternInput_21;
                             if (c_11.add) {
                                 const q_2 = progIO(t_12, c_11.at, 0.5);
-                                patternInput_20 = [q_2, q_2];
+                                patternInput_21 = [q_2, q_2];
                             }
                             else {
-                                patternInput_20 = [1 - (((c_11.until == null)) ? 0 : progIO(t_12, c_11.until, 0.5)), progIO(t_12, c_11.at, 0.4)];
+                                patternInput_21 = [1 - (((c_11.until == null)) ? 0 : progIO(t_12, c_11.until, 0.5)), progIO(t_12, c_11.at, 0.4)];
                             }
-                            const opened = patternInput_20[0];
-                            const marked = patternInput_20[1];
+                            const opened = patternInput_21[0];
+                            const marked = patternInput_21[1];
                             const mark = c_11.add ? "var(--good)" : "var(--bad)";
                             l_4.style.height = (`${lineH * opened}px`);
                             l_4.style.opacity = (opened * (c_11.add ? 1 : lerp(1, 0.55, marked)));
@@ -1430,6 +1461,7 @@ export function kitFor(root) {
                         const reached = !((ai == null)) && (t_14 >= ai);
                         const next_3 = atOf(i_14 + 1);
                         const current_1 = reached && (((i_14 === (els.length - 1)) ? true : ((next_3 == null))) ? true : (t_14 < next_3));
+                        e_3.classList.toggle("k-step-on", current_1);
                         e_3.style.borderColor = (current_1 ? "var(--accent)" : "");
                         e_3.style.background = (current_1 ? "var(--accent-dim)" : "");
                         e_3.style.color = (reached ? "var(--ink)" : "");
@@ -1440,19 +1472,19 @@ export function kitFor(root) {
         },
         counter(o_31) {
             const o_32 = opts(o_31);
-            const el_106 = mk(host(o_32), "div", concat("k-", (o_32.size || "counter")), defaultOf(), defaultOf());
-            place(el_106, o_32);
-            const matchValue_56 = TAt(o_32.at);
-            const matchValue_57 = TUntil(o_32.until);
-            const matchValue_58 = T0(o_32.toneAt);
-            const at_22 = matchValue_56;
+            const el_104 = mk(host(o_32), "div", concat("k-", (o_32.size || "counter")), defaultOf(), defaultOf());
+            place(el_104, o_32);
+            const matchValue_58 = TAt(o_32.at);
+            const matchValue_59 = TUntil(o_32.until);
+            const matchValue_60 = T0(o_32.toneAt);
+            const at_22 = matchValue_58;
             const fmt_1 = (!!(o_32.format)) ? o_32.format : ((v_3) => ((Math.round(v_3)).toLocaleString("en-US")));
             return add({
-                el: el_106,
+                el: el_104,
                 render: (t_15) => {
-                    show(el_106, vis$0027(t_15, at_22, matchValue_57), 10, "");
-                    el_106.textContent = fmt_1(lerp(defaultArg(o_32.from, 0), o_32.to, prog(t_15, at_22, defaultArg(o_32.dur, 1.2), ease.inOut)));
-                    el_106.style.color = (isOn(o_32.tone, matchValue_58, t_15) ? tone(o_32.tone) : "");
+                    show(el_104, vis$0027(t_15, at_22, matchValue_59), 10, "");
+                    el_104.textContent = fmt_1(lerp(defaultArg(o_32.from, 0), o_32.to, prog(t_15, at_22, defaultArg(o_32.dur, 1.2), ease.inOut)));
+                    el_104.style.color = (isOn(o_32.tone, matchValue_60, t_15) ? tone(o_32.tone) : "");
                 },
             });
         },
@@ -1467,22 +1499,22 @@ export function kitFor(root) {
                 tt.el.style.right = "";
             }
             tt.el.style.top = (`${defaultArg(o_34.y, 130)}px`);
-            const matchValue_59 = TAt(o_34.at);
-            const matchValue_60 = TUntil(o_34.until);
-            const at_23 = matchValue_59;
+            const matchValue_61 = TAt(o_34.at);
+            const matchValue_62 = TUntil(o_34.until);
+            const at_23 = matchValue_61;
             return add({
                 el: tt.el,
                 render: (t_16) => {
-                    tt.draw(t_16, at_23, min_1((matchValue_60 ?? (Infinity)), at_23 + defaultArg(o_34.dur, TOAST_DUR)));
+                    tt.draw(t_16, at_23, min_1((matchValue_62 ?? (Infinity)), at_23 + defaultArg(o_34.dur, TOAST_DUR)));
                 },
             });
         },
         custom(build, render) {
-            const el_112 = build(root);
+            const el_110 = build(root);
             return add({
-                el: el_112,
+                el: el_110,
                 render: (t_17) => {
-                    render(t_17, el_112);
+                    render(t_17, el_110);
                 },
             });
         },

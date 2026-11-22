@@ -3,7 +3,7 @@
    as a screen in both. The type scale is large on purpose: on a phone the frame shrinks about five
    times, so 44px is the smallest text that stays legible there. */
 :root {
-  --bg: #0f1420; --bg2: #161d2c; --card: #182133; --border: #2a3448;
+  --bg: #0d1220; --bg2: #161d2c; --card: #1e2840; --border: #3a4763;
   --ink: #eef1f7; --muted: #a9b3c6; --faint: #5d6a82;
   --accent: #8ab8ff; --accent-dim: #8ab8ff33;
   --good: #8fd6a8; --bad: #ff8f87; --warn: #f5c16c; --violet: #c3b1f2;
@@ -12,11 +12,23 @@
   /* Code: keywords, types, calls, strings, numbers, comments. */
   --code-kw: #c3b1f2; --code-type: #7fd6e6; --code-fn: #8ab8ff; --code-str: #f4b88e; --code-num: #f2a7cf; --code-com: #7b8aa6; --code-case: #f2a7cf; --term: #8ab8ff;
   --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* Depth: an unlit wire, a raised surface, the shadow under it. */
+  --wire: #8593b0;
+  /* A surface is clearly lighter than the frame behind it, so an untoned box never melts into the background. */
+  --surface: linear-gradient(180deg, #2a3550 0%, #1f2940 100%);
+  --edge: #4d5b7a;
+  --lift: inset 0 1px 0 #ffffff14, 0 22px 50px -14px #000d;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
-#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+/* A spotlight on the middle of the frame, darker corners and a faint dot grid: depth without moving anything. */
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 62% at 50% 46%, #161e31 0%, #0f1524 55%, #080b13 100%),
+    radial-gradient(circle at 1px 1px, #ffffff0d 1.6px, transparent 2px);
+  background-size: 100% 100%, 48px 48px;
+  background-blend-mode: screen, normal; }
 
 /* Place things with explicit coordinates: .at plus left/top in the markup, motion via transform in render(t). */
 .at { position: absolute; }
@@ -30,7 +42,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .mono { font-family: var(--mono); font-size: 46px; }
 em { font-style: normal; color: var(--accent); }
 
-.card { background: var(--card); border: 3px solid var(--border); border-radius: 28px; padding: 30px 38px; }
+.card { background: var(--surface); border: 3px solid var(--border); border-radius: 28px; padding: 30px 38px; box-shadow: var(--lift); }
 .chip { display: inline-flex; align-items: center; gap: 14px; background: var(--bg2); border: 3px solid var(--border); border-radius: 999px; padding: 14px 30px; font-size: 44px; font-weight: 600; white-space: nowrap; }
 .chip.accent { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
 .chip.good { border-color: var(--good); color: var(--good); }
@@ -39,12 +51,14 @@ em { font-style: normal; color: var(--accent); }
 .chip.violet { border-color: var(--violet); color: var(--violet); }
 .chip.pink { border-color: var(--pink); color: var(--pink); }
 .chip.cyan { border-color: var(--cyan); color: var(--cyan); }
+/* A toned chip is tinted in its own colour, so it reads as a tag rather than an outline. */
+.chip.good, .chip.bad, .chip.warn, .chip.violet, .chip.pink, .chip.cyan { background: color-mix(in srgb, currentColor 13%, var(--bg2)); }
 .chip.muted { color: var(--muted); }
-.bar { height: 22px; border-radius: 11px; background: var(--accent); transform-origin: 0 50%; }
+.bar { height: 22px; border-radius: 11px; background: linear-gradient(90deg, var(--accent), var(--violet)); transform-origin: 0 50%; }
 .track { height: 22px; border-radius: 11px; background: var(--border); overflow: hidden; }
 
 svg.layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; }
-svg.layer path, svg.layer line { fill: none; stroke: var(--faint); stroke-width: 5; stroke-linecap: round; }
+svg.layer path, svg.layer line { fill: none; stroke: var(--wire); stroke-width: 5; stroke-linecap: round; }
 
 /* Burned-in captions, drawn by Stage.captions(t). Off unless a clip turns them on (silent clips always do). */
 #captions { position: absolute; left: 160px; right: 160px; bottom: 48px; text-align: center; font-size: 46px; line-height: 1.3; }

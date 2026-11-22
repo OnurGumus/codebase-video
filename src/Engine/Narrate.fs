@@ -41,7 +41,7 @@
 ///   [shown](spoken)   captions one text and speaks another: "[0.802](zero point eight oh two)".
 ///   {fr:six euros}    speaks that phrase with the "fr" voice, inside or instead of a sentence:
 ///                     "Before a vowel, it links as a z: {fr:six euros}."
-///   [pause] [pause 2] silence after the sentence it follows (default 1.5 s): room for a point to land.
+///   [pause] [pause 2] silence after the sentence it follows (default 2.25 s): room for a point to land.
 ///   [think] [think 8] a question's silence (default 8 s); the long-video frame shows a "pause and think"
 ///                     countdown during it. Put either after the sentence's end punctuation.
 /// A scene may carry "recap": ["line", ...] (long videos: a chapter's closing "So far" card, one line
@@ -296,17 +296,17 @@ let private timeAt (frame: int) (pos: int) : float =
     let ms = Py.roundInt (float (pos - frame * FRAME) * 1000.0 / float Wav.SR)
     float (200 * frame + 6 * ms) / 6000.0
 
-let private GAP = 0.42 // between sentences in a scene: a breath, so facts do not run into each other
+let private GAP = 1.2 // between sentences in a scene: a breath, so facts do not run into each other
 let private PART_GAP = 0.12 // between the voices inside one sentence
 let private KOKORO_LANGS = set [ "en-us"; "en-gb"; "fr-fr"; "es"; "it"; "ja"; "pt-br"; "cmn"; "hi" ]
 let private PRONOUNCE = regex """\[([^\]]+)\]\(([^)]+)\)""" "g"
 let private FOREIGN = regex """\{([a-z]{2,3}):([^{}]+)\}""" "g"
 let private BREAK = regex """\s*\[(pause|think)(?:\s+(\d+(?:\.\d+)?))?\]""" "g"
-let private breakDefault kind = if kind = "pause" then 1.5 else 8.0
+let private breakDefault kind = if kind = "pause" then 2.25 else 8.0
 // A rest: a short silence INSIDE a sentence, between the items of a spoken list ("a client, [rest] a service,
 // [rest] and a database"), so they do not run together. Unlike a pause it does not end the caption.
 let private REST = regex """\s*\[rest(?:\s+(\d+(?:\.\d+)?))?\]""" "g"
-let private REST_DEFAULT = 0.35
+let private REST_DEFAULT = 0.5
 let private NAME_PATTERN = """\A[A-Za-z0-9][A-Za-z0-9_-]*\Z"""
 let private NAME = regex "^[A-Za-z0-9][A-Za-z0-9_-]*$" ""
 
@@ -1296,6 +1296,18 @@ let private visitSilence (script: obj) (si: int) : float * float =
         lead, tail
     | _ -> 0.0, 0.0
 
+/// How long the finished picture stays before the next scene replaces it, so the viewer can take it in: a content
+/// scene holds its last state at least SETTLE, a chapter card at least SETTLE_CARD. The title, a recap (its `hold`
+/// is the rest) and a scene that says nothing get no floor. A larger pad plus hold in the script is kept.
+let SETTLE, SETTLE_CARD = 4.8, 2.7
+
+let private settleSilence (sc: obj) : float =
+    let has key = match get sc key with Truthy _ -> true | _ -> false
+    let id = match get sc "id" with Some v when jsTypeof v = "string" -> unbox<string> v | _ -> ""
+    if id = "title" || has "recap" then 0.0
+    elif has "chapter" then SETTLE_CARD
+    else SETTLE
+
 /// One scene's turn: the track and the scenes timed so far (the latest first) in, the same with this scene out.
 /// The scene opens with its lead, voices its sentences with a breath between them, holds, and then pads
 /// with silence up to a whole frame. A scene where a visit starts or ends gets at least the silence it needs.
@@ -1375,6 +1387,7 @@ let private voiceScene (settings: Settings) (markedScenes: obj[]) (track: Track,
 
         let! track, lines, sceneBreaks = foldAR sentence (track, [], []) (List.indexed (sentences say))
         let quiet = getFloat sc "hold" 0.0 + getFloat sc "pad" (if lines.IsEmpty then 0.0 else 0.9)
+        let quiet = if lines.IsEmpty then quiet else max quiet (settleSilence sc)
         let track = silence (max quiet leastTail) track
         // End on a whole frame (and never on the frame the scene started on).
         let over = track.pos % FRAME

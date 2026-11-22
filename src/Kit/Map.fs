@@ -284,6 +284,7 @@ let build (parent: HTMLElement) (def: MapDef) : View =
             // A dashed part's dashes are drawn in a lighter grey, or they would vanish into the background.
             let unlit = if truthy q.p.dashed then "var(--muted)" else "var(--border)"
             q.el.style.borderColor <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, {unlit})"
+            q.el.style.setProperty ("--tc", $"color-mix(in srgb, {q.tone} {l * 100.0}%%, transparent)")
             q.el.style.color <- $"color-mix(in srgb, {q.tone} {l * 100.0}%%, var(--ink))"
             if not (isNull q.badge) then
                 // The badge of the part being zoomed into leaves as the zoom starts and is back as it ends; it does

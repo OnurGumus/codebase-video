@@ -790,7 +790,7 @@ export const BREAK = Py_rx("\\s*\\[(pause|think)(?:\\s+(\\d+(?:\\.\\d+)?))?\\]")
 
 function breakDefault(_arg) {
     if (_arg === "pause") {
-        return 1.5;
+        return 2.25;
     }
     else {
         return 8;
@@ -1484,7 +1484,7 @@ function reportBreathingWith(timing, longVideo) {
         }, [defaultOf(), false], append_1(scenes, singleton({
             id: "outro-end",
             sentences: [],
-        }))), toList(delay(() => append((longest_2 > 45) ? singleton_1(new Finding(/* Warning */ 1, [`breathe: ${Py_fmtF(0, longest_2)} s of talk without a 1.5 s pause (ending at ${Py_fmtF(0, stop(where_2))} s); add a [pause] after a key point`])) : empty_1(), delay(() => append(((talk / dur) > 0.82) ? singleton_1(new Finding(/* Warning */ 1, [concat("breathe: talking ", Py_pct(0, talk / dur), " of the time; aim for 72-78% with [pause], [think] and recap scenes")])) : empty_1(), delay(() => concat_1(patternInput_2[0]))))))))));
+        }))), toList(delay(() => append((longest_2 > 45) ? singleton_1(new Finding(/* Warning */ 1, [`breathe: ${Py_fmtF(0, longest_2)} s of talk without a 1.5 s pause (ending at ${Py_fmtF(0, stop(where_2))} s); add a [pause] after a key point`])) : empty_1(), delay(() => append(((talk / dur) > 0.75) ? singleton_1(new Finding(/* Warning */ 1, [concat("breathe: talking ", Py_pct(0, talk / dur), " of the time; aim for 60-70% with [pause], [think] and recap scenes")])) : empty_1(), delay(() => concat_1(patternInput_2[0]))))))))));
     }
 }
 

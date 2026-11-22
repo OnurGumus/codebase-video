@@ -367,6 +367,7 @@ export function build(parent, def) {
             show(q_2.el, v * lerp(DIM, 1, l), 0, "translateX(-50%)");
             const unlit = (!!(q_2.p.dashed)) ? "var(--muted)" : "var(--border)";
             q_2.el.style.borderColor = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, ${unlit})`);
+            q_2.el.style.setProperty("--tc", `color-mix(in srgb, ${q_2.tone} ${l * 100}%, transparent)`);
             q_2.el.style.color = (`color-mix(in srgb, ${q_2.tone} ${l * 100}%, var(--ink))`);
             if (!Operators_IsNull(q_2.badge)) {
                 const bv = (q_2.p.id === zoomed) ? (clamp01(s.vis(q_2.p.id)) * (1 - clamp01(z_2 * 4))) : v;

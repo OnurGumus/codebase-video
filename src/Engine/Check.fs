@@ -15,7 +15,7 @@
 ///   toasts   every scene "toasts" entry names a known kind (the kit's TOASTS) and a phrase spoken in that
 ///            scene; warns when toasts crowd (under 6 s apart) or one kind dominates
 ///   breathe  talk share of the running time and the longest stretch with no pause of 1.5 s or more (long
-///            videos: warns over 45 s and over 82% talk; a chapter with no recap or think gets a nudge)
+///            videos: warns over 45 s and over 75% talk; a chapter with no recap or think gets a nudge)
 ///   flow     per chapter, the share of sentences that link to the one before (so, but, remember, the tricky
 ///            part, ...); a chapter under FLOW_MIN reads as a list of facts. Also flags one connective overused.
 ///
@@ -476,10 +476,10 @@ let PRONOUNCE = Py.rx @"\[([^\]]+)\]\(([^)]+)\)"
 let FOREIGN = Py.rx @"\{([a-z]{2,3}):([^{}]+)\}"
 let BREAK = Py.rx @"\s*\[(pause|think)(?:\s+(\d+(?:\.\d+)?))?\]"
 let private breakDefault = function
-    | "pause" -> 1.5
+    | "pause" -> 2.25
     | _ -> 8.0
 /// A rest: a short silence inside a sentence, between the items of a spoken list (Narrate voices each stretch on
-/// its own). Default 0.35 s.
+/// its own). Default 0.5 s.
 let REST = Py.rx @"\s*\[rest(?:\s+(\d+(?:\.\d+)?))?\]"
 
 let private shieldEnd = Py.rx @"[.!?]\s*$"
@@ -995,8 +995,8 @@ let private reportBreathingWith (timing: Json) (longVideo: bool) : Finding list 
                         else [], (chapter, has || helps))
                 [ if longest > 45.0 then
                       yield Warning $"breathe: {Py.fmtF 0 longest} s of talk without a 1.5 s pause (ending at {Py.fmtF 0 (stop where)} s); add a [pause] after a key point"
-                  if talk / dur > 0.82 then
-                      yield Warning $"breathe: talking {Py.pct 0 (talk / dur)} of the time; aim for 72-78%% with [pause], [think] and recap scenes"
+                  if talk / dur > 0.75 then
+                      yield Warning $"breathe: talking {Py.pct 0 (talk / dur)} of the time; aim for 60-70%% with [pause], [think] and recap scenes"
                   yield! List.concat nudges ]
         lateRecaps @ longVideoNudges
 

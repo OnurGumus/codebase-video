@@ -243,8 +243,8 @@ shows every kind.
 A dense video tires the viewer, so give it rests. The first long videos talked 90% of the time, with
 nearly two minutes at a stretch and no real pause.
 
-- `[pause]` / `[pause 2]` after a sentence in `say`: silence (1.5 s by default) so a key point lands.
-- `[rest]` / `[rest 0.5]` INSIDE a sentence, between the items of a spoken list: a short silence (0.35 s by default,
+- `[pause]` / `[pause 2]` after a sentence in `say`: silence (2.25 s by default) so a key point lands.
+- `[rest]` / `[rest 0.5]` INSIDE a sentence, between the items of a spoken list: a short silence (0.5 s by default,
   0.15 to 1) so the items do not run together: `"a client, [rest] a service, [rest] and a database."` Keep each
   comma before its rest. The sentence stays one caption. Each stretch between rests is voiced on its own, so a cue
   phrase must lie inside one stretch (`"s|a service"`, not `"s|a client, a service"`); `check` says so. Use it in
@@ -255,8 +255,13 @@ nearly two minutes at a stretch and no real pause.
   short lines, the chapter's takeaways), a `say` that speaks them one sentence per line, and
   `"hold": 2.5` for a quiet moment. The frame draws a full "So far" card; it needs no module file.
 
+The narration also leaves room on its own: 1.2 s between the sentences of a scene, and at the end of every scene
+a quiet hold of at least 4.8 s (2.7 s after a chapter card) with the finished picture still on screen, so the viewer
+takes it in before the next scene replaces it. A larger `pad` plus `hold` in the script is kept; a smaller one is
+raised to that floor. Do not pad scenes by hand to slow a video down.
+
 `check` prints talk share and the longest stretch without a 1.5 s pause, and warns over 45 s, over
-82% talk, and for a chapter with neither a recap nor a think. Aim for 72-78% talk: when a video runs
+75% talk, and for a chapter with neither a recap nor a think. Aim for 60-70% talk: when a video runs
 long, cut a fact, not a pause.
 
 ## Colour by kind
